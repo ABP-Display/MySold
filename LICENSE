@@ -1,0 +1,52 @@
+MySold Personal Self-Hosting License 1.0
+
+Copyright (c) 2026 Ydoxide / ABP-Display and respective contributors.
+All rights reserved except as expressly granted below.
+
+1. Permission
+The copyright holders grant you a limited, non-exclusive, non-transferable,
+royalty-free right to download, inspect, build and run MySold on infrastructure
+you control, solely for your own personal, non-commercial use and that of your
+household. You may keep private backups and make private modifications necessary
+for that use. Copies must retain this license and all attribution notices.
+
+2. Restrictions
+Without prior written permission from the copyright holders, you may not:
+- redistribute, republish, sublicense, sell or rent the software, its source,
+  compiled builds, container images, or a substantially derived product;
+- offer the software as a hosted service to third parties, whether paid or free,
+  outside the personal household use permitted by section 1;
+- use the software or a derivative commercially, including paid access,
+  white-label offerings or resale;
+- present the software, branding, artwork or a substantial copy as your own work;
+- remove or conceal copyright and license notices.
+
+3. Public source repositories
+Source visibility is not an open-source license. This license does not restrict
+rights necessarily granted by the repository hosting platform's applicable terms
+to display or fork content within that platform. Those platform-specific rights
+do not grant permission for commercial exploitation or broader redistribution
+under this license. Rights imposed by mandatory law remain unaffected.
+
+4. Third-party components and user data
+This license applies only to material whose copyright holders can license it
+under these terms. Third-party libraries, fonts and other components retain their
+own licenses; nothing here restricts rights granted by those licenses. User
+financial records are not licensed under this software license and remain under
+the control of their owners. The copyright holders may publish and distribute
+their own work separately.
+
+5. Termination
+A material breach terminates the permissions granted by this license. Upon
+termination, cease use and remove software copies other than copies required by
+law. This does not require deletion or surrender of your own financial records.
+
+6. No warranty
+To the extent permitted by applicable law, the software is provided "AS IS",
+without warranties of merchantability, fitness for a particular purpose,
+availability or accuracy. The authors are not liable for losses arising from its
+use, except where liability cannot lawfully be excluded. Mandatory consumer and
+other statutory rights remain unaffected.
+
+Permissions beyond these terms must be obtained from the maintainers of the
+official repository: https://github.com/ABP-Display/MySold

@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="color-scheme" content="dark light">
+  <meta name="description" content="Découvrez MySold : suivi du budget, des comptes et du patrimoine. Démonstration avec des données entièrement fictives.">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
+  <meta name="referrer" content="no-referrer">
+  <link rel="icon" type="image/png" href="./assets/icon.png">
+  <link rel="stylesheet" href="./demo.css">
+  <title>MySold · Démonstration</title>
+</head>
+<body>
+  <div class="app">
+    <header class="header">
+      <a class="brand" href="#mois" aria-label="MySold, vue mensuelle">
+        <img src="./assets/logo.png" alt="" width="40" height="40">
+        <span>MySold</span><span class="demo-tag">Démo</span>
+      </a>
+      <div class="header-actions">
+        <button class="icon-button" id="privacy" title="Masquer les montants" aria-label="Masquer les montants" aria-pressed="false"><span class="mi" aria-hidden="true">&#xf4a1;</span></button>
+        <button class="icon-button" id="theme" title="Passer au thème clair" aria-label="Passer au thème clair"><span class="mi" aria-hidden="true">&#xf162;</span></button>
+        <a class="repo-link" href="https://github.com/ABP-Display/MySold" target="_blank" rel="noopener noreferrer">Le projet<span aria-hidden="true"> ↗</span></a>
+      </div>
+    </header>
+    <p class="demo-notice"><span class="status-dot" aria-hidden="true"></span>Données fictives. Aucun compte à créer, aucune donnée utilisateur enregistrée.</p>
+    <nav class="main-nav" aria-label="Navigation principale">
+      <a href="#mois" data-view="mois"><span class="mi" aria-hidden="true">&#xf051f;</span>Mois</a>
+      <a href="#stats" data-view="stats"><span class="mi" aria-hidden="true">&#xf00ce;</span>Stats</a>
+      <a href="#global" data-view="global"><span class="mi" aria-hidden="true">&#xefa1;</span>Global</a>
+      <a href="#profil" data-view="profil"><span class="mi" aria-hidden="true">&#xe497;</span>Profil</a>
+    </nav>
+    <main id="content" tabindex="-1"></main>
+    <footer>MySold · Édition auto-hébergée <span>Exemple au 22 octobre 2026</span></footer>
+  </div>
+  <dialog id="detail" aria-labelledby="dialog-title">
+    <header class="dialog-header"><h2 id="dialog-title"></h2><button class="icon-button" id="close-dialog" title="Fermer" aria-label="Fermer"><span class="mi" aria-hidden="true">&#xf647;</span></button></header>
+    <div id="dialog-body"></div>
+  </dialog>
+  <noscript><p class="noscript">Activez JavaScript pour parcourir les écrans de cette démonstration. Aucune connexion à un serveur de données n’est effectuée.</p></noscript>
+  <script src="./demo.js" defer></script>
+</body>
+</html>

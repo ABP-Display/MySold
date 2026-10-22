@@ -8,6 +8,11 @@ catégories, investissements, thèmes, langues, mode discret et rapports PDF.
 Elle utilise une API locale et PostgreSQL. Aucun projet Firebase, compte Google,
 clé d’API bancaire ou service cloud applicatif n’est nécessaire.
 
+Une [démonstration statique](docs/README.md) est disponible dans `docs/` : ouvrir
+`docs/index.html` pour parcourir une vitrine avec des données fictives, sans API,
+connexion ni conservation de données utilisateur. Ce dossier peut être publié
+séparément sur GitHub Pages, sans déployer l’application Docker.
+
 ## Démarrage
 
 Prérequis : Docker avec Docker Compose v2. Node.js est uniquement nécessaire au

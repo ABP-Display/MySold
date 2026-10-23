@@ -3,31 +3,44 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 class PrivacyProvider extends ChangeNotifier {
   static const String hideAmountsKey = 'hide_amounts';
+  static const String shakeEnabledKey = 'shake_to_hide_enabled';
   bool _hideAmounts = false;
   bool _shakeHideAmounts = false;
+  bool _shakeEnabled = false;
 
   bool get persistentHideAmounts => _hideAmounts;
   bool get shakeHideAmounts => _shakeHideAmounts;
   bool get hideAmounts => _hideAmounts || _shakeHideAmounts;
+  bool get shakeEnabled => _shakeEnabled;
 
   Future<void> load() async {
     final prefs = await SharedPreferences.getInstance();
     _hideAmounts = prefs.getBool(hideAmountsKey) ?? false;
+    _shakeEnabled = prefs.getBool(shakeEnabledKey) ?? false;
     notifyListeners();
   }
 
   Future<void> setHideAmounts(bool value) async {
-    if (_hideAmounts == value) return;
+    if (_hideAmounts == value && !_shakeHideAmounts) return;
 
     _hideAmounts = value;
+    _shakeHideAmounts = false;
     notifyListeners();
 
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(hideAmountsKey, value);
   }
 
-  void toggleShakeHideAmounts() {
-    _shakeHideAmounts = !_shakeHideAmounts;
+  Future<void> setShakeEnabled(bool value) async {
+    _shakeEnabled = value;
+    notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(shakeEnabledKey, value);
+  }
+
+  void hideWithShake() {
+    if (!_shakeEnabled || hideAmounts) return;
+    _shakeHideAmounts = true;
     notifyListeners();
   }
 

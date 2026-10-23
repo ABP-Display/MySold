@@ -37,11 +37,10 @@ class _CustomUnderlinePainter extends BoxPainter {
 
   @override
   void paint(Canvas canvas, Offset offset, ImageConfiguration cfg) {
-    final Paint paint =
-        Paint()
-          ..color = color
-          ..strokeCap = StrokeCap.round
-          ..strokeWidth = height;
+    final Paint paint = Paint()
+      ..color = color
+      ..strokeCap = StrokeCap.round
+      ..strokeWidth = height;
 
     final double width = cfg.size!.width;
     final double left = offset.dx + (width * 0.1);
@@ -108,7 +107,10 @@ class _SimulationScreenState extends State<SimulationScreen>
                 context,
                 // ignore: deprecated_member_use
               ).colorScheme.onSurface.withOpacity(0.5),
-              tabs: const [Tab(text: 'Budget'), Tab(text: 'Investissement')],
+              tabs: const [
+                Tab(text: 'Budget'),
+                Tab(text: 'Investissement'),
+              ],
             ),
           ),
         ),
@@ -523,22 +525,21 @@ class _SimulationScreenState extends State<SimulationScreen>
   // ---------- Dropdown périodicité ----------
   Widget _periodicityDrop() => ValueListenableBuilder(
     valueListenable: _periodicity,
-    builder:
-        (_, val, __) => Padding(
-          padding: const EdgeInsets.only(bottom: 12),
-          child: DropdownButtonFormField<String>(
-            value: val,
-            decoration: _input('Périodicité'),
-            borderRadius: BorderRadius.circular(18),
-            items: const [
-              DropdownMenuItem(value: 'Jour', child: Text('Jour')),
-              DropdownMenuItem(value: 'Semaine', child: Text('Semaine')),
-              DropdownMenuItem(value: 'Bi-mensuel', child: Text('Bi-mensuel')),
-              DropdownMenuItem(value: 'Mois', child: Text('Mois')),
-              DropdownMenuItem(value: 'An', child: Text('An')),
-            ],
-            onChanged: (v) => _periodicity.value = v!,
-          ),
-        ),
+    builder: (_, val, __) => Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: DropdownButtonFormField<String>(
+        value: val,
+        decoration: _input('Périodicité'),
+        borderRadius: BorderRadius.circular(18),
+        items: const [
+          DropdownMenuItem(value: 'Jour', child: Text('Jour')),
+          DropdownMenuItem(value: 'Semaine', child: Text('Semaine')),
+          DropdownMenuItem(value: 'Bi-mensuel', child: Text('Bi-mensuel')),
+          DropdownMenuItem(value: 'Mois', child: Text('Mois')),
+          DropdownMenuItem(value: 'An', child: Text('An')),
+        ],
+        onChanged: (v) => _periodicity.value = v!,
+      ),
+    ),
   );
 }

@@ -25,9 +25,9 @@ class _InvestmentPageState extends State<InvestmentPage>
   static const _allType = 'all';
 
   List<String> get _tabs => [
-        _allType,
-        ...investmentTypeOptions.map((option) => option.value),
-      ];
+    _allType,
+    ...investmentTypeOptions.map((option) => option.value),
+  ];
 
   CollectionReference<Map<String, dynamic>> get _investmentsRef {
     return DocumentStore.instance
@@ -82,7 +82,9 @@ class _InvestmentPageState extends State<InvestmentPage>
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            context.tr('Cet investissement est utilise ou possede encore un solde.'),
+            context.tr(
+              'Cet investissement est utilise ou possede encore un solde.',
+            ),
           ),
         ),
       );
@@ -173,13 +175,14 @@ class _InvestmentPageState extends State<InvestmentPage>
               }
 
               if (snapshot.hasError) {
-                return Center(child: Text('${context.tr('Erreur')} : ${snapshot.error}'));
+                return Center(
+                  child: Text('${context.tr('Erreur')} : ${snapshot.error}'),
+                );
               }
 
               final investments = (snapshot.data?.docs ?? []).map((doc) {
                 return _InvestmentViewModel.fromFirestore(doc, accounts);
-              }).toList()
-                ..sort((a, b) => b.balance.compareTo(a.balance));
+              }).toList()..sort((a, b) => b.balance.compareTo(a.balance));
 
               final total = investments.fold(0.0, (sum, investment) {
                 return sum + investment.balance;
@@ -267,19 +270,18 @@ class _InvestmentPageState extends State<InvestmentPage>
               children: [
                 Text(
                   context.tr('Portefeuille investi'),
-                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                        fontWeight: FontWeight.w900,
-                      ),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w600),
                 ),
                 const SizedBox(height: 4),
                 Text(
                   '$count actif${count > 1 ? 's' : ''} - Total ${privacy.money(total, currency)}',
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: Theme.of(context)
-                            .colorScheme
-                            .onSurface
-                            .withOpacity(0.64),
-                      ),
+                    color: Theme.of(
+                      context,
+                    ).colorScheme.onSurface.withOpacity(0.64),
+                  ),
                 ),
               ],
             ),
@@ -295,8 +297,9 @@ class _InvestmentPageState extends State<InvestmentPage>
     required String currency,
     required PrivacyProvider privacy,
   }) {
-    final share =
-        total <= 0 ? 0.0 : (investment.balance / total).clamp(0.0, 1.0).toDouble();
+    final share = total <= 0
+        ? 0.0
+        : (investment.balance / total).clamp(0.0, 1.0).toDouble();
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -309,7 +312,9 @@ class _InvestmentPageState extends State<InvestmentPage>
                 height: 48,
                 width: 48,
                 decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.primary.withOpacity(0.12),
+                  color: Theme.of(
+                    context,
+                  ).colorScheme.primary.withOpacity(0.12),
                   borderRadius: BorderRadius.circular(17),
                 ),
                 child: Icon(
@@ -327,16 +332,13 @@ class _InvestmentPageState extends State<InvestmentPage>
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.w900,
-                          ),
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                     const SizedBox(height: 2),
                     Row(
                       children: [
-                        Flexible(
-                          flex: 0,
-                          child: _typeBadge(investment),
-                        ),
+                        Flexible(flex: 0, child: _typeBadge(investment)),
                         const SizedBox(width: 8),
                         Expanded(
                           child: Text(
@@ -345,13 +347,12 @@ class _InvestmentPageState extends State<InvestmentPage>
                                 : '${investment.description} - ${investment.holdingAccountName}',
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style:
-                                Theme.of(context).textTheme.bodySmall?.copyWith(
-                                      color: Theme.of(context)
-                                          .colorScheme
-                                          .onSurface
-                                          .withOpacity(0.62),
-                                    ),
+                            style: Theme.of(context).textTheme.bodySmall
+                                ?.copyWith(
+                                  color: Theme.of(
+                                    context,
+                                  ).colorScheme.onSurface.withOpacity(0.62),
+                                ),
                           ),
                         ),
                       ],
@@ -382,7 +383,10 @@ class _InvestmentPageState extends State<InvestmentPage>
                     value: 'delete',
                     child: Row(
                       children: [
-                        const Icon(Icons.delete_outline, color: Colors.redAccent),
+                        const Icon(
+                          Icons.delete_outline,
+                          color: Colors.redAccent,
+                        ),
                         const SizedBox(width: 8),
                         Text(context.tr('Supprimer')),
                       ],
@@ -399,25 +403,23 @@ class _InvestmentPageState extends State<InvestmentPage>
                 child: Text(
                   privacy.money(investment.balance, currency),
                   style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                        color: privacy.hideAmounts
-                            ? Theme.of(context)
-                                .colorScheme
-                                .onSurface
-                                .withOpacity(0.58)
-                            : Theme.of(context).colorScheme.primary,
-                        fontWeight: FontWeight.w900,
-                      ),
+                    color: privacy.hideAmounts
+                        ? Theme.of(
+                            context,
+                          ).colorScheme.onSurface.withOpacity(0.58)
+                        : Theme.of(context).colorScheme.primary,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ),
               Text(
                 privacy.percent(share * 100),
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      fontWeight: FontWeight.w800,
-                      color: Theme.of(context)
-                          .colorScheme
-                          .onSurface
-                          .withOpacity(0.64),
-                    ),
+                  fontWeight: FontWeight.w600,
+                  color: Theme.of(
+                    context,
+                  ).colorScheme.onSurface.withOpacity(0.64),
+                ),
               ),
             ],
           ),
@@ -445,9 +447,9 @@ class _InvestmentPageState extends State<InvestmentPage>
       child: Text(
         context.tr(investment.typeOption.label),
         style: Theme.of(context).textTheme.labelSmall?.copyWith(
-              color: Theme.of(context).colorScheme.primary,
-              fontWeight: FontWeight.w900,
-            ),
+          color: Theme.of(context).colorScheme.primary,
+          fontWeight: FontWeight.w600,
+        ),
       ),
     );
   }
@@ -480,9 +482,9 @@ class _InvestmentPageState extends State<InvestmentPage>
               isFiltered
                   ? '${context.tr('Aucun actif')} ${context.tr(option!.label)}'
                   : context.tr('Aucun actif'),
-              style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.w900,
-                  ),
+              style: Theme.of(
+                context,
+              ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w600),
             ),
             const SizedBox(height: 8),
             Text(
@@ -493,9 +495,10 @@ class _InvestmentPageState extends State<InvestmentPage>
               ),
               textAlign: TextAlign.center,
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color:
-                        Theme.of(context).colorScheme.onSurface.withOpacity(0.65),
-                  ),
+                color: Theme.of(
+                  context,
+                ).colorScheme.onSurface.withOpacity(0.65),
+              ),
             ),
             const SizedBox(height: 18),
             ElevatedButton.icon(
@@ -511,10 +514,10 @@ class _InvestmentPageState extends State<InvestmentPage>
 
   BoxDecoration _panelDecoration() {
     return BoxDecoration(
-      color: Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.24),
-      borderRadius: BorderRadius.circular(20),
+      color: Theme.of(context).colorScheme.surface,
+      borderRadius: BorderRadius.circular(12),
       border: Border.all(
-        color: Theme.of(context).colorScheme.outline.withOpacity(0.10),
+        color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.30),
       ),
     );
   }

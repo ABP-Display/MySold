@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:math';
 
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
@@ -8,7 +7,6 @@ import 'package:intl/date_symbol_data_local.dart';
 import 'package:mysold/data/document_store.dart';
 import 'package:mysold/data/local_auth.dart';
 import 'package:provider/provider.dart';
-import 'package:sensors_plus/sensors_plus.dart';
 
 import 'package:mysold/enterPinPage.dart';
 import 'package:mysold/l10n/app_localizations.dart';
@@ -26,6 +24,8 @@ import 'package:mysold/login_page.dart';
 import 'package:mysold/services/local_notification_service.dart';
 import 'package:mysold/widgets/icon_loader.dart';
 import 'package:mysold/widgets/pwa_update_prompt.dart';
+import 'package:mysold/widgets/app_workspace.dart';
+import 'package:mysold/services/shake_privacy_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -236,8 +236,9 @@ class _HomeScreenState extends State<HomeScreen>
   bool _wasInBackground = false;
   bool _isLocking = false;
   DateTime? _backgroundAt;
-  StreamSubscription<AccelerometerEvent>? _accelerometerSubscription;
-  DateTime _lastShakeAt = DateTime.fromMillisecondsSinceEpoch(0);
+  final _shakeService = ShakePrivacyService();
+  PrivacyProvider? _privacy;
+  bool _shakeListening = false;
 
   List<_HomeNavItem> get _navItems => const [
     _HomeNavItem(labelKey: 'Mois', icon: Icons.calendar_month_outlined),
@@ -251,7 +252,6 @@ class _HomeScreenState extends State<HomeScreen>
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _pageController = PageController(initialPage: _selectedIndex);
-    _startShakePrivacyListener();
   }
 
   @override
@@ -321,36 +321,29 @@ class _HomeScreenState extends State<HomeScreen>
     return int.tryParse((value ?? '0').toString())?.clamp(0, 1440).toInt() ?? 0;
   }
 
-  void _startShakePrivacyListener() {
-    if (kIsWeb) return;
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final privacy = context.read<PrivacyProvider>();
+    if (_privacy != privacy) {
+      _privacy?.removeListener(_syncShakePreference);
+      _privacy = privacy;
+      privacy.addListener(_syncShakePreference);
+      _syncShakePreference();
+    }
+  }
 
-    _accelerometerSubscription = accelerometerEventStream().listen((event) {
-      final force = sqrt(
-        event.x * event.x + event.y * event.y + event.z * event.z,
-      );
-      final now = DateTime.now();
-      if (force < 22 || now.difference(_lastShakeAt).inMilliseconds < 900) {
-        return;
-      }
-
-      _lastShakeAt = now;
-      if (!mounted) return;
-      final privacy = context.read<PrivacyProvider>();
-      privacy.toggleShakeHideAmounts();
-      ScaffoldMessenger.of(context).clearSnackBars();
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            privacy.persistentHideAmounts
-                ? context.tr('Mode discret actif dans les parametres')
-                : privacy.shakeHideAmounts
-                ? context.tr('Montants masques')
-                : context.tr('Montants visibles'),
-          ),
-          duration: const Duration(milliseconds: 900),
-        ),
-      );
-    });
+  void _syncShakePreference() {
+    final enabled = _privacy?.shakeEnabled ?? false;
+    if (enabled == _shakeListening) return;
+    _shakeListening = enabled;
+    if (enabled) {
+      _shakeService.start(() {
+        if (mounted) _privacy?.hideWithShake();
+      });
+    } else {
+      _shakeService.stop();
+    }
   }
 
   void _onPageChanged(int index) {
@@ -365,54 +358,26 @@ class _HomeScreenState extends State<HomeScreen>
     );
   }
 
-  Widget _buildTopNavigation(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-
-    return SafeArea(
-      bottom: false,
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
-        child: Container(
-          padding: const EdgeInsets.all(6),
-          decoration: BoxDecoration(
-            color: colorScheme.surfaceVariant.withOpacity(0.28),
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: colorScheme.outline.withOpacity(0.10)),
-          ),
-          child: Row(
-            children: List.generate(_navItems.length, (index) {
-              return Expanded(
-                child: _TopNavigationButton(
-                  item: _navItems[index],
-                  isSelected: _selectedIndex == index,
-                  onTap: () => _goToPage(index),
-                ),
-              );
-            }),
-          ),
-        ),
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: Column(
-        children: [
-          _buildTopNavigation(context),
-          Expanded(
-            child: PageView(
-              controller: _pageController,
-              onPageChanged: _onPageChanged,
-              children: const [
-                MonthManagerScreen(),
-                AnalyticsPage(),
-                DashboardScreen(),
-                ProfilePage(),
-              ],
-            ),
-          ),
+    final privacy = context.watch<PrivacyProvider>();
+    return AppWorkspace(
+      selectedIndex: _selectedIndex,
+      destinations: _navItems
+          .map((item) => WorkspaceDestination(item.labelKey, item.icon))
+          .toList(),
+      onSelected: _goToPage,
+      hidden: privacy.hideAmounts,
+      onPrivacy: () => privacy.setHideAmounts(!privacy.hideAmounts),
+      child: PageView(
+        controller: _pageController,
+        physics: const NeverScrollableScrollPhysics(),
+        onPageChanged: _onPageChanged,
+        children: const [
+          MonthManagerScreen(),
+          AnalyticsPage(),
+          DashboardScreen(),
+          ProfilePage(),
         ],
       ),
     );
@@ -421,73 +386,10 @@ class _HomeScreenState extends State<HomeScreen>
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
-    _accelerometerSubscription?.cancel();
+    _privacy?.removeListener(_syncShakePreference);
+    _shakeService.stop();
     _pageController.dispose();
     super.dispose();
-  }
-}
-
-class _TopNavigationButton extends StatelessWidget {
-  final _HomeNavItem item;
-  final bool isSelected;
-  final VoidCallback onTap;
-
-  const _TopNavigationButton({
-    required this.item,
-    required this.isSelected,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-    final selectedColor = colorScheme.primary;
-    final idleColor = colorScheme.onSurface.withOpacity(0.70);
-    final contentColor = isSelected ? selectedColor : idleColor;
-
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 2),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(16),
-        onTap: onTap,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 220),
-          curve: Curves.easeOutCubic,
-          height: 44,
-          padding: const EdgeInsets.symmetric(horizontal: 8),
-          decoration: BoxDecoration(
-            color: isSelected
-                ? selectedColor.withOpacity(0.16)
-                : Colors.transparent,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(
-              color: isSelected
-                  ? selectedColor.withOpacity(0.30)
-                  : Colors.transparent,
-            ),
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(item.icon, size: 18, color: contentColor),
-              const SizedBox(width: 6),
-              Flexible(
-                child: Text(
-                  context.tr(item.labelKey),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    color: contentColor,
-                    fontSize: 14,
-                    fontWeight: isSelected ? FontWeight.w900 : FontWeight.w700,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
   }
 }
 

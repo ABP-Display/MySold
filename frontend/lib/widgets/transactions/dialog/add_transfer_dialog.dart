@@ -1,3 +1,4 @@
+import 'package:mysold/widgets/app_design.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
@@ -287,7 +288,6 @@ class _AddTransferDialogState extends State<AddTransferDialog> {
   Widget build(BuildContext context) {
     final currency = Provider.of<CurrencyProvider>(context).currency;
     return Dialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       child: Padding(
         padding: const EdgeInsets.all(20),
         child: SingleChildScrollView(
@@ -296,14 +296,11 @@ class _AddTransferDialogState extends State<AddTransferDialog> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Text(
-                  widget.existingTransfer == null
+                AppDialogHeader(
+                  icon: Icons.sync_alt,
+                  title: widget.existingTransfer == null
                       ? context.tr('Nouveau transfert')
                       : context.tr('Modifier le transfert'),
-                  style: const TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                  ),
                 ),
                 const SizedBox(height: 20),
                 if (widget.existingTransfer == null) ...[
@@ -354,12 +351,13 @@ class _AddTransferDialogState extends State<AddTransferDialog> {
                   },
                 ),
                 const SizedBox(height: 12),
-                Row(
+                Wrap(
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  spacing: 8,
                   children: [
                     const Icon(Icons.date_range),
                     const SizedBox(width: 10),
                     Text(DateFormat('dd/MM/yyyy').format(_selectedDate)),
-                    const Spacer(),
                     TextButton(
                       onPressed: _pickDate,
                       child: Text(context.tr('Changer la date')),
@@ -369,6 +367,7 @@ class _AddTransferDialogState extends State<AddTransferDialog> {
                 const SizedBox(height: 12),
                 if (_isInvestmentWithdrawal)
                   DropdownButtonFormField<String>(
+                    isExpanded: true,
                     value: _investments.containsKey(_sourceInvestmentId)
                         ? _sourceInvestmentId
                         : null,
@@ -398,6 +397,7 @@ class _AddTransferDialogState extends State<AddTransferDialog> {
                   )
                 else
                   DropdownButtonFormField<String>(
+                    isExpanded: true,
                     value: _accounts.containsKey(_sourceAccountId)
                         ? _sourceAccountId
                         : null,
@@ -428,6 +428,7 @@ class _AddTransferDialogState extends State<AddTransferDialog> {
                   ),
                 const SizedBox(height: 12),
                 DropdownButtonFormField<String>(
+                  isExpanded: true,
                   value: _accounts.containsKey(_destinationAccountId)
                       ? _destinationAccountId
                       : null,
@@ -451,8 +452,9 @@ class _AddTransferDialogState extends State<AddTransferDialog> {
                       : null,
                   decoration: InputDecoration(
                     labelText: context.tr('Compte destination'),
-                    prefixIcon:
-                        const Icon(Icons.account_balance_wallet_outlined),
+                    prefixIcon: const Icon(
+                      Icons.account_balance_wallet_outlined,
+                    ),
                   ),
                 ),
                 const SizedBox(height: 20),

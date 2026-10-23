@@ -114,12 +114,23 @@ class AppThemes {
         .copyWith(
           primary: primary,
           onPrimary: onPrimary,
+          primaryContainer: Color.lerp(surface, primary, 0.14),
+          onPrimaryContainer: onSurface,
           secondary: secondary,
           onSecondary: onSecondary,
+          secondaryContainer: Color.lerp(surface, secondary, 0.14),
+          onSecondaryContainer: onSurface,
           surface: surface,
           surfaceVariant: surfaceVariant,
+          surfaceContainerLowest: scaffold,
+          surfaceContainerLow: Color.lerp(surface, surfaceVariant, 0.35),
+          surfaceContainer: surfaceVariant,
+          surfaceContainerHigh: Color.lerp(surface, surfaceVariant, 0.8),
+          surfaceContainerHighest: surfaceVariant,
           onSurface: onSurface,
+          onSurfaceVariant: Color.lerp(onSurface, surface, 0.30),
           outline: outline,
+          outlineVariant: outline.withValues(alpha: 0.38),
           error: brightness == Brightness.dark
               ? const Color(0xFFFFB4AB)
               : const Color(0xFFBA1A1A),
@@ -140,13 +151,102 @@ class AppThemes {
       ),
     );
 
+    final shape = RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(12),
+      side: BorderSide(color: outline.withValues(alpha: 0.38)),
+    );
+    final buttonShape = RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(10),
+    );
     return base.copyWith(
+      textTheme: base.textTheme.copyWith(
+        headlineMedium: base.textTheme.headlineMedium?.copyWith(
+          fontSize: 28,
+          fontWeight: FontWeight.w600,
+          letterSpacing: -0.8,
+        ),
+        headlineSmall: base.textTheme.headlineSmall?.copyWith(
+          fontSize: 23,
+          fontWeight: FontWeight.w600,
+          letterSpacing: -0.5,
+        ),
+        titleLarge: base.textTheme.titleLarge?.copyWith(
+          fontSize: 19,
+          fontWeight: FontWeight.w600,
+        ),
+        titleMedium: base.textTheme.titleMedium?.copyWith(
+          fontSize: 14,
+          fontWeight: FontWeight.w600,
+        ),
+        bodyMedium: base.textTheme.bodyMedium?.copyWith(
+          fontSize: 13,
+          height: 1.5,
+        ),
+        bodySmall: base.textTheme.bodySmall?.copyWith(
+          fontSize: 12,
+          height: 1.5,
+        ),
+      ),
+      dialogTheme: DialogThemeData(
+        backgroundColor: surface,
+        surfaceTintColor: Colors.transparent,
+        elevation: 0,
+        shape: shape,
+        insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+        constraints: const BoxConstraints(maxWidth: 600),
+      ),
+      bottomSheetTheme: BottomSheetThemeData(
+        backgroundColor: surface,
+        modalBackgroundColor: surface,
+        surfaceTintColor: Colors.transparent,
+        elevation: 0,
+        modalElevation: 0,
+        showDragHandle: true,
+        dragHandleColor: outline,
+        shape: RoundedRectangleBorder(
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(18)),
+          side: BorderSide(color: outline.withValues(alpha: 0.45)),
+        ),
+        constraints: const BoxConstraints(maxWidth: 720),
+      ),
+      popupMenuTheme: PopupMenuThemeData(
+        color: surface,
+        surfaceTintColor: Colors.transparent,
+        elevation: 4,
+        shape: shape,
+      ),
+      menuTheme: MenuThemeData(
+        style: MenuStyle(
+          backgroundColor: WidgetStatePropertyAll(surface),
+          shape: WidgetStatePropertyAll(shape),
+          surfaceTintColor: const WidgetStatePropertyAll(Colors.transparent),
+        ),
+      ),
+      navigationBarTheme: NavigationBarThemeData(
+        height: 68,
+        backgroundColor: surface,
+        surfaceTintColor: Colors.transparent,
+        indicatorColor: primary.withValues(alpha: 0.12),
+        labelTextStyle: WidgetStatePropertyAll(
+          TextStyle(
+            fontFamily: AppTypography.family,
+            fontSize: 11,
+            fontWeight: FontWeight.w500,
+            color: onSurface,
+          ),
+        ),
+      ),
       cardTheme: CardThemeData(
         elevation: 0,
-        color: surfaceVariant.withOpacity(0.48),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(18),
-          side: BorderSide(color: outline.withOpacity(0.10)),
+        color: surface,
+        surfaceTintColor: Colors.transparent,
+        shape: shape,
+      ),
+      filledButtonTheme: FilledButtonThemeData(
+        style: FilledButton.styleFrom(
+          minimumSize: const Size(44, 44),
+          shape: buttonShape,
+          textStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
         ),
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
@@ -154,43 +254,46 @@ class AppThemes {
           backgroundColor: primary,
           foregroundColor: onPrimary,
           elevation: 0,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
+          minimumSize: const Size(44, 44),
+          shape: buttonShape,
         ),
       ),
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
           foregroundColor: primary,
-          side: BorderSide(color: outline.withOpacity(0.32)),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
+          minimumSize: const Size(44, 44),
+          side: BorderSide(color: outline.withValues(alpha: 0.50)),
+          shape: buttonShape,
         ),
       ),
       floatingActionButtonTheme: FloatingActionButtonThemeData(
         backgroundColor: primary,
         foregroundColor: onPrimary,
-        elevation: 2,
+        elevation: 0,
+        shape: buttonShape,
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: surfaceVariant.withOpacity(0.30),
+        fillColor: Color.lerp(surface, surfaceVariant, 0.4),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 14,
+          vertical: 14,
+        ),
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(16),
-          borderSide: BorderSide(color: outline.withOpacity(0.28)),
+          borderRadius: BorderRadius.circular(10),
+          borderSide: BorderSide(color: outline.withValues(alpha: 0.45)),
         ),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(16),
-          borderSide: BorderSide(color: outline.withOpacity(0.22)),
+          borderRadius: BorderRadius.circular(10),
+          borderSide: BorderSide(color: outline.withValues(alpha: 0.45)),
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(10),
           borderSide: BorderSide(color: primary, width: 1.4),
         ),
       ),
       dividerTheme: DividerThemeData(
-        color: outline.withOpacity(0.10),
+        color: outline.withValues(alpha: 0.24),
         thickness: 1,
       ),
       listTileTheme: ListTileThemeData(

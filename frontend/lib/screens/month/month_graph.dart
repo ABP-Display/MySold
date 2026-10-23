@@ -81,7 +81,7 @@ class MonthGraph extends StatelessWidget {
               overflow: TextOverflow.ellipsis,
               style: const TextStyle(
                 fontSize: 10,
-                fontWeight: FontWeight.w800,
+                fontWeight: FontWeight.w600,
                 height: 1,
               ),
             ),
@@ -415,7 +415,7 @@ class MonthGraph extends StatelessWidget {
                     maxLines: 1,
                     style: TextStyle(
                       fontSize: 13,
-                      fontWeight: FontWeight.w800,
+                      fontWeight: FontWeight.w600,
                       color: Theme.of(context).colorScheme.onSurface,
                     ),
                   ),
@@ -472,7 +472,7 @@ class MonthGraph extends StatelessWidget {
                     privacy.hideAmounts
                         ? '**** $currency'
                         : '${_formatAmount(v)} $currency',
-                    style: const TextStyle(fontSize: 10, color: Colors.white),
+                    style: const TextStyle(fontSize: 10),
                   ),
                 ),
               ),

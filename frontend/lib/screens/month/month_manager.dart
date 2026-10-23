@@ -1,3 +1,4 @@
+import 'package:mysold/widgets/app_design.dart';
 // month_manager.dart
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
@@ -371,16 +372,17 @@ class _MonthManagerState extends State<MonthManagerScreen>
       text: _maxAmount?.toStringAsFixed(0) ?? '',
     );
     final currentType = _currentType;
-    final categoryEntries = _categories.entries
-        .where((entry) => entry.value['type'] == currentType)
-        .toList()
-      ..sort(
-        (a, b) => (a.value['name'] ?? '')
-            .toString()
-            .compareTo((b.value['name'] ?? '').toString()),
-      );
+    final categoryEntries =
+        _categories.entries
+            .where((entry) => entry.value['type'] == currentType)
+            .toList()
+          ..sort(
+            (a, b) => (a.value['name'] ?? '').toString().compareTo(
+              (b.value['name'] ?? '').toString(),
+            ),
+          );
 
-    showModalBottomSheet(
+    showAppSheet(
       context: context,
       isScrollControlled: true,
       showDragHandle: true,
@@ -401,23 +403,23 @@ class _MonthManagerState extends State<MonthManagerScreen>
                     Text(
                       'Filtres',
                       style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                            fontWeight: FontWeight.w800,
-                          ),
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                     const SizedBox(height: 16),
                     DropdownButtonFormField<String?>(
                       value: tempAccountId,
-                        decoration: InputDecoration(
-                          labelText: _t('Compte'),
-                          prefixIcon: const Icon(
-                            Icons.account_balance_wallet_outlined,
-                          ),
+                      decoration: InputDecoration(
+                        labelText: _t('Compte'),
+                        prefixIcon: const Icon(
+                          Icons.account_balance_wallet_outlined,
                         ),
-                        items: [
-                          DropdownMenuItem<String?>(
-                            value: null,
-                            child: Text(_t('Tous les comptes')),
-                          ),
+                      ),
+                      items: [
+                        DropdownMenuItem<String?>(
+                          value: null,
+                          child: Text(_t('Tous les comptes')),
+                        ),
                         ..._accountIds.entries.map(
                           (entry) => DropdownMenuItem<String?>(
                             value: entry.key,
@@ -446,8 +448,7 @@ class _MonthManagerState extends State<MonthManagerScreen>
                               (entry) => DropdownMenuItem<String?>(
                                 value: entry.key,
                                 child: Text(
-                                  entry.value['name']?.toString() ??
-                                      'Sans nom',
+                                  entry.value['name']?.toString() ?? 'Sans nom',
                                 ),
                               ),
                             ),
@@ -467,8 +468,9 @@ class _MonthManagerState extends State<MonthManagerScreen>
                             ),
                             decoration: InputDecoration(
                               labelText: _t('Montant min'),
-                              prefixIcon:
-                                  const Icon(Icons.arrow_downward_rounded),
+                              prefixIcon: const Icon(
+                                Icons.arrow_downward_rounded,
+                              ),
                             ),
                           ),
                         ),
@@ -481,8 +483,9 @@ class _MonthManagerState extends State<MonthManagerScreen>
                             ),
                             decoration: InputDecoration(
                               labelText: _t('Montant max'),
-                              prefixIcon:
-                                  const Icon(Icons.arrow_upward_rounded),
+                              prefixIcon: const Icon(
+                                Icons.arrow_upward_rounded,
+                              ),
                             ),
                           ),
                         ),
@@ -492,8 +495,8 @@ class _MonthManagerState extends State<MonthManagerScreen>
                     Text(
                       _t('Tri'),
                       style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.w800,
-                          ),
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                     const SizedBox(height: 8),
                     DropdownButtonFormField<String>(
@@ -565,9 +568,9 @@ class _MonthManagerState extends State<MonthManagerScreen>
                               _selectedAccountId = tempAccountId;
                               _selectedCategoryId =
                                   currentType == 'expense' ||
-                                          currentType == 'income'
-                                      ? tempCategoryId
-                                      : null;
+                                      currentType == 'income'
+                                  ? tempCategoryId
+                                  : null;
                               _minAmount = min;
                               _maxAmount = max;
                               _sortField = tempSortField;
@@ -669,150 +672,259 @@ class _MonthManagerState extends State<MonthManagerScreen>
     );
   }
 
-  Widget _buildTabContent(List<TransactionModel> txs, String type) {
+  Widget _buildTabContent(
+    List<TransactionModel> txs,
+    String type,
+    String monthLabel,
+  ) {
     final filtered = _filteredTransactions(txs, type);
     final monthlyAmount = _monthlyTransactionsAmount(filtered, type);
 
-    return Column(
-      children: [
-        MonthGraph(
-          transactions: filtered,
-          categories: _categories,
-          accountIds: _accountIds,
-          investmentIds: _investmentIds,
-          type: type,
-        ),
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
-          child: TextField(
-            controller: _searchController,
-            textInputAction: TextInputAction.search,
-            decoration: InputDecoration(
-              hintText: _t('Rechercher une transaction'),
-              prefixIcon: const Icon(Icons.search_rounded),
-              suffixIcon: _searchQuery.isEmpty
-                  ? null
-                  : IconButton(
-                      tooltip: _t('Effacer'),
-                      icon: const Icon(Icons.close_rounded),
-                      onPressed: () {
-                        setState(() {
-                          _searchController.clear();
-                          _searchQuery = '';
-                        });
-                      },
-                    ),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(14),
-              ),
-            ),
-            onChanged: (value) => setState(() => _searchQuery = value),
-          ),
-        ),
-        _buildActiveFilterChips(),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+    return CustomScrollView(
+      slivers: [
+        SliverToBoxAdapter(
+          child: Column(
             children: [
-              Expanded(
-                child: Text(
-                  '${_t('Transactions mensuelles')} (${filtered.length})',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
-              if (monthlyAmount.isNotEmpty) ...[
-                const SizedBox(width: 10),
-                Text(
-                  monthlyAmount,
-                  style: TextStyle(
-                    color: _monthlyAmountColor(type),
-                    fontSize: 15,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-              ],
-              Row(
-                children: [
-                  // Bouton filtre catégorie
-                  IconButton(
-                    icon: Icon(
-                      _hasActiveFilters
-                          ? Icons.tune_rounded
-                          : Icons.tune_outlined,
-                      size: 20,
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 20, 16, 4),
+                child: PageIntro(
+                  eyebrow: _t('VOTRE BUDGET'),
+                  title: _t('Budget mensuel'),
+                  subtitle: _t('Vos opérations, simplement.'),
+                  action: Container(
+                    decoration: AppDesign.panel(context),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        IconButton(
+                          tooltip: _t('Mois précédent'),
+                          onPressed: _prevMonth,
+                          icon: const Icon(Icons.chevron_left),
+                        ),
+                        Text(
+                          monthLabel,
+                          style: const TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        IconButton(
+                          tooltip: _t('Mois suivant'),
+                          onPressed: _nextMonth,
+                          icon: const Icon(Icons.chevron_right),
+                        ),
+                      ],
                     ),
-                    tooltip: _t('Filtrer et trier'),
-                    onPressed: _openFilterSheet,
                   ),
-                ],
+                ),
               ),
+              SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                child: Row(
+                  children: [
+                    for (var index = 0; index < 4; index++) ...[
+                      ChoiceChip(
+                        showCheckmark: false,
+                        avatar: Icon(
+                          [
+                            Icons.money_off_outlined,
+                            Icons.attach_money,
+                            Icons.trending_up_outlined,
+                            Icons.sync_alt,
+                          ][index],
+                          size: 17,
+                        ),
+                        label: Text(
+                          _typeLabel(
+                            [
+                              'expense',
+                              'income',
+                              'investment',
+                              'transfer',
+                            ][index],
+                          ),
+                        ),
+                        selected: _selectedIndex == index,
+                        onSelected: (_) => setState(() {
+                          _selectedIndex = index;
+                          _selectedCategoryId = null;
+                        }),
+                      ),
+                      const SizedBox(width: 8),
+                    ],
+                  ],
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: AppPanel(
+                  padding: EdgeInsets.zero,
+                  child: ExpansionTile(
+                    shape: const Border(),
+                    collapsedShape: const Border(),
+                    title: Text(
+                      _t('Répartition du mois'),
+                      style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    leading: const Icon(Icons.bar_chart_outlined, size: 20),
+                    initiallyExpanded: MediaQuery.sizeOf(context).width >= 760,
+                    children: [
+                      MonthGraph(
+                        transactions: filtered,
+                        categories: _categories,
+                        accountIds: _accountIds,
+                        investmentIds: _investmentIds,
+                        type: type,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+                child: TextField(
+                  controller: _searchController,
+                  textInputAction: TextInputAction.search,
+                  decoration: InputDecoration(
+                    hintText: _t('Rechercher une transaction'),
+                    prefixIcon: const Icon(Icons.search_rounded),
+                    suffixIcon: _searchQuery.isEmpty
+                        ? null
+                        : IconButton(
+                            tooltip: _t('Effacer'),
+                            icon: const Icon(Icons.close_rounded),
+                            onPressed: () {
+                              setState(() {
+                                _searchController.clear();
+                                _searchQuery = '';
+                              });
+                            },
+                          ),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                  ),
+                  onChanged: (value) => setState(() => _searchQuery = value),
+                ),
+              ),
+              _buildActiveFilterChips(),
+              Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16.0,
+                  vertical: 8,
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Expanded(
+                      child: Text(
+                        '${_t('Transactions mensuelles')} (${filtered.length})',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                    if (monthlyAmount.isNotEmpty) ...[
+                      const SizedBox(width: 10),
+                      Text(
+                        monthlyAmount,
+                        style: TextStyle(
+                          color: _monthlyAmountColor(type),
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                    Row(
+                      children: [
+                        // Bouton filtre catégorie
+                        IconButton(
+                          icon: Icon(
+                            _hasActiveFilters
+                                ? Icons.tune_rounded
+                                : Icons.tune_outlined,
+                            size: 20,
+                          ),
+                          tooltip: _t('Filtrer et trier'),
+                          onPressed: _openFilterSheet,
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              const Divider(height: 1),
             ],
           ),
         ),
-        const Divider(height: 1),
-        Expanded(
-          child: filtered.isEmpty
-              ? Center(
-                  child: Padding(
-                    padding: const EdgeInsets.all(24),
-                    child: Text(
-                      _hasActiveFilters
-                          ? _t('Aucune transaction ne correspond aux filtres.')
-                          : _t('Aucune transaction sur cette periode.'),
-                      textAlign: TextAlign.center,
-                      style: Theme.of(context).textTheme.bodyLarge,
-                    ),
-                  ),
-                )
-              : ListView.builder(
-                  itemCount: filtered.length,
-                  itemBuilder: (_, i) {
-                    final t = filtered[i];
-                    return Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 4,
-                      ),
-                      child: () {
-                        if (t.type == 'transfer') {
-                          return TransferTransactionTile(
-                            t: t,
-                            accounts: _accountIds,
-                            investments: _investmentIds,
-                            onChanged: () {
-                              _refresh(forceRefresh: true);
-                            },
-                          );
-                        } else if (t.type == 'investment') {
-                          return InvestmentTransactionTile(
-                            t: t,
-                            accounts: _accountIds,
-                            investments: _investmentIds,
-                            onChanged: () {
-                              _refresh(forceRefresh: true);
-                            },
-                          );
-                        } else {
-                          return TransactionTile(
-                            t: t,
-                            categories: _categories,
-                            accounts: _accountIds,
-                            onChanged: () {
-                              _refresh(forceRefresh: true);
-                            },
-                          );
-                        }
-                      }(),
-                    );
-                  },
+        if (filtered.isEmpty)
+          SliverFillRemaining(
+            hasScrollBody: false,
+            child: Center(
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Text(
+                  _hasActiveFilters
+                      ? _t('Aucune transaction ne correspond aux filtres.')
+                      : _t('Aucune transaction sur cette periode.'),
+                  textAlign: TextAlign.center,
                 ),
-        ),
+              ),
+            ),
+          )
+        else
+          SliverPadding(
+            padding: const EdgeInsets.only(bottom: 88),
+            sliver: SliverList.builder(
+              itemCount: filtered.length,
+              itemBuilder: (_, i) {
+                final t = filtered[i];
+                return Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 4,
+                  ),
+                  child: () {
+                    if (t.type == 'transfer') {
+                      return TransferTransactionTile(
+                        t: t,
+                        accounts: _accountIds,
+                        investments: _investmentIds,
+                        onChanged: () {
+                          _refresh(forceRefresh: true);
+                        },
+                      );
+                    } else if (t.type == 'investment') {
+                      return InvestmentTransactionTile(
+                        t: t,
+                        accounts: _accountIds,
+                        investments: _investmentIds,
+                        onChanged: () {
+                          _refresh(forceRefresh: true);
+                        },
+                      );
+                    } else {
+                      return TransactionTile(
+                        t: t,
+                        categories: _categories,
+                        accounts: _accountIds,
+                        onChanged: () {
+                          _refresh(forceRefresh: true);
+                        },
+                      );
+                    }
+                  }(),
+                );
+              },
+            ),
+          ),
       ],
     );
   }
@@ -837,100 +949,15 @@ class _MonthManagerState extends State<MonthManagerScreen>
       floatingActionButton: _MonthAddFab(
         onRefresh: () => _refresh(forceRefresh: true),
       ),
-      body: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: 12.0, horizontal: 12),
-            child: Row(
-              children: [
-                IconButton(
-                  icon: const Icon(Icons.chevron_left),
-                  onPressed: _prevMonth,
-                ),
-                Expanded(
-                  child: Center(
-                    child: Text(
-                      monthLabel,
-                      style: const TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                ),
-                IconButton(
-                  icon: const Icon(Icons.chevron_right),
-                  onPressed: _nextMonth,
-                ),
-              ],
+      body: _transactionsError != null
+          ? Center(child: Text('${_t('Erreur')} : $_transactionsError'))
+          : _isLoadingTransactions && _transactions.isEmpty
+          ? const Center(child: CircularProgressIndicator())
+          : _buildTabContent(
+              _transactions,
+              ['expense', 'income', 'investment', 'transfer'][_selectedIndex],
+              monthLabel,
             ),
-          ),
-          Expanded(
-            child: _transactionsError != null
-                ? Center(child: Text('${_t('Erreur')} : $_transactionsError'))
-                : _isLoadingTransactions && _transactions.isEmpty
-                    ? const Center(child: CircularProgressIndicator())
-                    : _buildTabContent(
-                        _transactions,
-                        ['expense', 'income', 'investment', 'transfer']
-                            [_selectedIndex],
-                      ),
-          ),
-        ],
-      ),
-      bottomNavigationBar: SafeArea(
-        top: false,
-        child: Container(
-          margin: const EdgeInsets.fromLTRB(12, 0, 12, 10),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(24),
-            boxShadow: [
-              BoxShadow(
-                color: Theme.of(context).shadowColor.withOpacity(0.08),
-                blurRadius: 18,
-                offset: const Offset(0, 8),
-              ),
-            ],
-          ),
-          clipBehavior: Clip.antiAlias,
-          child: NavigationBar(
-            selectedIndex: _selectedIndex,
-            height: 72,
-            labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
-            indicatorColor:
-                Theme.of(context).colorScheme.primary.withOpacity(0.14),
-            backgroundColor: Theme.of(context).colorScheme.surface,
-            onDestinationSelected: (index) {
-              setState(() {
-                _selectedIndex = index;
-                _selectedCategoryId = null;
-              });
-            },
-            destinations: [
-              NavigationDestination(
-                icon: const Icon(Icons.money_off_outlined),
-                selectedIcon: const Icon(Icons.money_off),
-                label: _typeLabel('expense'),
-              ),
-              NavigationDestination(
-                icon: const Icon(Icons.attach_money),
-                selectedIcon: const Icon(Icons.attach_money),
-                label: _typeLabel('income'),
-              ),
-              NavigationDestination(
-                icon: const Icon(Icons.trending_up_outlined),
-                selectedIcon: const Icon(Icons.trending_up),
-                label: _typeLabel('investment'),
-              ),
-              NavigationDestination(
-                icon: const Icon(Icons.sync_alt),
-                selectedIcon: const Icon(Icons.sync_alt),
-                label: _typeLabel('transfer'),
-              ),
-            ],
-          ),
-        ),
-      ),
     );
   }
 
@@ -959,12 +986,7 @@ class _MonthAddFabState extends State<_MonthAddFab> {
     await openAddDialog(context, type, widget.onRefresh);
   }
 
-  Widget _buildMiniFab(
-    IconData icon,
-    String tooltip,
-    String type,
-    int index,
-  ) {
+  Widget _buildMiniFab(IconData icon, String tooltip, String type, int index) {
     final duration = Duration(milliseconds: 180 + (index * 55));
     return AnimatedContainer(
       duration: duration,

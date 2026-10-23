@@ -1,3 +1,4 @@
+import 'package:mysold/widgets/app_design.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
@@ -157,7 +158,9 @@ class _AddInvestmentDialogState extends State<AddInvestmentDialog> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            context.tr('Veuillez selectionner les comptes et un investissement.'),
+            context.tr(
+              'Veuillez selectionner les comptes et un investissement.',
+            ),
           ),
         ),
       );
@@ -169,7 +172,9 @@ class _AddInvestmentDialogState extends State<AddInvestmentDialog> {
         _investments.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(context.tr('Aucun compte ou investissement disponible.')),
+          content: Text(
+            context.tr('Aucun compte ou investissement disponible.'),
+          ),
         ),
       );
       return;
@@ -222,7 +227,10 @@ class _AddInvestmentDialogState extends State<AddInvestmentDialog> {
       if (widget.existingTransaction == null) {
         await service.addTransaction(transaction);
       } else {
-        await service.updateTransaction(widget.existingTransaction!, transaction);
+        await service.updateTransaction(
+          widget.existingTransaction!,
+          transaction,
+        );
       }
       if (mounted) {
         context.read<UserDataProvider>().markFinancialDataChanged();
@@ -254,7 +262,6 @@ class _AddInvestmentDialogState extends State<AddInvestmentDialog> {
     final currency = Provider.of<CurrencyProvider>(context).currency;
 
     return Dialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       child: Padding(
         padding: const EdgeInsets.all(20),
         child: SingleChildScrollView(
@@ -263,12 +270,9 @@ class _AddInvestmentDialogState extends State<AddInvestmentDialog> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Text(
-                  context.tr('Nouvel investissement'),
-                  style: const TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                  ),
+                AppDialogHeader(
+                  icon: Icons.trending_up_outlined,
+                  title: context.tr('Nouvel investissement'),
                 ),
                 const SizedBox(height: 20),
                 TextFormField(
@@ -292,12 +296,13 @@ class _AddInvestmentDialogState extends State<AddInvestmentDialog> {
                   autofocus: true,
                 ),
                 const SizedBox(height: 12),
-                Row(
+                Wrap(
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  spacing: 8,
                   children: [
                     const Icon(Icons.date_range),
                     const SizedBox(width: 10),
                     Text(DateFormat('dd/MM/yyyy').format(_selectedDate)),
-                    const Spacer(),
                     TextButton(
                       onPressed: _pickDate,
                       child: Text(context.tr('Changer la date')),
@@ -306,6 +311,7 @@ class _AddInvestmentDialogState extends State<AddInvestmentDialog> {
                 ),
                 const SizedBox(height: 12),
                 DropdownButtonFormField<String>(
+                  isExpanded: true,
                   value: _sourceAccountId,
                   items: _buildDropdownItems(_sourceAccounts),
                   onChanged: (v) {
@@ -322,6 +328,7 @@ class _AddInvestmentDialogState extends State<AddInvestmentDialog> {
                 ),
                 const SizedBox(height: 12),
                 DropdownButtonFormField<String>(
+                  isExpanded: true,
                   value: _destinationInvestmentId,
                   items: _buildDropdownItems(_investments),
                   onChanged: (v) => setState(() {
@@ -335,7 +342,8 @@ class _AddInvestmentDialogState extends State<AddInvestmentDialog> {
                     prefixIcon: const Icon(Icons.trending_up),
                   ),
                   validator: (v) {
-                    if (v == null) return context.tr('Choisir un investissement');
+                    if (v == null)
+                      return context.tr('Choisir un investissement');
                     if (!_investmentHoldingAccounts.containsKey(v)) {
                       return context.tr('Compte de detention manquant');
                     }

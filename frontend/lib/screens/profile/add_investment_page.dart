@@ -133,9 +133,9 @@ class _AddInvestmentPageState extends State<AddInvestmentPage> {
       Navigator.pop(context, true);
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('${context.tr('Erreur')} : $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('${context.tr('Erreur')} : $e')));
     } finally {
       if (mounted) setState(() => _isSaving = false);
     }
@@ -226,7 +226,7 @@ class _AddInvestmentPageState extends State<AddInvestmentPage> {
             width: 56,
             decoration: BoxDecoration(
               color: Theme.of(context).colorScheme.primary.withOpacity(0.12),
-              borderRadius: BorderRadius.circular(20),
+              borderRadius: BorderRadius.circular(12),
             ),
             child: Icon(
               Icons.trending_up_outlined,
@@ -243,9 +243,9 @@ class _AddInvestmentPageState extends State<AddInvestmentPage> {
                   _isEditing
                       ? context.tr('Ajuster l actif')
                       : context.tr('Creer un actif'),
-                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                        fontWeight: FontWeight.w900,
-                      ),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w600),
                 ),
                 const SizedBox(height: 4),
                 Text(
@@ -253,11 +253,10 @@ class _AddInvestmentPageState extends State<AddInvestmentPage> {
                     'Le montant evolue avec les operations d investissement.',
                   ),
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: Theme.of(context)
-                            .colorScheme
-                            .onSurface
-                            .withOpacity(0.64),
-                      ),
+                    color: Theme.of(
+                      context,
+                    ).colorScheme.onSurface.withOpacity(0.64),
+                  ),
                 ),
               ],
             ),
@@ -267,7 +266,9 @@ class _AddInvestmentPageState extends State<AddInvestmentPage> {
     );
   }
 
-  Widget _buildForm(List<QueryDocumentSnapshot<Map<String, dynamic>>> accounts) {
+  Widget _buildForm(
+    List<QueryDocumentSnapshot<Map<String, dynamic>>> accounts,
+  ) {
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: _panelDecoration(),
@@ -361,10 +362,7 @@ class _AddInvestmentPageState extends State<AddInvestmentPage> {
                 final label = isManaged
                     ? '$name - ${context.tr('Auto')}'
                     : name.toString();
-                return DropdownMenuItem(
-                  value: account.id,
-                  child: Text(label),
-                );
+                return DropdownMenuItem(value: account.id, child: Text(label));
               }).toList(),
               onChanged: (value) => setState(() => _holdingAccountId = value),
               decoration: InputDecoration(
@@ -385,10 +383,10 @@ class _AddInvestmentPageState extends State<AddInvestmentPage> {
 
   BoxDecoration _panelDecoration() {
     return BoxDecoration(
-      color: Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.24),
-      borderRadius: BorderRadius.circular(20),
+      color: Theme.of(context).colorScheme.surface,
+      borderRadius: BorderRadius.circular(12),
       border: Border.all(
-        color: Theme.of(context).colorScheme.outline.withOpacity(0.10),
+        color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.30),
       ),
     );
   }

@@ -1,3 +1,4 @@
+import 'package:mysold/widgets/app_design.dart';
 import 'package:mysold/data/document_store.dart';
 import 'package:mysold/data/local_auth.dart';
 import 'package:flutter/material.dart';
@@ -11,17 +12,24 @@ import 'package:mysold/screens/profile/investment_page.dart';
 import 'package:mysold/screens/profile/simulation.dart';
 import 'package:mysold/screens/settings/settings_sheet.dart';
 
-class ProfilePage extends StatelessWidget {
+class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
+  @override
+  State<ProfilePage> createState() => _ProfilePageState();
+}
+
+class _ProfilePageState extends State<ProfilePage> {
+  late Future<_ProfileUser> _user;
+  @override
+  void initState() {
+    super.initState();
+    _user = _getUser();
+  }
 
   Future<_ProfileUser> _getUser() async {
     final uid = LocalAuth.instance.currentUser?.uid;
     if (uid == null) {
-      return const _ProfileUser(
-        firstName: 'Inconnu',
-        lastName: '',
-        email: '',
-      );
+      return const _ProfileUser(firstName: 'Inconnu', lastName: '', email: '');
     }
 
     final snapshot = await DocumentStore.instance
@@ -39,18 +47,19 @@ class ProfilePage extends StatelessWidget {
   }
 
   void _push(BuildContext context, Widget page) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (_) => page),
-    );
+    Navigator.push(context, MaterialPageRoute(builder: (_) => page));
   }
 
   void _openSimulation(BuildContext context) {
     _push(context, const SimulationScreen(withBack: true));
   }
 
-  void _openSettings(BuildContext context) {
-    _push(context, SettingsSheet(withBack: true));
+  Future<void> _openSettings(BuildContext context) async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => const SettingsSheet(withBack: true)),
+    );
+    if (mounted) setState(() => _user = _getUser());
   }
 
   void _openExport(BuildContext context) {
@@ -64,16 +73,24 @@ class ProfilePage extends StatelessWidget {
     return Scaffold(
       body: SafeArea(
         child: FutureBuilder<_ProfileUser>(
-          future: _getUser(),
+          future: _user,
           builder: (context, snapshot) {
             final user = snapshot.data;
-            final isLoading = snapshot.connectionState == ConnectionState.waiting;
+            final isLoading =
+                snapshot.connectionState == ConnectionState.waiting;
 
             return ListView(
-              padding: const EdgeInsets.fromLTRB(16, 14, 16, 28),
+              padding: const EdgeInsets.fromLTRB(20, 24, 20, 28),
               children: [
+                PageIntro(
+                  eyebrow: context.tr('ESPACE PERSONNEL'),
+                  title: context.tr('Votre profil'),
+                  subtitle: context.tr(
+                    'Organisez vos finances et personnalisez MySold.',
+                  ),
+                ),
                 _buildHeader(context, user, isLoading),
-                const SizedBox(height: 18),
+                const SizedBox(height: 28),
                 _buildSectionTitle(context, 'Gestion', Icons.tune_outlined),
                 const SizedBox(height: 10),
                 _buildActionList(context, uid),
@@ -102,7 +119,7 @@ class ProfilePage extends StatelessWidget {
     final initials = user == null
         ? '..'
         : '${user.firstName.isNotEmpty ? user.firstName[0] : ''}${user.lastName.isNotEmpty ? user.lastName[0] : ''}'
-            .toUpperCase();
+              .toUpperCase();
 
     return Container(
       padding: const EdgeInsets.all(18),
@@ -110,11 +127,11 @@ class ProfilePage extends StatelessWidget {
       child: Row(
         children: [
           Container(
-            height: 62,
-            width: 62,
+            height: 52,
+            width: 52,
             decoration: BoxDecoration(
               color: colorScheme.primary.withOpacity(0.14),
-              borderRadius: BorderRadius.circular(22),
+              borderRadius: BorderRadius.circular(12),
             ),
             child: Center(
               child: isLoading
@@ -126,9 +143,9 @@ class ProfilePage extends StatelessWidget {
                   : Text(
                       initials.isEmpty ? '?' : initials,
                       style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                            color: colorScheme.primary,
-                            fontWeight: FontWeight.w900,
-                          ),
+                        color: colorScheme.primary,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
             ),
           ),
@@ -141,12 +158,12 @@ class ProfilePage extends StatelessWidget {
                   isLoading
                       ? 'Chargement'
                       : '${user?.firstName ?? ''} ${user?.lastName ?? ''}'
-                          .trim(),
+                            .trim(),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                        fontWeight: FontWeight.w900,
-                      ),
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
                 const SizedBox(height: 4),
                 Text(
@@ -156,8 +173,8 @@ class ProfilePage extends StatelessWidget {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: colorScheme.onSurface.withOpacity(0.62),
-                      ),
+                    color: colorScheme.onSurface.withOpacity(0.62),
+                  ),
                 ),
               ],
             ),
@@ -172,20 +189,16 @@ class ProfilePage extends StatelessWidget {
     );
   }
 
-  Widget _buildSectionTitle(
-    BuildContext context,
-    String title,
-    IconData icon,
-  ) {
+  Widget _buildSectionTitle(BuildContext context, String title, IconData icon) {
     return Row(
       children: [
         Icon(icon, size: 18, color: Theme.of(context).colorScheme.primary),
         const SizedBox(width: 8),
         Text(
           context.tr(title),
-          style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.w900,
-              ),
+          style: Theme.of(
+            context,
+          ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
         ),
       ],
     );
@@ -197,14 +210,17 @@ class ProfilePage extends StatelessWidget {
         title: 'Comptes',
         subtitle: 'Soldes et banques',
         icon: Icons.account_balance_wallet_outlined,
-        onTap: uid == null ? null : () => _push(context, ComptePage(userId: uid)),
+        onTap: uid == null
+            ? null
+            : () => _push(context, ComptePage(userId: uid)),
       ),
       _ProfileAction(
         title: 'Categories',
         subtitle: 'Revenus et depenses',
         icon: Icons.category_outlined,
-        onTap:
-            uid == null ? null : () => _push(context, CategoriePage(userId: uid)),
+        onTap: uid == null
+            ? null
+            : () => _push(context, CategoriePage(userId: uid)),
       ),
       _ProfileAction(
         title: 'Investissements',
@@ -224,21 +240,25 @@ class ProfilePage extends StatelessWidget {
       ),
     ];
 
-    return Container(
-      padding: const EdgeInsets.all(8),
-      decoration: _panelDecoration(context),
-      child: Column(
-        children: [
-          for (var i = 0; i < actions.length; i++) ...[
-            _ProfileActionRow(action: actions[i]),
-            if (i != actions.length - 1)
-              Divider(
-                height: 1,
-                color: Theme.of(context).colorScheme.outline.withOpacity(0.10),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final columns = constraints.maxWidth >= 650 ? 2 : 1;
+        final width = (constraints.maxWidth - (columns - 1) * 12) / columns;
+        return Wrap(
+          spacing: 12,
+          runSpacing: 12,
+          children: [
+            for (final action in actions)
+              SizedBox(
+                width: width,
+                child: AppPanel(
+                  padding: const EdgeInsets.all(6),
+                  child: _ProfileActionRow(action: action),
+                ),
               ),
           ],
-        ],
-      ),
+        );
+      },
     );
   }
 
@@ -256,7 +276,9 @@ class ProfilePage extends StatelessWidget {
           ),
           Divider(
             height: 1,
-            color: Theme.of(context).colorScheme.outline.withOpacity(0.10),
+            color: Theme.of(
+              context,
+            ).colorScheme.outline.withValues(alpha: 0.30),
           ),
           _ToolTile(
             icon: Icons.picture_as_pdf_outlined,
@@ -266,7 +288,9 @@ class ProfilePage extends StatelessWidget {
           ),
           Divider(
             height: 1,
-            color: Theme.of(context).colorScheme.outline.withOpacity(0.10),
+            color: Theme.of(
+              context,
+            ).colorScheme.outline.withValues(alpha: 0.30),
           ),
           _ToolTile(
             icon: Icons.settings_outlined,
@@ -281,10 +305,10 @@ class ProfilePage extends StatelessWidget {
 
   BoxDecoration _panelDecoration(BuildContext context) {
     return BoxDecoration(
-      color: Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.24),
-      borderRadius: BorderRadius.circular(20),
+      color: Theme.of(context).colorScheme.surface,
+      borderRadius: BorderRadius.circular(12),
       border: Border.all(
-        color: Theme.of(context).colorScheme.outline.withOpacity(0.10),
+        color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.30),
       ),
     );
   }
@@ -317,23 +341,21 @@ class _ProfileActionRow extends StatelessWidget {
           context.tr(action.title),
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
-          style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.w900,
-              ),
+          style: Theme.of(
+            context,
+          ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
         ),
         subtitle: Text(
           context.tr(action.subtitle),
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
           style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: colorScheme.onSurface.withOpacity(0.62),
-              ),
+            color: colorScheme.onSurface.withOpacity(0.62),
+          ),
         ),
         trailing: const Icon(Icons.chevron_right),
         onTap: action.onTap,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       ),
     );
   }
@@ -372,7 +394,7 @@ class _ToolTile extends StatelessWidget {
         ),
         title: Text(
           context.tr(title),
-          style: const TextStyle(fontWeight: FontWeight.w900),
+          style: const TextStyle(fontWeight: FontWeight.w600),
         ),
         subtitle: Text(
           context.tr(subtitle),
@@ -381,9 +403,7 @@ class _ToolTile extends StatelessWidget {
         ),
         trailing: const Icon(Icons.chevron_right),
         onTap: onTap,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       ),
     );
   }

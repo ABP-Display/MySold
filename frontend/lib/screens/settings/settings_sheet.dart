@@ -1,3 +1,7 @@
+import 'package:provider/provider.dart';
+import 'package:mysold/screens/settings/privacy_provider.dart';
+import 'package:mysold/services/shake_privacy_service.dart';
+import 'package:mysold/widgets/app_design.dart';
 import 'package:mysold/data/document_store.dart';
 import 'package:mysold/data/local_auth.dart';
 import 'package:flutter/material.dart';
@@ -27,8 +31,28 @@ class SettingsSheet extends StatefulWidget {
 class _SettingsSheetState extends State<SettingsSheet> {
   bool _notificationsEnabled = true;
   bool _budgetAlertsEnabled = true;
-  bool _monthlyReminderEnabled = false;
   bool _checkingUpdate = false;
+  bool _requestingMotion = false;
+
+  Future<void> _setShakeEnabled(bool value) async {
+    if (_requestingMotion) return;
+    final privacy = context.read<PrivacyProvider>();
+    if (!value) {
+      await privacy.setShakeEnabled(false);
+      return;
+    }
+    setState(() => _requestingMotion = true);
+    final allowed = await ShakePrivacyService.requestPermission();
+    if (!mounted) return;
+    setState(() => _requestingMotion = false);
+    if (allowed) {
+      await privacy.setShakeEnabled(true);
+    } else {
+      _showUpdateMessage(
+        'Le capteur de mouvement est indisponible ou son accès est refusé. Le bouton de masquage reste disponible.',
+      );
+    }
+  }
 
   Future<void> _checkForUpdate() async {
     if (_checkingUpdate) return;
@@ -79,8 +103,6 @@ class _SettingsSheetState extends State<SettingsSheet> {
     setState(() {
       _notificationsEnabled = prefs.getBool('notifications_enabled') ?? true;
       _budgetAlertsEnabled = prefs.getBool('budget_alerts_enabled') ?? true;
-      _monthlyReminderEnabled =
-          prefs.getBool('monthly_reminder_enabled') ?? false;
     });
   }
 
@@ -123,7 +145,7 @@ class _SettingsSheetState extends State<SettingsSheet> {
       text: (data['phone'] ?? '').toString(),
     );
 
-    final saved = await showModalBottomSheet<bool>(
+    final saved = await showAppSheet<bool>(
       context: context,
       isScrollControlled: true,
       builder: (context) {
@@ -138,8 +160,6 @@ class _SettingsSheetState extends State<SettingsSheet> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                _sheetHandle(context),
-                const SizedBox(height: 18),
                 _sheetTitle(context, 'Donnees personnelles'),
                 const SizedBox(height: 18),
                 TextField(
@@ -219,7 +239,7 @@ class _SettingsSheetState extends State<SettingsSheet> {
   }
 
   Future<void> _openNotificationSettings() async {
-    await showModalBottomSheet<void>(
+    await showAppSheet<void>(
       context: context,
       builder: (context) {
         return StatefulBuilder(
@@ -234,8 +254,6 @@ class _SettingsSheetState extends State<SettingsSheet> {
                   _notificationsEnabled = value;
                 } else if (key == 'budget_alerts_enabled') {
                   _budgetAlertsEnabled = value;
-                } else if (key == 'monthly_reminder_enabled') {
-                  _monthlyReminderEnabled = value;
                 }
               });
               setModalState(() {});
@@ -248,8 +266,6 @@ class _SettingsSheetState extends State<SettingsSheet> {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    _sheetHandle(context),
-                    const SizedBox(height: 18),
                     _sheetTitle(context, 'Notifications'),
                     const SizedBox(height: 8),
                     Material(
@@ -281,18 +297,13 @@ class _SettingsSheetState extends State<SettingsSheet> {
                         ),
                       ),
                     ),
-                    Material(
-                      color: Colors.transparent,
-                      child: SwitchListTile(
-                        contentPadding: EdgeInsets.zero,
-                        value: _monthlyReminderEnabled,
-                        onChanged: _notificationsEnabled
-                            ? (value) =>
-                                  update('monthly_reminder_enabled', value)
-                            : null,
-                        title: Text(context.tr('Rappel mensuel')),
-                        subtitle: Text(
-                          context.tr('Preparation pour un rappel de suivi'),
+                    ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      leading: const Icon(Icons.event_note_outlined),
+                      title: Text(context.tr('Rappel mensuel')),
+                      subtitle: Text(
+                        context.tr(
+                          'À venir. Aucun rappel automatique n’est programmé actuellement.',
                         ),
                       ),
                     ),
@@ -335,17 +346,6 @@ class _SettingsSheetState extends State<SettingsSheet> {
     );
   }
 
-  Widget _sheetHandle(BuildContext context) {
-    return Container(
-      width: 44,
-      height: 4,
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.outline.withOpacity(0.35),
-        borderRadius: BorderRadius.circular(999),
-      ),
-    );
-  }
-
   Widget _sheetTitle(BuildContext context, String title) {
     return Align(
       alignment: Alignment.centerLeft,
@@ -353,7 +353,7 @@ class _SettingsSheetState extends State<SettingsSheet> {
         context.tr(title),
         style: Theme.of(
           context,
-        ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900),
+        ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w600),
       ),
     );
   }
@@ -378,100 +378,150 @@ class _SettingsSheetState extends State<SettingsSheet> {
               title: Text(context.tr('Parametres')),
             )
           : null,
-      body: ListView(
-        padding: const EdgeInsets.fromLTRB(16, 12, 16, 28),
-        children: [
-          _buildPanel(
-            context,
-            title: 'Preferences',
-            icon: Icons.tune_outlined,
-            children: const [
-              _SelectorBlock(
-                title: 'Theme',
-                icon: Icons.palette_outlined,
-                child: ThemeSelector(),
-              ),
-              _PanelDivider(),
-              _SelectorBlock(
-                title: 'Langue',
-                icon: Icons.language_outlined,
-                child: LanguageSelector(),
-              ),
-              _PanelDivider(),
-              _SelectorBlock(
-                title: 'Devise',
-                icon: Icons.payments_outlined,
-                child: CurrencySelector(),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          _buildPanel(
-            context,
-            title: 'Compte',
-            icon: Icons.person_outline,
+      body: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 920),
+          child: ListView(
+            padding: const EdgeInsets.fromLTRB(20, 20, 20, 28),
             children: [
-              _SettingsRow(
-                icon: Icons.lock_outline,
-                title: 'Securite et confidentialite',
-                subtitle: 'PIN, verrouillage et affichage discret',
-                onTap: _openSecurityPrivacyPage,
-              ),
-              const _PanelDivider(),
-              _SettingsRow(
-                icon: Icons.verified_user_outlined,
-                title: 'Double authentification',
-                subtitle: 'Authentificateur TOTP et codes de secours',
-                onTap: () => Navigator.of(context).push(
-                  MaterialPageRoute(builder: (_) => const MfaSettingsPage()),
+              PageIntro(
+                eyebrow: context.tr('PERSONNALISATION'),
+                title: context.tr('Paramètres'),
+                subtitle: context.tr(
+                  'Une application à votre image, des données sous votre contrôle.',
                 ),
               ),
-              const _PanelDivider(),
-              _SettingsRow(
+              _buildPanel(
+                context,
+                title: 'Preferences',
+                icon: Icons.tune_outlined,
+                children: const [
+                  _SelectorBlock(
+                    title: 'Theme',
+                    icon: Icons.palette_outlined,
+                    child: ThemeSelector(),
+                  ),
+                  _PanelDivider(),
+                  _SelectorBlock(
+                    title: 'Langue',
+                    icon: Icons.language_outlined,
+                    child: LanguageSelector(),
+                  ),
+                  _PanelDivider(),
+                  _SelectorBlock(
+                    title: 'Devise',
+                    icon: Icons.payments_outlined,
+                    child: CurrencySelector(),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              _buildPanel(
+                context,
+                title: 'Compte',
                 icon: Icons.person_outline,
-                title: 'Donnees personnelles',
-                subtitle: 'Nom, prenom et telephone',
-                onTap: _openPersonalDataEditor,
+                children: [
+                  _SettingsRow(
+                    icon: Icons.lock_outline,
+                    title: 'Securite et confidentialite',
+                    subtitle: 'PIN, verrouillage et affichage discret',
+                    onTap: _openSecurityPrivacyPage,
+                  ),
+                  const _PanelDivider(),
+                  _SettingsRow(
+                    icon: Icons.verified_user_outlined,
+                    title: 'Double authentification',
+                    subtitle: 'Authentificateur TOTP et codes de secours',
+                    onTap: () => Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => const MfaSettingsPage(),
+                      ),
+                    ),
+                  ),
+                  const _PanelDivider(),
+                  _SettingsRow(
+                    icon: Icons.person_outline,
+                    title: 'Donnees personnelles',
+                    subtitle: 'Nom, prenom et telephone',
+                    onTap: _openPersonalDataEditor,
+                  ),
+                  const _PanelDivider(),
+                  _SettingsRow(
+                    icon: Icons.notifications_none_outlined,
+                    title: 'Notifications',
+                    subtitle: 'Autorisations et alertes budget',
+                    onTap: _openNotificationSettings,
+                  ),
+                  const _PanelDivider(),
+                  _SettingsRow(
+                    icon: Icons.info_outline,
+                    title: 'A propos',
+                    subtitle: 'Version et informations app',
+                    onTap: _openAboutSheet,
+                  ),
+                  const _PanelDivider(),
+                  _SettingsRow(
+                    icon: Icons.system_update_outlined,
+                    title: _checkingUpdate
+                        ? 'Vérification en cours…'
+                        : 'Mettre à jour l’application',
+                    subtitle: 'Rechercher une nouvelle version de MySold',
+                    onTap: _checkForUpdate,
+                  ),
+                ],
               ),
-              const _PanelDivider(),
-              _SettingsRow(
-                icon: Icons.notifications_none_outlined,
-                title: 'Notifications',
-                subtitle: 'Alertes locales et rappels',
-                onTap: _openNotificationSettings,
+              const SizedBox(height: 16),
+              _buildPanel(
+                context,
+                title: 'Mode discret',
+                icon: Icons.visibility_off_outlined,
+                children: [
+                  SwitchListTile.adaptive(
+                    title: Text(context.tr('Masquer les montants')),
+                    subtitle: Text(
+                      context.tr(
+                        'Également accessible avec le bouton œil dans la navigation.',
+                      ),
+                    ),
+                    value: context.watch<PrivacyProvider>().hideAmounts,
+                    onChanged: (value) =>
+                        context.read<PrivacyProvider>().setHideAmounts(value),
+                  ),
+                  const _PanelDivider(),
+                  SwitchListTile.adaptive(
+                    title: Text(context.tr('Secouer pour cacher')),
+                    subtitle: Text(
+                      context.tr(
+                        _requestingMotion
+                            ? 'Vérification du capteur…'
+                            : 'En option sur mobile compatible. Une secousse masque les montants ; le bouton œil les réaffiche.',
+                      ),
+                    ),
+                    value: context.watch<PrivacyProvider>().shakeEnabled,
+                    onChanged: _requestingMotion ? null : _setShakeEnabled,
+                  ),
+                ],
               ),
-              const _PanelDivider(),
-              _SettingsRow(
-                icon: Icons.info_outline,
-                title: 'A propos',
-                subtitle: 'Version et informations app',
-                onTap: _openAboutSheet,
-              ),
-              const _PanelDivider(),
-              _SettingsRow(
-                icon: Icons.system_update_outlined,
-                title: _checkingUpdate
-                    ? 'Vérification en cours…'
-                    : 'Mettre à jour l’application',
-                subtitle: 'Rechercher une nouvelle version de MySold',
-                onTap: _checkForUpdate,
+              const SizedBox(height: 24),
+              SizedBox(
+                height: 52,
+                child: ElevatedButton.icon(
+                  onPressed: _logout,
+                  icon: const Icon(Icons.logout),
+                  label: Text(context.tr('Deconnexion')),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Theme.of(
+                      context,
+                    ).colorScheme.errorContainer,
+                    foregroundColor: Theme.of(
+                      context,
+                    ).colorScheme.onErrorContainer,
+                  ),
+                ),
               ),
             ],
           ),
-          const SizedBox(height: 24),
-          SizedBox(
-            height: 52,
-            child: ElevatedButton.icon(
-              onPressed: _logout,
-              icon: const Icon(Icons.logout),
-              label: Text(context.tr('Deconnexion')),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.redAccent,
-                foregroundColor: Colors.white,
-              ),
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }
@@ -485,10 +535,10 @@ class _SettingsSheetState extends State<SettingsSheet> {
     return Container(
       padding: const EdgeInsets.all(8),
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.24),
-        borderRadius: BorderRadius.circular(20),
+        color: Theme.of(context).colorScheme.surface,
+        borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: Theme.of(context).colorScheme.outline.withOpacity(0.10),
+          color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.30),
         ),
       ),
       child: Column(
@@ -500,7 +550,7 @@ class _SettingsSheetState extends State<SettingsSheet> {
               leading: Icon(icon),
               title: Text(
                 context.tr(title),
-                style: const TextStyle(fontWeight: FontWeight.w900),
+                style: const TextStyle(fontWeight: FontWeight.w600),
               ),
             ),
           ),
@@ -539,7 +589,7 @@ class _SelectorBlock extends StatelessWidget {
               const SizedBox(width: 8),
               Text(
                 context.tr(title),
-                style: const TextStyle(fontWeight: FontWeight.w800),
+                style: const TextStyle(fontWeight: FontWeight.w600),
               ),
             ],
           ),
@@ -584,7 +634,7 @@ class _SettingsRow extends StatelessWidget {
         ),
         title: Text(
           context.tr(title),
-          style: const TextStyle(fontWeight: FontWeight.w900),
+          style: const TextStyle(fontWeight: FontWeight.w600),
         ),
         subtitle: Text(
           context.tr(subtitle),
@@ -605,7 +655,7 @@ class _PanelDivider extends StatelessWidget {
   Widget build(BuildContext context) {
     return Divider(
       height: 1,
-      color: Theme.of(context).colorScheme.outline.withOpacity(0.10),
+      color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.30),
     );
   }
 }

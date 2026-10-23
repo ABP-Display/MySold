@@ -49,11 +49,9 @@ class _ExportReportPageState extends State<ExportReportPage> {
       context: context,
       firstDate: DateTime(2020),
       lastDate: DateTime(now.year + 2),
-      initialDateRange: _customRange ??
-          DateTimeRange(
-            start: DateTime(now.year, now.month, 1),
-            end: now,
-          ),
+      initialDateRange:
+          _customRange ??
+          DateTimeRange(start: DateTime(now.year, now.month, 1), end: now),
     );
     if (range == null) return;
     setState(() {
@@ -151,16 +149,22 @@ class _ExportReportPageState extends State<ExportReportPage> {
                     'Le rapport inclut automatiquement toutes les opérations de la période.',
                   ),
                   style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: colorScheme.onSurface.withOpacity(0.72),
-                      ),
+                    color: colorScheme.onSurface.withOpacity(0.72),
+                  ),
                 ),
                 const SizedBox(height: 12),
                 Wrap(
                   spacing: 10,
                   runSpacing: 10,
                   children: [
-                    _IncludedType(label: context.tr('Revenus'), color: Colors.green),
-                    _IncludedType(label: context.tr('Depenses'), color: Colors.redAccent),
+                    _IncludedType(
+                      label: context.tr('Revenus'),
+                      color: Colors.green,
+                    ),
+                    _IncludedType(
+                      label: context.tr('Depenses'),
+                      color: Colors.redAccent,
+                    ),
                     _IncludedType(
                       label: context.tr('Investissements'),
                       color: colorScheme.primary,
@@ -191,8 +195,8 @@ class _ExportReportPageState extends State<ExportReportPage> {
             context.tr('Le rapport sera genere en arriere-plan.'),
             textAlign: TextAlign.center,
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: colorScheme.onSurface.withOpacity(0.62),
-                ),
+              color: colorScheme.onSurface.withOpacity(0.62),
+            ),
           ),
         ],
       ),
@@ -326,17 +330,18 @@ class _ExportReportLoadingPageState extends State<ExportReportLoadingPage> {
                     height: 76,
                     width: 76,
                     decoration: BoxDecoration(
-                      color: (_error == null
-                              ? colorScheme.primary
-                              : Colors.redAccent)
-                          .withOpacity(0.12),
+                      color:
+                          (_error == null
+                                  ? colorScheme.primary
+                                  : Colors.redAccent)
+                              .withOpacity(0.12),
                       borderRadius: BorderRadius.circular(24),
                     ),
                     child: Icon(
                       _error == null
                           ? (_done
-                              ? Icons.check_rounded
-                              : Icons.picture_as_pdf_outlined)
+                                ? Icons.check_rounded
+                                : Icons.picture_as_pdf_outlined)
                           : Icons.error_outline,
                       size: 34,
                       color: _error == null
@@ -349,8 +354,8 @@ class _ExportReportLoadingPageState extends State<ExportReportLoadingPage> {
                     _message,
                     textAlign: TextAlign.center,
                     style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.w900,
-                        ),
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                   const SizedBox(height: 18),
                   LinearProgressIndicator(
@@ -365,8 +370,8 @@ class _ExportReportLoadingPageState extends State<ExportReportLoadingPage> {
                         : _error.toString().replaceFirst('Exception: ', ''),
                     textAlign: TextAlign.center,
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: colorScheme.onSurface.withOpacity(0.64),
-                        ),
+                      color: colorScheme.onSurface.withOpacity(0.64),
+                    ),
                   ),
                   if (_done || _error != null) ...[
                     const SizedBox(height: 22),
@@ -393,11 +398,7 @@ class _Panel extends StatelessWidget {
   final String title;
   final Widget child;
 
-  const _Panel({
-    required this.icon,
-    required this.title,
-    required this.child,
-  });
+  const _Panel({required this.icon, required this.title, required this.child});
 
   @override
   Widget build(BuildContext context) {
@@ -405,9 +406,9 @@ class _Panel extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: colorScheme.surfaceVariant.withOpacity(0.24),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: colorScheme.outline.withOpacity(0.10)),
+        color: colorScheme.surface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: colorScheme.outline.withValues(alpha: 0.30)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -418,9 +419,9 @@ class _Panel extends StatelessWidget {
               const SizedBox(width: 10),
               Text(
                 title,
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w900,
-                    ),
+                style: Theme.of(
+                  context,
+                ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
               ),
             ],
           ),
@@ -469,10 +470,7 @@ class _IncludedType extends StatelessWidget {
   final String label;
   final Color color;
 
-  const _IncludedType({
-    required this.label,
-    required this.color,
-  });
+  const _IncludedType({required this.label, required this.color});
 
   @override
   Widget build(BuildContext context) {
@@ -492,7 +490,7 @@ class _IncludedType extends StatelessWidget {
             decoration: BoxDecoration(color: color, shape: BoxShape.circle),
           ),
           const SizedBox(width: 7),
-          Text(label, style: const TextStyle(fontWeight: FontWeight.w800)),
+          Text(label, style: const TextStyle(fontWeight: FontWeight.w600)),
         ],
       ),
     );

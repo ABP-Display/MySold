@@ -1,3 +1,4 @@
+import 'package:mysold/widgets/app_design.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -50,8 +51,8 @@ class _BudgetAlertPageState extends State<BudgetAlertPage> {
           triggered.isEmpty
               ? context.tr('Aucune nouvelle alerte declenchee')
               : context
-                  .tr('{count} alerte(s) declenchee(s)')
-                  .replaceAll('{count}', triggered.length.toString()),
+                    .tr('{count} alerte(s) declenchee(s)')
+                    .replaceAll('{count}', triggered.length.toString()),
         ),
       ),
     );
@@ -66,7 +67,7 @@ class _BudgetAlertPageState extends State<BudgetAlertPage> {
     );
     var isEnabled = alert?.isEnabled ?? true;
 
-    final saved = await showModalBottomSheet<bool>(
+    final saved = await showAppSheet<bool>(
       context: context,
       isScrollControlled: true,
       builder: (context) {
@@ -87,10 +88,9 @@ class _BudgetAlertPageState extends State<BudgetAlertPage> {
                       width: 44,
                       height: 4,
                       decoration: BoxDecoration(
-                        color: Theme.of(context)
-                            .colorScheme
-                            .outline
-                            .withOpacity(0.35),
+                        color: Theme.of(
+                          context,
+                        ).colorScheme.outline.withOpacity(0.35),
                         borderRadius: BorderRadius.circular(999),
                       ),
                     ),
@@ -100,8 +100,8 @@ class _BudgetAlertPageState extends State<BudgetAlertPage> {
                           ? context.tr('Nouvelle alerte')
                           : context.tr('Modifier l alerte'),
                       style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                            fontWeight: FontWeight.w900,
-                          ),
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                     const SizedBox(height: 18),
                     TextField(
@@ -109,8 +109,9 @@ class _BudgetAlertPageState extends State<BudgetAlertPage> {
                       decoration: InputDecoration(
                         labelText: context.tr('Nom de l alerte'),
                         hintText: context.tr('Ex: Attention aux depenses'),
-                        prefixIcon:
-                            const Icon(Icons.notifications_active_outlined),
+                        prefixIcon: const Icon(
+                          Icons.notifications_active_outlined,
+                        ),
                         border: const OutlineInputBorder(),
                       ),
                     ),
@@ -173,12 +174,11 @@ class _BudgetAlertPageState extends State<BudgetAlertPage> {
                           if (context.mounted) Navigator.pop(context, true);
                         },
                         icon: const Icon(Icons.check),
-                        label:
-                            Text(
-                              alert == null
-                                  ? context.tr('Ajouter')
-                                  : context.tr('Mettre a jour'),
-                            ),
+                        label: Text(
+                          alert == null
+                              ? context.tr('Ajouter')
+                              : context.tr('Mettre a jour'),
+                        ),
                       ),
                     ),
                   ],
@@ -239,7 +239,8 @@ class _BudgetAlertPageState extends State<BudgetAlertPage> {
       body: FutureBuilder<BudgetMonthStats>(
         future: _statsFuture,
         builder: (context, statsSnapshot) {
-          final stats = statsSnapshot.data ??
+          final stats =
+              statsSnapshot.data ??
               const BudgetMonthStats(income: 0, expense: 0, monthKey: '');
 
           return FutureBuilder<List<BudgetAlert>>(
@@ -292,7 +293,9 @@ class _BudgetAlertPageState extends State<BudgetAlertPage> {
                 height: 52,
                 width: 52,
                 decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.primary.withOpacity(0.12),
+                  color: Theme.of(
+                    context,
+                  ).colorScheme.primary.withOpacity(0.12),
                   borderRadius: BorderRadius.circular(18),
                 ),
                 child: Icon(
@@ -308,8 +311,8 @@ class _BudgetAlertPageState extends State<BudgetAlertPage> {
                     Text(
                       context.tr('Alertes du mois'),
                       style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                            fontWeight: FontWeight.w900,
-                          ),
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                     const SizedBox(height: 4),
                     Text(
@@ -317,11 +320,10 @@ class _BudgetAlertPageState extends State<BudgetAlertPage> {
                           .tr('{count} seuil(s) configure(s)')
                           .replaceAll('{count}', count.toString()),
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: Theme.of(context)
-                                .colorScheme
-                                .onSurface
-                                .withOpacity(0.64),
-                          ),
+                        color: Theme.of(
+                          context,
+                        ).colorScheme.onSurface.withOpacity(0.64),
+                      ),
                     ),
                   ],
                 ),
@@ -338,14 +340,14 @@ class _BudgetAlertPageState extends State<BudgetAlertPage> {
             hidden
                 ? context.tr('**% des revenus depenses')
                 : context
-                    .tr('{percent}% des revenus depenses')
-                    .replaceAll(
-                      '{percent}',
-                      stats.expenseIncomePercent.toStringAsFixed(0),
-                    ),
-            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.w900,
-                ),
+                      .tr('{percent}% des revenus depenses')
+                      .replaceAll(
+                        '{percent}',
+                        stats.expenseIncomePercent.toStringAsFixed(0),
+                      ),
+            style: Theme.of(
+              context,
+            ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
           ),
           const SizedBox(height: 8),
           LinearProgressIndicator(
@@ -360,19 +362,15 @@ class _BudgetAlertPageState extends State<BudgetAlertPage> {
           Text(
             '${context.tr('Depenses')} ${_money(stats.expense, currency, privacy)} / ${context.tr('Revenus')} ${_money(stats.income, currency, privacy)}',
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color:
-                      Theme.of(context).colorScheme.onSurface.withOpacity(0.64),
-                ),
+              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.64),
+            ),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildAlertCard(
-    BudgetAlert alert,
-    BudgetMonthStats stats,
-  ) {
+  Widget _buildAlertCard(BudgetAlert alert, BudgetMonthStats stats) {
     final title = alert.title;
     final threshold = alert.thresholdPercent;
     final isEnabled = alert.isEnabled;
@@ -394,12 +392,13 @@ class _BudgetAlertPageState extends State<BudgetAlertPage> {
                 height: 48,
                 width: 48,
                 decoration: BoxDecoration(
-                  color: (hidden
-                          ? Theme.of(context).colorScheme.onSurface
-                          : isReached
+                  color:
+                      (hidden
+                              ? Theme.of(context).colorScheme.onSurface
+                              : isReached
                               ? Colors.redAccent
                               : Theme.of(context).colorScheme.primary)
-                      .withOpacity(0.12),
+                          .withOpacity(0.12),
                   borderRadius: BorderRadius.circular(17),
                 ),
                 child: Icon(
@@ -409,7 +408,9 @@ class _BudgetAlertPageState extends State<BudgetAlertPage> {
                       ? Icons.warning_amber_rounded
                       : Icons.notifications_none_outlined,
                   color: hidden
-                      ? Theme.of(context).colorScheme.onSurface.withOpacity(0.52)
+                      ? Theme.of(
+                          context,
+                        ).colorScheme.onSurface.withOpacity(0.52)
                       : isReached
                       ? Colors.redAccent
                       : Theme.of(context).colorScheme.primary,
@@ -425,25 +426,24 @@ class _BudgetAlertPageState extends State<BudgetAlertPage> {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.w900,
-                          ),
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                     const SizedBox(height: 2),
                     Text(
                       isEnabled
                           ? context
-                              .tr('Seuil a {percent}% des revenus')
-                              .replaceAll(
-                                '{percent}',
-                                threshold.toStringAsFixed(0),
-                              )
+                                .tr('Seuil a {percent}% des revenus')
+                                .replaceAll(
+                                  '{percent}',
+                                  threshold.toStringAsFixed(0),
+                                )
                           : context.tr('Alerte desactivee'),
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: Theme.of(context)
-                                .colorScheme
-                                .onSurface
-                                .withOpacity(0.62),
-                          ),
+                        color: Theme.of(
+                          context,
+                        ).colorScheme.onSurface.withOpacity(0.62),
+                      ),
                     ),
                   ],
                 ),
@@ -491,8 +491,8 @@ class _BudgetAlertPageState extends State<BudgetAlertPage> {
             color: hidden
                 ? Theme.of(context).colorScheme.onSurface.withOpacity(0.18)
                 : isReached
-                    ? Colors.redAccent
-                    : null,
+                ? Colors.redAccent
+                : null,
             borderRadius: BorderRadius.circular(999),
           ),
           const SizedBox(height: 10),
@@ -504,23 +504,24 @@ class _BudgetAlertPageState extends State<BudgetAlertPage> {
                       ? context.tr('Seuil atteint')
                       : context.tr('En surveillance'),
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: hidden
-                            ? Theme.of(context)
-                                .colorScheme
-                                .onSurface
-                                .withOpacity(0.58)
-                            : isReached
-                                ? Colors.redAccent
-                                : null,
-                        fontWeight: FontWeight.w800,
-                      ),
+                    color: hidden
+                        ? Theme.of(
+                            context,
+                          ).colorScheme.onSurface.withOpacity(0.58)
+                        : isReached
+                        ? Colors.redAccent
+                        : null,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ),
               Text(
-                hidden ? '**%' : '${stats.expenseIncomePercent.toStringAsFixed(0)}%',
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      fontWeight: FontWeight.w900,
-                    ),
+                hidden
+                    ? '**%'
+                    : '${stats.expenseIncomePercent.toStringAsFixed(0)}%',
+                style: Theme.of(
+                  context,
+                ).textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w600),
               ),
             ],
           ),
@@ -554,9 +555,9 @@ class _BudgetAlertPageState extends State<BudgetAlertPage> {
             const SizedBox(height: 18),
             Text(
               context.tr('Aucune limite'),
-              style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.w900,
-                  ),
+              style: Theme.of(
+                context,
+              ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w600),
             ),
             const SizedBox(height: 8),
             Text(
@@ -565,29 +566,30 @@ class _BudgetAlertPageState extends State<BudgetAlertPage> {
               ),
               textAlign: TextAlign.center,
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color:
-                        Theme.of(context).colorScheme.onSurface.withOpacity(0.65),
-                  ),
+                color: Theme.of(
+                  context,
+                ).colorScheme.onSurface.withOpacity(0.65),
+              ),
             ),
             const SizedBox(height: 14),
             Text(
               hidden
                   ? context
-                      .tr('Actuel: **% - {amount} depenses')
-                      .replaceAll(
-                        '{amount}',
-                        _money(stats.expense, currency, privacy),
-                      )
+                        .tr('Actuel: **% - {amount} depenses')
+                        .replaceAll(
+                          '{amount}',
+                          _money(stats.expense, currency, privacy),
+                        )
                   : context
-                      .tr('Actuel: {percent}% - {amount} depenses')
-                      .replaceAll(
-                        '{percent}',
-                        stats.expenseIncomePercent.toStringAsFixed(0),
-                      )
-                      .replaceAll(
-                        '{amount}',
-                        _money(stats.expense, currency, privacy),
-                      ),
+                        .tr('Actuel: {percent}% - {amount} depenses')
+                        .replaceAll(
+                          '{percent}',
+                          stats.expenseIncomePercent.toStringAsFixed(0),
+                        )
+                        .replaceAll(
+                          '{amount}',
+                          _money(stats.expense, currency, privacy),
+                        ),
               textAlign: TextAlign.center,
               style: Theme.of(context).textTheme.bodySmall,
             ),
@@ -609,10 +611,10 @@ class _BudgetAlertPageState extends State<BudgetAlertPage> {
 
   BoxDecoration _panelDecoration() {
     return BoxDecoration(
-      color: Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.24),
-      borderRadius: BorderRadius.circular(20),
+      color: Theme.of(context).colorScheme.surface,
+      borderRadius: BorderRadius.circular(12),
       border: Border.all(
-        color: Theme.of(context).colorScheme.outline.withOpacity(0.10),
+        color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.30),
       ),
     );
   }

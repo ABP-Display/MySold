@@ -1,3 +1,4 @@
+import 'package:mysold/widgets/app_design.dart';
 import 'package:mysold/data/document_store.dart';
 import 'package:mysold/data/local_auth.dart';
 import 'package:fl_chart/fl_chart.dart';
@@ -116,14 +117,16 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
         }
 
         if (snapshot.hasError) {
-          return Center(child: Text('${context.tr('Erreur')} : ${snapshot.error}'));
+          return Center(
+            child: Text('${context.tr('Erreur')} : ${snapshot.error}'),
+          );
         }
 
         final data = snapshot.data ?? _AnalyticsData.empty();
         return RefreshIndicator(
           onRefresh: _refresh,
           child: ListView(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+            padding: const EdgeInsets.fromLTRB(20, 24, 20, 28),
             children: [
               _buildHeader(data),
               const SizedBox(height: 14),
@@ -150,52 +153,13 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
       'MMMM yyyy',
       Localizations.localeOf(context).toString(),
     ).format(DateTime.now());
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: _panelDecoration(),
-      child: Row(
-        children: [
-          Container(
-            width: 46,
-            height: 46,
-            decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.primary.withOpacity(0.12),
-              borderRadius: BorderRadius.circular(14),
-            ),
-            child: Icon(
-              Icons.query_stats_rounded,
-              color: Theme.of(context).colorScheme.primary,
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Analytics',
-                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                        fontWeight: FontWeight.w900,
-                      ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  month,
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: Theme.of(context)
-                            .colorScheme
-                            .onSurface
-                            .withOpacity(0.62),
-                      ),
-                ),
-              ],
-            ),
-          ),
-          _TrendBadge(
-            value: data.currentAvailable - data.previousAvailable,
-            hidden: context.watch<PrivacyProvider>().hideAmounts,
-          ),
-        ],
+    return PageIntro(
+      eyebrow: context.tr('ANALYSE'),
+      title: context.tr('Statistiques'),
+      subtitle: '${context.tr('Votre budget en perspective')} · $month',
+      action: _TrendBadge(
+        value: data.currentAvailable - data.previousAvailable,
+        hidden: context.watch<PrivacyProvider>().hideAmounts,
       ),
     );
   }
@@ -206,54 +170,41 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
     PrivacyProvider privacy,
   ) {
     final cards = [
-      _KpiCard(
-        label: 'Patrimoine',
+      AppMetricCard(
+        label: context.tr('Patrimoine'),
         value: privacy.money(data.currentWealth, currency),
         icon: Icons.account_balance_wallet_outlined,
         color: Theme.of(context).colorScheme.primary,
       ),
-      _KpiCard(
-        label: 'Taux epargne',
+      AppMetricCard(
+        label: context.tr('Taux epargne'),
         value: privacy.hideAmounts
             ? '**%'
             : data.currentIncome <= 0
-                ? '-'
-                : '${data.savingsRate.toStringAsFixed(1)} %',
+            ? '-'
+            : '${data.savingsRate.toStringAsFixed(1)} %',
         icon: Icons.savings_outlined,
         color: privacy.hideAmounts
             ? Theme.of(context).colorScheme.onSurface.withOpacity(0.52)
             : data.savingsRate >= 0
-                ? Colors.green
-                : Colors.redAccent,
+            ? Colors.green
+            : Colors.redAccent,
       ),
-      _KpiCard(
-        label: 'Reste du mois',
+      AppMetricCard(
+        label: context.tr('Reste du mois'),
         value: privacy.money(data.currentAvailable, currency),
         icon: Icons.payments_outlined,
         color: _remainingColor(data.currentAvailable, privacy),
       ),
-      _KpiCard(
-        label: 'Projection fin mois',
+      AppMetricCard(
+        label: context.tr('Projection fin mois'),
         value: privacy.money(data.endMonthProjection, currency),
         icon: Icons.timeline_outlined,
         color: _remainingColor(data.endMonthProjection, privacy),
       ),
     ];
 
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final columns = constraints.maxWidth >= 720 ? 4 : 2;
-        return GridView.count(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          crossAxisCount: columns,
-          mainAxisSpacing: 8,
-          crossAxisSpacing: 8,
-          childAspectRatio: columns == 4 ? 2.35 : 2.05,
-          children: cards,
-        );
-      },
-    );
+    return AppMetricGrid(children: cards);
   }
 
   Widget _buildWealthEvolution(
@@ -283,8 +234,9 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
     final actualColor = isDark
         ? Colors.white
         : Theme.of(context).colorScheme.onSurface.withOpacity(0.88);
-    final projectedColor =
-        Theme.of(context).colorScheme.onSurface.withOpacity(0.38);
+    final projectedColor = Theme.of(
+      context,
+    ).colorScheme.onSurface.withOpacity(0.38);
 
     return _Panel(
       title: 'Evolution du patrimoine annuel',
@@ -295,10 +247,7 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
               children: [
                 Row(
                   children: [
-                    _LegendDot(
-                      color: actualColor,
-                      label: context.tr('Reel'),
-                    ),
+                    _LegendDot(color: actualColor, label: context.tr('Reel')),
                     const SizedBox(width: 14),
                     _LegendDot(
                       color: projectedColor,
@@ -389,8 +338,9 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
                           dotData: FlDotData(show: false),
                           belowBarData: BarAreaData(
                             show: true,
-                            color:
-                                actualColor.withOpacity(isDark ? 0.10 : 0.06),
+                            color: actualColor.withOpacity(
+                              isDark ? 0.10 : 0.06,
+                            ),
                           ),
                         ),
                         if (projectedSpots.length > 1)
@@ -500,11 +450,7 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
         }
 
         return Column(
-          children: [
-            cards.first,
-            const SizedBox(height: 10),
-            cards.last,
-          ],
+          children: [cards.first, const SizedBox(height: 10), cards.last],
         );
       },
     );
@@ -523,8 +469,8 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
     final color = privacy.hideAmounts
         ? Theme.of(context).colorScheme.onSurface.withOpacity(0.52)
         : isGood
-            ? Colors.green
-            : Colors.redAccent;
+        ? Colors.green
+        : Colors.redAccent;
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8),
       child: Row(
@@ -535,17 +481,16 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
             children: [
               Text(
                 privacy.money(current, currency),
-                style: const TextStyle(fontWeight: FontWeight.w900),
+                style: const TextStyle(fontWeight: FontWeight.w600),
               ),
               const SizedBox(height: 2),
               Text(
                 privacy.money(previous, currency),
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: Theme.of(context)
-                          .colorScheme
-                          .onSurface
-                          .withOpacity(0.56),
-                    ),
+                  color: Theme.of(
+                    context,
+                  ).colorScheme.onSurface.withOpacity(0.56),
+                ),
               ),
             ],
           ),
@@ -560,7 +505,7 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
               privacy.hideAmounts
                   ? privacy.money(delta, currency)
                   : '${delta >= 0 ? '+' : ''}${privacy.money(delta, currency)}',
-              style: TextStyle(color: color, fontWeight: FontWeight.w800),
+              style: TextStyle(color: color, fontWeight: FontWeight.w600),
             ),
           ),
         ],
@@ -576,8 +521,8 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
     final color = privacy.hideAmounts
         ? Theme.of(context).colorScheme.onSurface.withOpacity(0.58)
         : data.endMonthProjection >= 0
-            ? Colors.green
-            : Colors.redAccent;
+        ? Colors.green
+        : Colors.redAccent;
     return _Panel(
       title: 'Projection fin de mois',
       icon: Icons.auto_graph_rounded,
@@ -609,9 +554,8 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
               'Revenus encaissés conservés, dépenses projetées au rythme actuel, investissements déduits du disponible.',
             ),
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color:
-                      Theme.of(context).colorScheme.onSurface.withOpacity(0.62),
-                ),
+              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.62),
+            ),
           ),
           const SizedBox(height: 12),
           Row(
@@ -628,7 +572,7 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
                 privacy.hideAmounts
                     ? '**%'
                     : '${(data.monthProgress * 100).toStringAsFixed(0)} %',
-                style: const TextStyle(fontWeight: FontWeight.w800),
+                style: const TextStyle(fontWeight: FontWeight.w600),
               ),
             ],
           ),
@@ -707,16 +651,6 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
     );
   }
 
-  BoxDecoration _panelDecoration() {
-    return BoxDecoration(
-      color: Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.24),
-      borderRadius: BorderRadius.circular(18),
-      border: Border.all(
-        color: Theme.of(context).colorScheme.outline.withOpacity(0.10),
-      ),
-    );
-  }
-
   Color _remainingColor(double value, PrivacyProvider privacy) {
     if (privacy.hideAmounts) {
       return Theme.of(context).colorScheme.onSurface.withOpacity(0.52);
@@ -733,21 +667,17 @@ class _Panel extends StatelessWidget {
   final IconData icon;
   final Widget child;
 
-  const _Panel({
-    required this.title,
-    required this.icon,
-    required this.child,
-  });
+  const _Panel({required this.title, required this.icon, required this.child});
 
   @override
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.24),
+        color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(18),
         border: Border.all(
-          color: Theme.of(context).colorScheme.outline.withOpacity(0.10),
+          color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.30),
         ),
       ),
       child: Column(
@@ -755,14 +685,18 @@ class _Panel extends StatelessWidget {
         children: [
           Row(
             children: [
-              Icon(icon, size: 20, color: Theme.of(context).colorScheme.primary),
+              Icon(
+                icon,
+                size: 20,
+                color: Theme.of(context).colorScheme.primary,
+              ),
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
                   context.tr(title),
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w900,
-                      ),
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ),
             ],
@@ -773,72 +707,6 @@ class _Panel extends StatelessWidget {
       ),
     );
   }
-}
-
-class _KpiCard extends StatelessWidget {
-  final String label;
-  final String value;
-  final IconData icon;
-  final Color color;
-
-  const _KpiCard({
-    required this.label,
-    required this.value,
-    required this.icon,
-    required this.color,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.24),
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(
-          color: Theme.of(context).colorScheme.outline.withOpacity(0.10),
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Row(
-            children: [
-              Icon(icon, color: color, size: 20),
-              const Spacer(),
-            ],
-          ),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                value,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w900,
-                    ),
-              ),
-              const SizedBox(height: 2),
-              Text(
-                context.tr(label),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: Theme.of(context)
-                          .colorScheme
-                          .onSurface
-                          .withOpacity(0.62),
-                    ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
 }
 
 class _MonthSummaryCard extends StatelessWidget {
@@ -875,7 +743,7 @@ class _MonthSummaryCard extends StatelessWidget {
         border: Border.all(
           color: highlighted
               ? scheme.primary.withOpacity(0.22)
-              : scheme.outline.withOpacity(0.10),
+              : scheme.outline.withValues(alpha: 0.30),
         ),
       ),
       child: Column(
@@ -885,7 +753,7 @@ class _MonthSummaryCard extends StatelessWidget {
             label,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: const TextStyle(fontWeight: FontWeight.w900),
+            style: const TextStyle(fontWeight: FontWeight.w600),
           ),
           const SizedBox(height: 8),
           _miniLine(context, 'Revenus', income, Colors.green),
@@ -902,8 +770,10 @@ class _MonthSummaryCard extends StatelessWidget {
             available,
             available >= 0
                 ? Theme.of(context).brightness == Brightness.dark
-                    ? Colors.white.withOpacity(0.84)
-                    : Theme.of(context).colorScheme.onSurface.withOpacity(0.64)
+                      ? Colors.white.withOpacity(0.84)
+                      : Theme.of(
+                          context,
+                        ).colorScheme.onSurface.withOpacity(0.64)
                 : Colors.redAccent,
           ),
         ],
@@ -931,7 +801,7 @@ class _MonthSummaryCard extends StatelessWidget {
             privacy.money(value, currency),
             style: TextStyle(
               color: privacy.hideAmounts ? null : color,
-              fontWeight: FontWeight.w800,
+              fontWeight: FontWeight.w600,
             ),
           ),
         ],
@@ -967,9 +837,9 @@ class _ProjectionMetric extends StatelessWidget {
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.w900,
-                  color: color,
-                ),
+              fontWeight: FontWeight.w600,
+              color: color,
+            ),
           ),
           const SizedBox(height: 2),
           Text(
@@ -1020,24 +890,23 @@ class _RankingRow extends StatelessWidget {
                   title,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(fontWeight: FontWeight.w800),
+                  style: const TextStyle(fontWeight: FontWeight.w600),
                 ),
                 const SizedBox(height: 2),
                 Text(
                   subtitle,
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: Theme.of(context)
-                            .colorScheme
-                            .onSurface
-                            .withOpacity(0.60),
-                      ),
+                    color: Theme.of(
+                      context,
+                    ).colorScheme.onSurface.withOpacity(0.60),
+                  ),
                 ),
               ],
             ),
           ),
           Text(
             trailing,
-            style: TextStyle(color: color, fontWeight: FontWeight.w900),
+            style: TextStyle(color: color, fontWeight: FontWeight.w600),
           ),
         ],
       ),
@@ -1049,18 +918,15 @@ class _TrendBadge extends StatelessWidget {
   final double value;
   final bool hidden;
 
-  const _TrendBadge({
-    required this.value,
-    required this.hidden,
-  });
+  const _TrendBadge({required this.value, required this.hidden});
 
   @override
   Widget build(BuildContext context) {
     final color = hidden
         ? Theme.of(context).colorScheme.onSurface.withOpacity(0.52)
         : value >= 0
-            ? Colors.green
-            : Colors.redAccent;
+        ? Colors.green
+        : Colors.redAccent;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
       decoration: BoxDecoration(
@@ -1071,8 +937,8 @@ class _TrendBadge extends StatelessWidget {
         hidden
             ? Icons.visibility_off_outlined
             : value >= 0
-                ? Icons.trending_up_rounded
-                : Icons.trending_down_rounded,
+            ? Icons.trending_up_rounded
+            : Icons.trending_down_rounded,
         size: 19,
         color: color,
       ),
@@ -1103,10 +969,7 @@ class _LegendDot extends StatelessWidget {
                 width: 5,
                 height: 5,
                 margin: EdgeInsets.only(right: index == 3 ? 0 : 3),
-                decoration: BoxDecoration(
-                  color: color,
-                  shape: BoxShape.circle,
-                ),
+                decoration: BoxDecoration(color: color, shape: BoxShape.circle),
               );
             }),
           )
@@ -1120,9 +983,9 @@ class _LegendDot extends StatelessWidget {
         Text(
           label,
           style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                fontWeight: FontWeight.w700,
-                color: Theme.of(context).colorScheme.onSurface.withOpacity(0.68),
-              ),
+            fontWeight: FontWeight.w700,
+            color: Theme.of(context).colorScheme.onSurface.withOpacity(0.68),
+          ),
         ),
       ],
     );
@@ -1168,7 +1031,8 @@ class _AnalyticsData {
 
   double get currentNet => currentIncome - currentExpense;
   double get previousNet => previousIncome - previousExpense;
-  double get currentAvailable => currentIncome - currentExpense - currentInvestment;
+  double get currentAvailable =>
+      currentIncome - currentExpense - currentInvestment;
   double get previousAvailable =>
       previousIncome - previousExpense - previousInvestment;
 
@@ -1262,9 +1126,8 @@ class _AnalyticsData {
       );
     }
 
-    final topExpenses = currentTransactions
-        .where((tx) => tx.type == 'expense')
-        .map((tx) {
+    final topExpenses =
+        currentTransactions.where((tx) => tx.type == 'expense').map((tx) {
           final category = categories[tx.categoryId]?['name']?.toString();
           return _ExpenseItem(
             label: tx.description.trim().isEmpty
@@ -1273,13 +1136,10 @@ class _AnalyticsData {
             amount: tx.amount.abs(),
             date: tx.date,
           );
-        })
-        .toList()
-      ..sort((a, b) => b.amount.compareTo(a.amount));
+        }).toList()..sort((a, b) => b.amount.compareTo(a.amount));
 
-    final topIncomes = currentTransactions
-        .where((tx) => tx.type == 'income')
-        .map((tx) {
+    final topIncomes =
+        currentTransactions.where((tx) => tx.type == 'income').map((tx) {
           final category = categories[tx.categoryId]?['name']?.toString();
           return _ExpenseItem(
             label: tx.description.trim().isEmpty
@@ -1288,9 +1148,7 @@ class _AnalyticsData {
             amount: tx.amount.abs(),
             date: tx.date,
           );
-        })
-        .toList()
-      ..sort((a, b) => b.amount.compareTo(a.amount));
+        }).toList()..sort((a, b) => b.amount.compareTo(a.amount));
 
     final recurringIncome = _detectRecurringIncome(yearTransactions);
 

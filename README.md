@@ -297,6 +297,9 @@ pas ses données des anciennes sauvegardes : définir une durée de rétention.
 
 ## Vérifications
 
+Les choix d’interface, les réglages du mode discret et les tests responsive sont
+décrits dans [le guide de design](docs/DESIGN.md).
+
 Les tests d’intégration exigent une base séparée dont le nom se termine par
 `_test`. Ils refusent la base d’application normale et réinitialisent uniquement
 leur base de test.

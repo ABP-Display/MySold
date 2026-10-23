@@ -85,9 +85,9 @@ class _AddCategoryPageState extends State<AddCategoryPage> {
       Navigator.pop(context, true);
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('${context.tr('Erreur')} : $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('${context.tr('Erreur')} : $e')));
     } finally {
       if (mounted) setState(() => _isSaving = false);
     }
@@ -128,10 +128,9 @@ class _AddCategoryPageState extends State<AddCategoryPage> {
                         color: color,
                         shape: BoxShape.circle,
                         border: Border.all(
-                          color: Theme.of(context)
-                              .colorScheme
-                              .outline
-                              .withOpacity(0.20),
+                          color: Theme.of(
+                            context,
+                          ).colorScheme.outline.withOpacity(0.20),
                         ),
                       ),
                     ),
@@ -273,7 +272,7 @@ class _AddCategoryPageState extends State<AddCategoryPage> {
             width: 56,
             decoration: BoxDecoration(
               color: _color.withOpacity(0.14),
-              borderRadius: BorderRadius.circular(20),
+              borderRadius: BorderRadius.circular(12),
             ),
             child: Icon(_icon, color: _color, size: 28),
           ),
@@ -286,9 +285,9 @@ class _AddCategoryPageState extends State<AddCategoryPage> {
                   _isEditing
                       ? context.tr('Ajuster la categorie')
                       : context.tr('Creer une categorie'),
-                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                        fontWeight: FontWeight.w900,
-                      ),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w600),
                 ),
                 const SizedBox(height: 4),
                 Text(
@@ -296,11 +295,10 @@ class _AddCategoryPageState extends State<AddCategoryPage> {
                       ? context.tr('Elle apparaitra dans les depenses.')
                       : context.tr('Elle apparaitra dans les revenus.'),
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: Theme.of(context)
-                            .colorScheme
-                            .onSurface
-                            .withOpacity(0.64),
-                      ),
+                    color: Theme.of(
+                      context,
+                    ).colorScheme.onSurface.withOpacity(0.64),
+                  ),
                 ),
               ],
             ),
@@ -375,9 +373,9 @@ class _AddCategoryPageState extends State<AddCategoryPage> {
         children: [
           Text(
             context.tr('Personnalisation'),
-            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.w900,
-                ),
+            style: Theme.of(
+              context,
+            ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
           ),
           const SizedBox(height: 14),
           Row(
@@ -418,10 +416,10 @@ class _AddCategoryPageState extends State<AddCategoryPage> {
 
   BoxDecoration _panelDecoration() {
     return BoxDecoration(
-      color: Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.24),
-      borderRadius: BorderRadius.circular(20),
+      color: Theme.of(context).colorScheme.surface,
+      borderRadius: BorderRadius.circular(12),
       border: Border.all(
-        color: Theme.of(context).colorScheme.outline.withOpacity(0.10),
+        color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.30),
       ),
     );
   }
@@ -482,7 +480,7 @@ class _TypeChoice extends StatelessWidget {
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
                   color: color,
-                  fontWeight: isSelected ? FontWeight.w900 : FontWeight.w700,
+                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.w700,
                 ),
               ),
             ),

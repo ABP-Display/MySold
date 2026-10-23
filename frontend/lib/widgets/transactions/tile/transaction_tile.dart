@@ -1,3 +1,4 @@
+import 'package:mysold/widgets/app_design.dart';
 import 'package:mysold/data/local_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
@@ -43,92 +44,14 @@ class TransactionTile extends StatelessWidget {
     final amountText =
         "${t.type == 'expense' ? '-' : '+'}${privacy.money(t.amount, currency)}";
     final subtitleText = '$accountName - $categoryName - $formattedDate';
-    final subtitleStyle = Theme.of(context).textTheme.bodySmall?.copyWith(
-          color: Theme.of(context).colorScheme.onSurface.withOpacity(0.64),
-          height: 1.25,
-        );
-
-    return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      elevation: 2,
-      color: categoryColor.withOpacity(0.15),
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          final subtitleWidth = _estimateSubtitleWidth(
-            constraints.maxWidth,
-            amountText,
-          );
-          final shouldWrapSubtitle = _textNeedsTwoLines(
-            context,
-            subtitleText,
-            subtitleStyle,
-            subtitleWidth,
-          );
-
-          return ListTile(
-            contentPadding: const EdgeInsets.symmetric(
-              horizontal: 16,
-              vertical: 8,
-            ),
-            leading: CircleAvatar(
-              radius: 24,
-              backgroundColor: categoryColor.withOpacity(0.2),
-              child: Icon(categoryIcon, color: categoryColor),
-            ),
-            title: Text(
-              t.description,
-              style: const TextStyle(fontWeight: FontWeight.w600),
-            ),
-            isThreeLine: shouldWrapSubtitle,
-            subtitleTextStyle: subtitleStyle,
-            subtitle: Text(
-              subtitleText,
-              maxLines: shouldWrapSubtitle ? 2 : 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-            trailing: Text(
-              amountText,
-              style: TextStyle(
-                color: categoryColor,
-                fontWeight: FontWeight.bold,
-                fontSize: 16,
-              ),
-            ),
-            onTap: () => _showOptions(context),
-          );
-        },
-      ),
+    return AppOperationCard(
+      title: t.description,
+      subtitle: subtitleText,
+      amount: amountText,
+      icon: categoryIcon,
+      color: categoryColor,
+      onTap: () => _showOptions(context),
     );
-  }
-
-  double _estimateSubtitleWidth(double tileWidth, String amountText) {
-    final estimatedAmountWidth =
-        (amountText.length * 9.0).clamp(72.0, 130.0).toDouble();
-    const horizontalPadding = 32.0;
-    const leadingAndGap = 64.0;
-    const trailingGap = 16.0;
-    return (tileWidth -
-            horizontalPadding -
-            leadingAndGap -
-            trailingGap -
-            estimatedAmountWidth)
-        .clamp(80.0, tileWidth)
-        .toDouble();
-  }
-
-  bool _textNeedsTwoLines(
-    BuildContext context,
-    String text,
-    TextStyle? style,
-    double maxWidth,
-  ) {
-    final painter = TextPainter(
-      text: TextSpan(style: style, text: text),
-      maxLines: 1,
-      textDirection: Directionality.of(context),
-    )..layout(maxWidth: maxWidth);
-    return painter.didExceedMaxLines;
   }
 
   void _showOptions(BuildContext context) {
@@ -143,7 +66,7 @@ class TransactionTile extends StatelessWidget {
         ? context.tr('Compte crédité')
         : context.tr('Compte débité');
 
-    showModalBottomSheet(
+    showAppSheet(
       context: context,
       builder: (ctx) {
         return SafeArea(
@@ -153,28 +76,14 @@ class TransactionTile extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Container(
-                  width: 42,
-                  height: 4,
-                  margin: const EdgeInsets.only(bottom: 18),
-                  decoration: BoxDecoration(
-                    color: Theme.of(context).dividerColor,
-                    borderRadius: BorderRadius.circular(99),
-                  ),
-                  alignment: Alignment.center,
-                ),
                 Text(
                   t.description,
-                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                        fontWeight: FontWeight.w800,
-                      ),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w600),
                 ),
                 const SizedBox(height: 14),
-                _detailRow(
-                  context,
-                  context.tr('Type'),
-                  context.trType(t.type),
-                ),
+                _detailRow(context, context.tr('Type'), context.trType(t.type)),
                 _detailRow(context, context.tr('Date'), formattedDate),
                 _detailRow(context, context.tr('Categorie'), categoryName),
                 _detailRow(context, accountLabel, accountName),
@@ -231,8 +140,8 @@ class TransactionTile extends StatelessWidget {
             child: Text(
               label,
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: Theme.of(context).hintColor,
-                  ),
+                color: Theme.of(context).hintColor,
+              ),
             ),
           ),
           Flexible(

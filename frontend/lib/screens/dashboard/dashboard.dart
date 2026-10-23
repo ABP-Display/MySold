@@ -1,3 +1,4 @@
+import 'package:mysold/widgets/app_design.dart';
 import 'dart:math' as math;
 
 import 'package:mysold/data/document_store.dart';
@@ -66,8 +67,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         name: data['name'] ?? 'Compte',
         balance: (data['balance'] ?? 0).toDouble(),
       );
-    }).toList()
-      ..sort((a, b) => b.balance.compareTo(a.balance));
+    }).toList()..sort((a, b) => b.balance.compareTo(a.balance));
 
     final monthlyIncome = List<double>.filled(12, 0);
     final monthlyExpense = List<double>.filled(12, 0);
@@ -92,8 +92,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
     final incomeTotal = monthlyIncome.fold(0.0, (sum, value) => sum + value);
     final expenseTotal = monthlyExpense.fold(0.0, (sum, value) => sum + value);
-    final investmentTotal =
-        monthlyInvestment.fold(0.0, (sum, value) => sum + value);
+    final investmentTotal = monthlyInvestment.fold(
+      0.0,
+      (sum, value) => sum + value,
+    );
     final accountTotal = accounts.fold(0.0, (sum, account) {
       return sum + account.balance;
     });
@@ -161,7 +163,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
         }
 
         if (snapshot.hasError) {
-          return Center(child: Text('${context.tr('Erreur')} : ${snapshot.error}'));
+          return Center(
+            child: Text('${context.tr('Erreur')} : ${snapshot.error}'),
+          );
         }
 
         final data = snapshot.data ?? _AnnualDashboardData.empty(_selectedYear);
@@ -169,8 +173,37 @@ class _DashboardScreenState extends State<DashboardScreen> {
         return RefreshIndicator(
           onRefresh: _refresh,
           child: ListView(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+            padding: const EdgeInsets.fromLTRB(20, 24, 20, 28),
             children: [
+              PageIntro(
+                eyebrow: context.tr('PATRIMOINE'),
+                title: context.tr('Vue globale'),
+                subtitle: context.tr(
+                  'Une vue d’ensemble de vos comptes et de votre année.',
+                ),
+                action: Container(
+                  decoration: AppDesign.panel(context),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      IconButton(
+                        tooltip: context.tr('Année précédente'),
+                        onPressed: () => _changeYear(-1),
+                        icon: const Icon(Icons.chevron_left),
+                      ),
+                      Text(
+                        '$_selectedYear',
+                        style: const TextStyle(fontWeight: FontWeight.w600),
+                      ),
+                      IconButton(
+                        tooltip: context.tr('Année suivante'),
+                        onPressed: () => _changeYear(1),
+                        icon: const Icon(Icons.chevron_right),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
               _buildHeader(data, currency, privacy),
               const SizedBox(height: 16),
               _buildSummaryGrid(data, currency, privacy),
@@ -197,89 +230,18 @@ class _DashboardScreenState extends State<DashboardScreen> {
     PrivacyProvider privacy,
   ) {
     final scheme = Theme.of(context).colorScheme;
-    final activeAccounts =
-        data.accounts.where((account) => account.balance.abs() > 0.005).length;
-
     return Container(
-      padding: const EdgeInsets.fromLTRB(18, 16, 18, 18),
+      padding: const EdgeInsets.all(20),
       decoration: _panelDecoration(),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              Container(
-                width: 42,
-                height: 42,
-                decoration: BoxDecoration(
-                  color: scheme.primary.withOpacity(0.14),
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                child: Icon(
-                  Icons.dashboard_customize_outlined,
-                  color: scheme.primary,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      context.tr('Vue globale'),
-                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                            fontWeight: FontWeight.w900,
-                          ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      '$activeAccounts ${context.tr('comptes actifs')}',
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: scheme.onSurface.withOpacity(0.58),
-                            fontWeight: FontWeight.w700,
-                          ),
-                    ),
-                  ],
-                ),
-              ),
-              Container(
-                decoration: BoxDecoration(
-                  color: scheme.surface.withOpacity(0.55),
-                  borderRadius: BorderRadius.circular(999),
-                  border: Border.all(color: scheme.outline.withOpacity(0.12)),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    _yearButton(
-                      icon: Icons.chevron_left_rounded,
-                      onPressed: () => _changeYear(-1),
-                    ),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 6),
-                      child: Text(
-                        '${data.year}',
-                        style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                              fontWeight: FontWeight.w900,
-                            ),
-                      ),
-                    ),
-                    _yearButton(
-                      icon: Icons.chevron_right_rounded,
-                      onPressed: () => _changeYear(1),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 20),
           Text(
             context.tr('Solde global des comptes'),
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: scheme.onSurface.withOpacity(0.62),
-                  fontWeight: FontWeight.w800,
-                ),
+              color: scheme.onSurface.withOpacity(0.62),
+              fontWeight: FontWeight.w600,
+            ),
           ),
           const SizedBox(height: 6),
           Text(
@@ -287,28 +249,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: Theme.of(context).textTheme.headlineLarge?.copyWith(
-                  fontWeight: FontWeight.w900,
-                  letterSpacing: 0,
-                ),
+              fontWeight: FontWeight.w600,
+              letterSpacing: 0,
+            ),
           ),
           const SizedBox(height: 12),
           _buildBalanceChip(data.annualBalance, currency, privacy),
         ],
-      ),
-    );
-  }
-
-  Widget _yearButton({
-    required IconData icon,
-    required VoidCallback onPressed,
-  }) {
-    return InkWell(
-      onTap: onPressed,
-      borderRadius: BorderRadius.circular(999),
-      child: SizedBox(
-        width: 34,
-        height: 34,
-        child: Icon(icon, size: 22),
       ),
     );
   }
@@ -318,105 +265,33 @@ class _DashboardScreenState extends State<DashboardScreen> {
     String currency,
     PrivacyProvider privacy,
   ) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final cards = [
-          _buildSummaryCard(
-            icon: Icons.arrow_downward,
-            label: 'Revenus annuels',
-            value: _money(data.incomeTotal, currency, privacy),
-            color: Colors.green,
-          ),
-          _buildSummaryCard(
-            icon: Icons.arrow_upward,
-            label: 'Dépenses annuelles',
-            value: _money(data.expenseTotal, currency, privacy),
-            color: Colors.redAccent,
-          ),
-          _buildSummaryCard(
-            icon: Icons.trending_up_outlined,
-            label: 'Investissements annuels',
-            value: _money(data.investmentTotal, currency, privacy),
-            color: Theme.of(context).colorScheme.primary,
-          ),
-          _buildSummaryCard(
-            icon: Icons.ssid_chart,
-            label: 'Reste disponible',
-            value: _money(data.availableTotal, currency, privacy),
-            color: _remainingColor(data.availableTotal, privacy),
-          ),
-        ];
-
-        return GridView.count(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          crossAxisCount: 2,
-          mainAxisSpacing: 10,
-          crossAxisSpacing: 10,
-          childAspectRatio: constraints.maxWidth > 520 ? 2.45 : 1.78,
-          children: cards,
-        );
-      },
-    );
-  }
-
-  Widget _buildSummaryCard({
-    required IconData icon,
-    required String label,
-    required String value,
-    required Color color,
-  }) {
-    final scheme = Theme.of(context).colorScheme;
-
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: color.withOpacity(
-          Theme.of(context).brightness == Brightness.dark ? 0.10 : 0.08,
+    return AppMetricGrid(
+      children: [
+        AppMetricCard(
+          icon: Icons.arrow_downward,
+          label: context.tr('Revenus annuels'),
+          value: _money(data.incomeTotal, currency, privacy),
+          color: Colors.green,
         ),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: color.withOpacity(0.18)),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 38,
-            height: 38,
-            decoration: BoxDecoration(
-              color: color.withOpacity(0.16),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Icon(icon, color: color, size: 20),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  context.tr(label),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                        color: scheme.onSurface.withOpacity(0.64),
-                        fontWeight: FontWeight.w800,
-                      ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  value,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                        fontWeight: FontWeight.w900,
-                      ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
+        AppMetricCard(
+          icon: Icons.arrow_upward,
+          label: context.tr('Dépenses annuelles'),
+          value: _money(data.expenseTotal, currency, privacy),
+          color: Colors.redAccent,
+        ),
+        AppMetricCard(
+          icon: Icons.trending_up_outlined,
+          label: context.tr('Investissements annuels'),
+          value: _money(data.investmentTotal, currency, privacy),
+          color: Theme.of(context).colorScheme.primary,
+        ),
+        AppMetricCard(
+          icon: Icons.ssid_chart,
+          label: context.tr('Reste disponible'),
+          value: _money(data.availableTotal, currency, privacy),
+          color: _remainingColor(data.availableTotal, privacy),
+        ),
+      ],
     );
   }
 
@@ -584,8 +459,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final activeAccounts = data.accounts
         .where((account) => account.balance.abs() > 0.005)
         .toList();
-    final accountsToDisplay =
-        data.accounts.take(_visibleAccountCount).toList(growable: false);
+    final accountsToDisplay = data.accounts
+        .take(_visibleAccountCount)
+        .toList(growable: false);
     final hasMoreAccounts = _visibleAccountCount < data.accounts.length;
 
     return Container(
@@ -616,8 +492,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     child: Text(
                       context.tr('Comptes'),
                       style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.w900,
-                          ),
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                   ),
                   Flexible(
@@ -626,12 +502,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       textAlign: TextAlign.end,
                       overflow: TextOverflow.ellipsis,
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: Theme.of(context)
-                                .colorScheme
-                                .onSurface
-                                .withOpacity(0.68),
-                            fontWeight: FontWeight.w800,
-                          ),
+                        color: Theme.of(
+                          context,
+                        ).colorScheme.onSurface.withOpacity(0.68),
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                   ),
                   const SizedBox(width: 6),
@@ -652,8 +527,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
               final share = data.accountTotal <= 0
                   ? 0.0
                   : (account.balance / data.accountTotal)
-                      .clamp(0.0, 1.0)
-                      .toDouble();
+                        .clamp(0.0, 1.0)
+                        .toDouble();
               return Padding(
                 padding: const EdgeInsets.only(bottom: 12),
                 child: Column(
@@ -669,7 +544,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         ),
                         Text(
                           _money(account.balance, currency, privacy),
-                          style: const TextStyle(fontWeight: FontWeight.w800),
+                          style: const TextStyle(fontWeight: FontWeight.w600),
                         ),
                       ],
                     ),
@@ -678,14 +553,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       value: privacy.hideAmounts
                           ? 1
                           : share.isFinite
-                              ? share
-                              : 0,
+                          ? share
+                          : 0,
                       minHeight: 6,
                       color: privacy.hideAmounts
-                          ? Theme.of(context)
-                              .colorScheme
-                              .onSurface
-                              .withOpacity(0.18)
+                          ? Theme.of(
+                              context,
+                            ).colorScheme.onSurface.withOpacity(0.18)
                           : null,
                       borderRadius: BorderRadius.circular(999),
                     ),
@@ -699,11 +573,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 child: TextButton.icon(
                   onPressed: () {
                     setState(() {
-                      _visibleAccountCount =
-                          (_visibleAccountCount + 5).clamp(
-                        0,
-                        data.accounts.length,
-                      ).toInt();
+                      _visibleAccountCount = (_visibleAccountCount + 5)
+                          .clamp(0, data.accounts.length)
+                          .toInt();
                     });
                   },
                   icon: const Icon(Icons.add_rounded),
@@ -729,7 +601,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   void _openMonthlyChartFilters(
     Map<_MonthlyChartSeries, _ChartSeriesStyle> seriesStyles,
   ) {
-    showModalBottomSheet(
+    showAppSheet(
       context: context,
       backgroundColor: Theme.of(context).colorScheme.surface,
       shape: const RoundedRectangleBorder(
@@ -751,10 +623,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         height: 4,
                         margin: const EdgeInsets.only(bottom: 18),
                         decoration: BoxDecoration(
-                          color: Theme.of(context)
-                              .colorScheme
-                              .outline
-                              .withOpacity(0.3),
+                          color: Theme.of(
+                            context,
+                          ).colorScheme.outline.withOpacity(0.3),
                           borderRadius: BorderRadius.circular(4),
                         ),
                       ),
@@ -762,18 +633,17 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     Text(
                       context.tr('Afficher sur le graphique'),
                       style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.w900,
-                          ),
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                     const SizedBox(height: 4),
                     Text(
                       context.tr('Choisissez les catégories à afficher'),
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: Theme.of(context)
-                                .colorScheme
-                                .onSurface
-                                .withOpacity(0.55),
-                          ),
+                        color: Theme.of(
+                          context,
+                        ).colorScheme.onSurface.withOpacity(0.55),
+                      ),
                     ),
                     const SizedBox(height: 8),
                     ..._MonthlyChartSeries.values.map((series) {
@@ -855,8 +725,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
         .toList(growable: false);
 
     final zeroLineColor = Theme.of(context).colorScheme.onSurface.withOpacity(
-          Theme.of(context).brightness == Brightness.dark ? 0.24 : 0.18,
-        );
+      Theme.of(context).brightness == Brightness.dark ? 0.24 : 0.18,
+    );
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -887,14 +757,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             padding: const EdgeInsets.only(right: 4),
                             child: Text(
                               '${activeSeries.length}/4',
-                              style: Theme.of(context)
-                                  .textTheme
-                                  .labelSmall
+                              style: Theme.of(context).textTheme.labelSmall
                                   ?.copyWith(
-                                    fontWeight: FontWeight.w800,
-                                    color: Theme.of(context)
-                                        .colorScheme
-                                        .primary,
+                                    fontWeight: FontWeight.w600,
+                                    color: Theme.of(
+                                      context,
+                                    ).colorScheme.primary,
                                   ),
                             ),
                           ),
@@ -903,10 +771,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           size: 20,
                           color: activeSeries.length < 4
                               ? Theme.of(context).colorScheme.primary
-                              : Theme.of(context)
-                                  .colorScheme
-                                  .onSurface
-                                  .withOpacity(0.6),
+                              : Theme.of(
+                                  context,
+                                ).colorScheme.onSurface.withOpacity(0.6),
                         ),
                       ],
                     ),
@@ -924,10 +791,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 child: Text(
                   context.tr('Sélectionnez au moins une catégorie'),
                   style: TextStyle(
-                    color:
-                        Theme.of(context).colorScheme.onSurface.withOpacity(
-                              0.55,
-                            ),
+                    color: Theme.of(
+                      context,
+                    ).colorScheme.onSurface.withOpacity(0.55),
                   ),
                 ),
               ),
@@ -986,8 +852,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
     required Map<_MonthlyChartSeries, _ChartSeriesStyle> seriesStyles,
     required Color zeroLineColor,
   }) {
-    final visibleValues =
-        activeSeries.expand((series) => seriesStyles[series]!.values);
+    final visibleValues = activeSeries.expand(
+      (series) => seriesStyles[series]!.values,
+    );
     final minValue = [...visibleValues, 0.0].reduce((a, b) => a < b ? a : b);
     final maxValue = [...visibleValues, 1.0].reduce((a, b) => a > b ? a : b);
     final range = (maxValue - minValue).abs();
@@ -1015,8 +882,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        final viewportWidth =
-            (constraints.maxWidth - 46).clamp(0.0, double.infinity).toDouble();
+        final viewportWidth = (constraints.maxWidth - 46)
+            .clamp(0.0, double.infinity)
+            .toDouble();
         final chartWidth = math.max(groupWidth * 12, viewportWidth);
 
         // Land directly on the current month for the current year, so the
@@ -1078,9 +946,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             horizontalInterval: maxY == minY
                                 ? 1.0
                                 : ((maxY - minY) / 4)
-                                    .abs()
-                                    .clamp(1, double.infinity)
-                                    .toDouble(),
+                                      .abs()
+                                      .clamp(1, double.infinity)
+                                      .toDouble(),
                             getDrawingHorizontalLine: (value) {
                               final isZero = value.abs() < 0.001;
                               return FlLine(
@@ -1098,8 +966,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                               tooltipRoundedRadius: 10,
                               fitInsideVertically: true,
                               fitInsideHorizontally: true,
-                              getTooltipItem:
-                                  (group, groupIndex, rod, rodIndex) {
+                              getTooltipItem: (group, groupIndex, rod, rodIndex) {
                                 final month = _monthLabels[group.x.toInt()];
                                 final series = activeSeries[rodIndex];
                                 final style = seriesStyles[series]!;
@@ -1145,7 +1012,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                   }
                                   final isCurrentMonth =
                                       data.year == DateTime.now().year &&
-                                          index == DateTime.now().month - 1;
+                                      index == DateTime.now().month - 1;
                                   return Padding(
                                     padding: const EdgeInsets.only(top: 8),
                                     child: Text(
@@ -1153,12 +1020,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                       style: TextStyle(
                                         fontSize: 10,
                                         fontWeight: isCurrentMonth
-                                            ? FontWeight.w900
+                                            ? FontWeight.w600
                                             : FontWeight.w700,
                                         color: isCurrentMonth
-                                            ? Theme.of(context)
-                                                .colorScheme
-                                                .primary
+                                            ? Theme.of(
+                                                context,
+                                              ).colorScheme.primary
                                             : null,
                                       ),
                                     ),
@@ -1181,10 +1048,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                   borderRadius: BorderRadius.only(
                                     topLeft: const Radius.circular(5),
                                     topRight: const Radius.circular(5),
-                                    bottomLeft:
-                                        Radius.circular(toY < 0 ? 5 : 0),
-                                    bottomRight:
-                                        Radius.circular(toY < 0 ? 5 : 0),
+                                    bottomLeft: Radius.circular(
+                                      toY < 0 ? 5 : 0,
+                                    ),
+                                    bottomRight: Radius.circular(
+                                      toY < 0 ? 5 : 0,
+                                    ),
                                   ),
                                   backDrawRodData: BackgroundBarChartRodData(
                                     show: true,
@@ -1196,8 +1065,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             );
                           }),
                         ),
-                        swapAnimationDuration:
-                            const Duration(milliseconds: 350),
+                        swapAnimationDuration: const Duration(
+                          milliseconds: 350,
+                        ),
                         swapAnimationCurve: Curves.easeOutCubic,
                       ),
                     ),
@@ -1252,10 +1122,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 child: Row(
                   children: [
                     Expanded(
-                      child: Text(
-                        entry.key,
-                        overflow: TextOverflow.ellipsis,
-                      ),
+                      child: Text(entry.key, overflow: TextOverflow.ellipsis),
                     ),
                     Text(
                       '${share.toStringAsFixed(0)}% - ${_money(entry.value, currency, privacy)}',
@@ -1298,7 +1165,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         radius: 58,
         titleStyle: const TextStyle(
           fontSize: 12,
-          fontWeight: FontWeight.w800,
+          fontWeight: FontWeight.w600,
           color: Colors.white,
         ),
       );
@@ -1362,8 +1229,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final color = privacy.hideAmounts
         ? Theme.of(context).colorScheme.onSurface.withOpacity(0.52)
         : isPositive
-            ? Colors.green
-            : Colors.redAccent;
+        ? Colors.green
+        : Colors.redAccent;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
@@ -1377,15 +1244,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
             privacy.hideAmounts
                 ? Icons.visibility_off_outlined
                 : isPositive
-                    ? Icons.trending_up
-                    : Icons.trending_down,
+                ? Icons.trending_up
+                : Icons.trending_down,
             color: color,
             size: 18,
           ),
           const SizedBox(width: 6),
           Text(
             '${context.tr('Balance annuelle')}: ${_money(balance, currency, privacy)}',
-            style: TextStyle(color: color, fontWeight: FontWeight.w800),
+            style: TextStyle(color: color, fontWeight: FontWeight.w600),
           ),
         ],
       ),
@@ -1414,9 +1281,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
         const SizedBox(width: 8),
         Text(
           context.tr(title),
-          style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.w900,
-              ),
+          style: Theme.of(
+            context,
+          ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
         ),
       ],
     );
@@ -1428,7 +1295,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       child: Row(
         children: [
           Expanded(child: Text(context.tr(label))),
-          Text(value, style: const TextStyle(fontWeight: FontWeight.w800)),
+          Text(value, style: const TextStyle(fontWeight: FontWeight.w600)),
         ],
       ),
     );
@@ -1436,10 +1303,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   BoxDecoration _panelDecoration() {
     return BoxDecoration(
-      color: Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.24),
+      color: Theme.of(context).colorScheme.surface,
       borderRadius: BorderRadius.circular(18),
       border: Border.all(
-        color: Theme.of(context).colorScheme.outline.withOpacity(0.10),
+        color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.30),
       ),
     );
   }
@@ -1574,19 +1441,17 @@ class _DashboardScreenState extends State<DashboardScreen> {
     if (recentDeltas.isEmpty) return const [0];
     if (recentDeltas.length >= 4) return recentDeltas;
 
-    final average = recentDeltas.fold(0.0, (sum, value) => sum + value) /
+    final average =
+        recentDeltas.fold(0.0, (sum, value) => sum + value) /
         recentDeltas.length;
     return List<double>.filled(4, average);
   }
 
-  double _projectedDeltaForStep(
-    List<double> weeklyDeltas,
-    int step,
-    int days,
-  ) {
+  double _projectedDeltaForStep(List<double> weeklyDeltas, int step, int days) {
     if (weeklyDeltas.isEmpty || days <= 0) return 0;
 
-    final average = weeklyDeltas.fold(0.0, (sum, value) => sum + value) /
+    final average =
+        weeklyDeltas.fold(0.0, (sum, value) => sum + value) /
         weeklyDeltas.length;
     final pattern = weeklyDeltas[step % weeklyDeltas.length];
     final damping = (1 - (step * 0.025)).clamp(0.55, 1.0).toDouble();
@@ -1699,10 +1564,7 @@ class _AccountSummary {
   final String name;
   final double balance;
 
-  const _AccountSummary({
-    required this.name,
-    required this.balance,
-  });
+  const _AccountSummary({required this.name, required this.balance});
 }
 
 class _WealthEvolutionData {
@@ -1731,10 +1593,7 @@ class _WealthAxis {
   final double minY;
   final double maxY;
 
-  const _WealthAxis({
-    required this.minY,
-    required this.maxY,
-  });
+  const _WealthAxis({required this.minY, required this.maxY});
 
   factory _WealthAxis.fromPoints(List<_WealthPoint> points) {
     if (points.isEmpty) {
@@ -1753,11 +1612,13 @@ class _WealthAxis {
     final upperDistance = (maxValue - firstValue).abs();
     final variation = (maxValue - minValue).abs();
     final padding = variation == 0 ? 1.0 : variation * 0.18;
-    final halfRange = [
-      lowerDistance,
-      upperDistance,
-      padding,
-    ].reduce((a, b) => a > b ? a : b) + padding;
+    final halfRange =
+        [
+          lowerDistance,
+          upperDistance,
+          padding,
+        ].reduce((a, b) => a > b ? a : b) +
+        padding;
 
     return _WealthAxis(
       minY: firstValue - halfRange,
@@ -1789,10 +1650,7 @@ class _LegendDot extends StatelessWidget {
                 width: 5,
                 height: 5,
                 margin: EdgeInsets.only(right: index == 3 ? 0 : 3),
-                decoration: BoxDecoration(
-                  color: color,
-                  shape: BoxShape.circle,
-                ),
+                decoration: BoxDecoration(color: color, shape: BoxShape.circle),
               );
             }),
           )
@@ -1806,9 +1664,9 @@ class _LegendDot extends StatelessWidget {
         Text(
           label,
           style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                fontWeight: FontWeight.w700,
-                color: Theme.of(context).colorScheme.onSurface.withOpacity(0.68),
-              ),
+            fontWeight: FontWeight.w700,
+            color: Theme.of(context).colorScheme.onSurface.withOpacity(0.68),
+          ),
         ),
       ],
     );

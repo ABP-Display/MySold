@@ -1,3 +1,4 @@
+import 'package:mysold/widgets/app_design.dart';
 import 'package:mysold/data/local_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
@@ -36,35 +37,15 @@ class TransferTransactionTile extends StatelessWidget {
         : accounts[t.fromAccountId] ?? context.tr('Compte inconnu');
     final toAccount = accounts[t.toAccountId] ?? context.tr('Compte inconnu');
 
-    return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      elevation: 2,
-      child: ListTile(
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        leading: CircleAvatar(
-          radius: 24,
-          backgroundColor: Colors.orange.withOpacity(0.1),
-          child: const Icon(
-            Icons.compare_arrows_rounded,
-            color: Colors.orange,
-          ),
-        ),
-        title: Text(
-          '${isInvestmentWithdrawal ? context.tr('Retrait investissement') : t.description} ($fromAccount -> $toAccount)',
-          style: const TextStyle(fontWeight: FontWeight.w600),
-        ),
-        subtitle: Text(formattedDate),
-        trailing: Text(
-          privacy.money(t.amount.abs(), currency),
-          style: const TextStyle(
-            color: Colors.orange,
-            fontWeight: FontWeight.bold,
-            fontSize: 16,
-          ),
-        ),
-        onTap: () => _showOptions(context),
-      ),
+    return AppOperationCard(
+      title: isInvestmentWithdrawal
+          ? context.tr('Retrait investissement')
+          : t.description,
+      subtitle: '$fromAccount → $toAccount · $formattedDate',
+      amount: privacy.money(t.amount.abs(), currency),
+      icon: Icons.sync_alt,
+      color: Theme.of(context).colorScheme.secondary,
+      onTap: () => _showOptions(context),
     );
   }
 
@@ -78,7 +59,7 @@ class TransferTransactionTile extends StatelessWidget {
         : accounts[t.fromAccountId] ?? context.tr('Compte inconnu');
     final toAccount = accounts[t.toAccountId] ?? context.tr('Compte inconnu');
 
-    showModalBottomSheet(
+    showAppSheet(
       context: context,
       builder: (ctx) {
         return SafeArea(
@@ -88,23 +69,13 @@ class TransferTransactionTile extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Container(
-                  width: 42,
-                  height: 4,
-                  margin: const EdgeInsets.only(bottom: 18),
-                  decoration: BoxDecoration(
-                    color: Theme.of(context).dividerColor,
-                    borderRadius: BorderRadius.circular(99),
-                  ),
-                  alignment: Alignment.center,
-                ),
                 Text(
                   isInvestmentWithdrawal
                       ? context.tr('Retrait investissement')
                       : t.description,
-                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                        fontWeight: FontWeight.w800,
-                      ),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w600),
                 ),
                 const SizedBox(height: 14),
                 _detailRow(context, context.tr('Date'), formattedDate),
@@ -173,8 +144,8 @@ class TransferTransactionTile extends StatelessWidget {
             child: Text(
               label,
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: Theme.of(context).hintColor,
-                  ),
+                color: Theme.of(context).hintColor,
+              ),
             ),
           ),
           Flexible(
@@ -194,7 +165,9 @@ class TransferTransactionTile extends StatelessWidget {
       context: context,
       builder: (ctx) => AlertDialog(
         title: Text(context.tr('Supprimer')),
-        content: Text(context.tr('Voulez-vous vraiment supprimer ce transfert ?')),
+        content: Text(
+          context.tr('Voulez-vous vraiment supprimer ce transfert ?'),
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(),

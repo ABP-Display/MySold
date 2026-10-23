@@ -62,8 +62,9 @@ class _AddAccountPageState extends State<AddAccountPage> {
     if (data != null) {
       _nameCtrl.text = data['name'] ?? '';
       _descCtrl.text = data['description'] ?? '';
-      _balanceCtrl.text =
-          ((data['balance'] ?? 0) as num).toDouble().toStringAsFixed(2);
+      _balanceCtrl.text = ((data['balance'] ?? 0) as num)
+          .toDouble()
+          .toStringAsFixed(2);
       _managedByInvestments = data['managedByInvestments'] == true;
     }
   }
@@ -109,15 +110,15 @@ class _AddAccountPageState extends State<AddAccountPage> {
       final userData = context.read<UserDataProvider>();
       userData.invalidateReferences();
       userData.markFinancialDataChanged();
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(context.tr('Compte enregistre'))),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(context.tr('Compte enregistre'))));
       Navigator.pop(context, true);
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('${context.tr('Erreur')} : $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('${context.tr('Erreur')} : $e')));
     } finally {
       if (mounted) setState(() => _isSaving = false);
     }
@@ -138,7 +139,9 @@ class _AddAccountPageState extends State<AddAccountPage> {
     return Scaffold(
       appBar: AppBar(
         title: Text(
-          _isEditing ? context.tr('Modifier le compte') : context.tr('Nouveau compte'),
+          _isEditing
+              ? context.tr('Modifier le compte')
+              : context.tr('Nouveau compte'),
         ),
       ),
       body: SafeArea(
@@ -160,7 +163,11 @@ class _AddAccountPageState extends State<AddAccountPage> {
                         child: CircularProgressIndicator(strokeWidth: 2),
                       )
                     : const Icon(Icons.check),
-                label: Text(_isEditing ? context.tr('Mettre a jour') : context.tr('Ajouter')),
+                label: Text(
+                  _isEditing
+                      ? context.tr('Mettre a jour')
+                      : context.tr('Ajouter'),
+                ),
                 style: ElevatedButton.styleFrom(
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(16),
@@ -198,22 +205,25 @@ class _AddAccountPageState extends State<AddAccountPage> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  _isEditing ? context.tr('Ajuster le compte') : context.tr('Ajouter un compte'),
-                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                        fontWeight: FontWeight.w900,
-                      ),
+                  _isEditing
+                      ? context.tr('Ajuster le compte')
+                      : context.tr('Ajouter un compte'),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w600),
                 ),
                 const SizedBox(height: 4),
                 Text(
                   context
-                      .tr('Le solde sera affiche avec la devise {currency} dans toute l application.')
+                      .tr(
+                        'Le solde sera affiche avec la devise {currency} dans toute l application.',
+                      )
                       .replaceAll('{currency}', currency),
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: Theme.of(context)
-                            .colorScheme
-                            .onSurface
-                            .withOpacity(0.64),
-                      ),
+                    color: Theme.of(
+                      context,
+                    ).colorScheme.onSurface.withOpacity(0.64),
+                  ),
                 ),
               ],
             ),
@@ -285,16 +295,14 @@ class _AddAccountPageState extends State<AddAccountPage> {
                 width: double.infinity,
                 padding: const EdgeInsets.all(14),
                 decoration: BoxDecoration(
-                  color: Theme.of(context)
-                      .colorScheme
-                      .primary
-                      .withOpacity(0.08),
+                  color: Theme.of(
+                    context,
+                  ).colorScheme.primary.withOpacity(0.08),
                   borderRadius: BorderRadius.circular(14),
                   border: Border.all(
-                    color: Theme.of(context)
-                        .colorScheme
-                        .primary
-                        .withOpacity(0.16),
+                    color: Theme.of(
+                      context,
+                    ).colorScheme.primary.withOpacity(0.16),
                   ),
                 ),
                 child: Text(
@@ -302,9 +310,9 @@ class _AddAccountPageState extends State<AddAccountPage> {
                     'Un compte auto gere ne peut pas etre modifie directement. Son solde evolue uniquement avec la valeur des actifs et les operations d investissement.',
                   ),
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: Theme.of(context).colorScheme.onSurface,
-                        fontWeight: FontWeight.w600,
-                      ),
+                    color: Theme.of(context).colorScheme.onSurface,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ),
             ],
@@ -345,10 +353,10 @@ class _AddAccountPageState extends State<AddAccountPage> {
 
   BoxDecoration _panelDecoration() {
     return BoxDecoration(
-      color: Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.24),
-      borderRadius: BorderRadius.circular(20),
+      color: Theme.of(context).colorScheme.surface,
+      borderRadius: BorderRadius.circular(12),
       border: Border.all(
-        color: Theme.of(context).colorScheme.outline.withOpacity(0.10),
+        color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.30),
       ),
     );
   }

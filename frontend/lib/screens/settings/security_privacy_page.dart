@@ -17,11 +17,18 @@ import 'package:mysold/screens/settings/privacy_provider.dart';
 import 'package:mysold/services/security_gate.dart';
 
 int _compareImportDocuments(_ImportDocument a, _ImportDocument b) {
-  const collections = ['accounts', 'categories', 'investments', 'transactions', 'budgetAlerts'];
+  const collections = [
+    'accounts',
+    'categories',
+    'investments',
+    'transactions',
+    'budgetAlerts',
+  ];
   int priority(String path) {
     final parts = path.split('/');
     return parts.length == 2 ? -1 : collections.indexOf(parts[2]);
   }
+
   final order = priority(a.path).compareTo(priority(b.path));
   return order != 0 ? order : a.path.compareTo(b.path);
 }
@@ -90,10 +97,7 @@ class _SecurityPrivacyPageState extends State<SecurityPrivacyPage> {
 
   int _normalizeLockDelay(dynamic value) {
     if (value is num) return value.toInt().clamp(0, 1440).toInt();
-    return int.tryParse((value ?? '0').toString())
-            ?.clamp(0, 1440)
-            .toInt() ??
-        0;
+    return int.tryParse((value ?? '0').toString())?.clamp(0, 1440).toInt() ?? 0;
   }
 
   Future<void> _load() async {
@@ -136,7 +140,9 @@ class _SecurityPrivacyPageState extends State<SecurityPrivacyPage> {
       if (pin.length != 6 || pin != confirmPin) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(context.tr('Le PIN doit faire 6 chiffres identiques')),
+            content: Text(
+              context.tr('Le PIN doit faire 6 chiffres identiques'),
+            ),
           ),
         );
         return;
@@ -228,10 +234,12 @@ class _SecurityPrivacyPageState extends State<SecurityPrivacyPage> {
       for (final collection in _exportCollections) {
         final collectionRef = ref.collection(collection);
         final snapshot = await collectionRef.get();
-        lines.add(_collectionRow(
-          collectionPath: _relativeExportPath(collectionRef.path, ref.path),
-          parentDocumentPath: 'user',
-        ));
+        lines.add(
+          _collectionRow(
+            collectionPath: _relativeExportPath(collectionRef.path, ref.path),
+            parentDocumentPath: 'user',
+          ),
+        );
 
         for (final doc in snapshot.docs) {
           _appendDocumentRows(
@@ -259,9 +267,7 @@ class _SecurityPrivacyPageState extends State<SecurityPrivacyPage> {
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('${context.tr('Export impossible')} : $e'),
-        ),
+        SnackBar(content: Text('${context.tr('Export impossible')} : $e')),
       );
     } finally {
       if (mounted) setState(() => _isExporting = false);
@@ -281,9 +287,7 @@ class _SecurityPrivacyPageState extends State<SecurityPrivacyPage> {
 
     await Navigator.push(
       context,
-      MaterialPageRoute(
-        builder: (_) => _ImportProgressPage(uid: uid),
-      ),
+      MaterialPageRoute(builder: (_) => _ImportProgressPage(uid: uid)),
     );
     if (!mounted) return;
     context.read<UserDataProvider>().invalidateReferences();
@@ -392,8 +396,7 @@ class _SecurityPrivacyPageState extends State<SecurityPrivacyPage> {
       );
     }
 
-    final result = documents.values.toList()
-      ..sort(_compareImportDocuments);
+    final result = documents.values.toList()..sort(_compareImportDocuments);
     return result;
   }
 
@@ -565,7 +568,9 @@ class _SecurityPrivacyPageState extends State<SecurityPrivacyPage> {
     return result == true;
   }
 
-  Future<_ImportResult> _restoreDocuments(List<_ImportDocument> documents) async {
+  Future<_ImportResult> _restoreDocuments(
+    List<_ImportDocument> documents,
+  ) async {
     var duplicateMode = _DuplicateDecision.ask;
     var created = 0;
     var replaced = 0;
@@ -637,11 +642,10 @@ class _SecurityPrivacyPageState extends State<SecurityPrivacyPage> {
               Text(
                 documentPath,
                 style: Theme.of(dialogContext).textTheme.bodySmall?.copyWith(
-                      color: Theme.of(dialogContext)
-                          .colorScheme
-                          .onSurface
-                          .withOpacity(0.55),
-                    ),
+                  color: Theme.of(
+                    dialogContext,
+                  ).colorScheme.onSurface.withOpacity(0.55),
+                ),
               ),
               const SizedBox(height: 16),
               OutlinedButton(
@@ -653,7 +657,9 @@ class _SecurityPrivacyPageState extends State<SecurityPrivacyPage> {
               OutlinedButton(
                 onPressed: () =>
                     Navigator.pop(dialogContext, _DuplicateDecision.skipAll),
-                child: Text(dialogContext.tr('Ne pas copier tous les doublons')),
+                child: Text(
+                  dialogContext.tr('Ne pas copier tous les doublons'),
+                ),
               ),
               const SizedBox(height: 8),
               FilledButton(
@@ -685,11 +691,12 @@ class _SecurityPrivacyPageState extends State<SecurityPrivacyPage> {
   String _importDocumentLabel(_ImportDocument doc) {
     final parts = doc.path.split('/');
     final collection = parts.length >= 3 ? parts[2] : 'document';
-    final name = (doc.data['name'] ??
-            doc.data['description'] ??
-            doc.data['type'] ??
-            parts.last)
-        .toString();
+    final name =
+        (doc.data['name'] ??
+                doc.data['description'] ??
+                doc.data['type'] ??
+                parts.last)
+            .toString();
 
     switch (collection) {
       case 'accounts':
@@ -945,16 +952,15 @@ class _SecurityPrivacyPageState extends State<SecurityPrivacyPage> {
   }
 
   String _csvLine(List<String> cells) {
-    return cells.map((cell) {
-      final escaped = cell.replaceAll('"', '""');
-      return '"$escaped"';
-    }).join(',');
+    return cells
+        .map((cell) {
+          final escaped = cell.replaceAll('"', '""');
+          return '"$escaped"';
+        })
+        .join(',');
   }
 
-  void _showTextPage({
-    required String title,
-    required String body,
-  }) {
+  void _showTextPage({required String title, required String body}) {
     Navigator.push(
       context,
       MaterialPageRoute(
@@ -1094,7 +1100,9 @@ class _SecurityPrivacyPageState extends State<SecurityPrivacyPage> {
     final authorized = await SecurityGate.requestPin(
       context,
       title: context.tr('Supprimer mon compte et mes donnees'),
-      message: context.tr('Confirmez votre PIN avant la suppression definitive.'),
+      message: context.tr(
+        'Confirmez votre PIN avant la suppression definitive.',
+      ),
     );
     if (!authorized || !mounted) return;
 
@@ -1114,15 +1122,16 @@ class _SecurityPrivacyPageState extends State<SecurityPrivacyPage> {
     setState(() => _isDeleting = true);
     try {
       final authService = context.read<AuthService>();
-      final reauthenticated = await authService.reauthenticateForAccountDeletion(
-        password: password,
-      );
+      final reauthenticated = await authService
+          .reauthenticateForAccountDeletion(password: password);
       if (!reauthenticated) {
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              context.tr('Verification impossible. Reconnectez-vous puis reessayez.'),
+              context.tr(
+                'Verification impossible. Reconnectez-vous puis reessayez.',
+              ),
             ),
           ),
         );
@@ -1136,7 +1145,9 @@ class _SecurityPrivacyPageState extends State<SecurityPrivacyPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              context.tr('Les donnees ont ete supprimees, mais le compte doit etre supprime apres reconnexion.'),
+              context.tr(
+                'Les donnees ont ete supprimees, mais le compte doit etre supprime apres reconnexion.',
+              ),
             ),
           ),
         );
@@ -1153,9 +1164,7 @@ class _SecurityPrivacyPageState extends State<SecurityPrivacyPage> {
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('${context.tr('Suppression impossible')} : $e'),
-        ),
+        SnackBar(content: Text('${context.tr('Suppression impossible')} : $e')),
       );
     } finally {
       if (mounted) setState(() => _isDeleting = false);
@@ -1243,16 +1252,20 @@ class _SecurityPrivacyPageState extends State<SecurityPrivacyPage> {
                   color: Colors.transparent,
                   child: SwitchListTile(
                     contentPadding: EdgeInsets.zero,
-                    value: context.watch<PrivacyProvider>().persistentHideAmounts,
+                    value: context
+                        .watch<PrivacyProvider>()
+                        .persistentHideAmounts,
                     onChanged: (value) async {
-                      await context
-                          .read<PrivacyProvider>()
-                          .setHideAmounts(value);
+                      await context.read<PrivacyProvider>().setHideAmounts(
+                        value,
+                      );
                       if (mounted) setState(() {});
                     },
                     title: Text(context.tr('Masquer les montants')),
                     subtitle: Text(
-                      context.tr('Remplace les montants visibles par des symboles'),
+                      context.tr(
+                        'Remplace les montants visibles par des symboles',
+                      ),
                     ),
                   ),
                 ),
@@ -1304,7 +1317,9 @@ class _SecurityPrivacyPageState extends State<SecurityPrivacyPage> {
                 _ActionRow(
                   icon: Icons.description_outlined,
                   title: context.tr('Conditions generales d utilisation'),
-                  subtitle: context.tr('Consulter les regles d utilisation de MySold'),
+                  subtitle: context.tr(
+                    'Consulter les regles d utilisation de MySold',
+                  ),
                   onTap: () => _showTextPage(
                     title: context.tr('Conditions generales d utilisation'),
                     body: _termsText(context),
@@ -1314,7 +1329,9 @@ class _SecurityPrivacyPageState extends State<SecurityPrivacyPage> {
                 _ActionRow(
                   icon: Icons.privacy_tip_outlined,
                   title: context.tr('Politique de confidentialite'),
-                  subtitle: context.tr('Comprendre comment vos donnees sont utilisees'),
+                  subtitle: context.tr(
+                    'Comprendre comment vos donnees sont utilisees',
+                  ),
                   onTap: () => _showTextPage(
                     title: context.tr('Politique de confidentialite'),
                     body: _privacyText(context),
@@ -1332,7 +1349,9 @@ class _SecurityPrivacyPageState extends State<SecurityPrivacyPage> {
                 _ActionRow(
                   icon: Icons.file_download_outlined,
                   title: context.tr('Exporter mes donnees'),
-                  subtitle: context.tr('Telecharger les donnees de votre espace en CSV'),
+                  subtitle: context.tr(
+                    'Telecharger les donnees de votre espace en CSV',
+                  ),
                   loading: _isExporting,
                   onTap: _isExporting ? null : _exportUserData,
                 ),
@@ -1375,11 +1394,7 @@ class _Panel extends StatelessWidget {
   final String title;
   final Widget child;
 
-  const _Panel({
-    required this.icon,
-    required this.title,
-    required this.child,
-  });
+  const _Panel({required this.icon, required this.title, required this.child});
 
   @override
   Widget build(BuildContext context) {
@@ -1387,9 +1402,9 @@ class _Panel extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: colorScheme.surfaceVariant.withOpacity(0.24),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: colorScheme.outline.withOpacity(0.10)),
+        color: colorScheme.surface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: colorScheme.outline.withValues(alpha: 0.30)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1402,8 +1417,8 @@ class _Panel extends StatelessWidget {
                 child: Text(
                   title,
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w900,
-                      ),
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ),
             ],
@@ -1445,7 +1460,7 @@ class _ActionRow extends StatelessWidget {
         title: Text(
           title,
           style: TextStyle(
-            fontWeight: FontWeight.w900,
+            fontWeight: FontWeight.w600,
             color: destructive ? Colors.redAccent : null,
           ),
         ),
@@ -1467,10 +1482,7 @@ class _LegalTextPage extends StatelessWidget {
   final String title;
   final String body;
 
-  const _LegalTextPage({
-    required this.title,
-    required this.body,
-  });
+  const _LegalTextPage({required this.title, required this.body});
 
   @override
   Widget build(BuildContext context) {
@@ -1481,7 +1493,9 @@ class _LegalTextPage extends StatelessWidget {
         children: [
           Text(
             body,
-            style: Theme.of(context).textTheme.bodyLarge?.copyWith(height: 1.45),
+            style: Theme.of(
+              context,
+            ).textTheme.bodyLarge?.copyWith(height: 1.45),
           ),
         ],
       ),
@@ -1492,9 +1506,7 @@ class _LegalTextPage extends StatelessWidget {
 class _ImportProgressPage extends StatefulWidget {
   final String uid;
 
-  const _ImportProgressPage({
-    required this.uid,
-  });
+  const _ImportProgressPage({required this.uid});
 
   @override
   State<_ImportProgressPage> createState() => _ImportProgressPageState();
@@ -1631,7 +1643,11 @@ class _ImportProgressPageState extends State<_ImportProgressPage> {
       if (!mounted) return;
       final confirmed = await _confirmImport(documents.length, duplicates);
       if (!confirmed) {
-        _step(1, context.tr('Import annule.'), log: context.tr('Import annule.'));
+        _step(
+          1,
+          context.tr('Import annule.'),
+          log: context.tr('Import annule.'),
+        );
         return;
       }
 
@@ -1787,8 +1803,7 @@ class _ImportProgressPageState extends State<_ImportProgressPage> {
       );
     }
 
-    final result = documents.values.toList()
-      ..sort(_compareImportDocuments);
+    final result = documents.values.toList()..sort(_compareImportDocuments);
     return result;
   }
 
@@ -1925,7 +1940,9 @@ class _ImportProgressPageState extends State<_ImportProgressPage> {
     return result == true;
   }
 
-  Future<_ImportResult> _restoreDocuments(List<_ImportDocument> documents) async {
+  Future<_ImportResult> _restoreDocuments(
+    List<_ImportDocument> documents,
+  ) async {
     var duplicateMode = _DuplicateDecision.ask;
     var created = 0;
     var replaced = 0;
@@ -1989,11 +2006,12 @@ class _ImportProgressPageState extends State<_ImportProgressPage> {
   String _documentLabel(_ImportDocument doc) {
     final parts = doc.path.split('/');
     final collection = parts.length >= 3 ? parts[2] : 'document';
-    final name = (doc.data['name'] ??
-            doc.data['description'] ??
-            doc.data['type'] ??
-            parts.last)
-        .toString();
+    final name =
+        (doc.data['name'] ??
+                doc.data['description'] ??
+                doc.data['type'] ??
+                parts.last)
+            .toString();
     switch (collection) {
       case 'accounts':
         return "du compte '$name'";
@@ -2033,11 +2051,10 @@ class _ImportProgressPageState extends State<_ImportProgressPage> {
               Text(
                 documentPath,
                 style: Theme.of(dialogContext).textTheme.bodySmall?.copyWith(
-                      color: Theme.of(dialogContext)
-                          .colorScheme
-                          .onSurface
-                          .withOpacity(0.55),
-                    ),
+                  color: Theme.of(
+                    dialogContext,
+                  ).colorScheme.onSurface.withOpacity(0.55),
+                ),
               ),
               const SizedBox(height: 16),
               OutlinedButton(
@@ -2049,7 +2066,9 @@ class _ImportProgressPageState extends State<_ImportProgressPage> {
               OutlinedButton(
                 onPressed: () =>
                     Navigator.pop(dialogContext, _DuplicateDecision.skipAll),
-                child: Text(dialogContext.tr('Ne pas copier tous les doublons')),
+                child: Text(
+                  dialogContext.tr('Ne pas copier tous les doublons'),
+                ),
               ),
               const SizedBox(height: 8),
               FilledButton(
@@ -2097,7 +2116,7 @@ class _ImportProgressPageState extends State<_ImportProgressPage> {
                 padding: const EdgeInsets.all(18),
                 decoration: BoxDecoration(
                   color: colors.surfaceVariant.withOpacity(0.28),
-                  borderRadius: BorderRadius.circular(20),
+                  borderRadius: BorderRadius.circular(12),
                   border: Border.all(color: colors.outline.withOpacity(0.12)),
                 ),
                 child: Column(
@@ -2115,10 +2134,8 @@ class _ImportProgressPageState extends State<_ImportProgressPage> {
                         Expanded(
                           child: Text(
                             _message,
-                            style: Theme.of(context)
-                                .textTheme
-                                .titleMedium
-                                ?.copyWith(fontWeight: FontWeight.w900),
+                            style: Theme.of(context).textTheme.titleMedium
+                                ?.copyWith(fontWeight: FontWeight.w600),
                           ),
                         ),
                       ],
@@ -2141,13 +2158,19 @@ class _ImportProgressPageState extends State<_ImportProgressPage> {
                             .tr(
                               'Import termine: {created} crees, {replaced} remplaces, {skipped} ignores.',
                             )
-                            .replaceAll('{created}', _result!.created.toString())
+                            .replaceAll(
+                              '{created}',
+                              _result!.created.toString(),
+                            )
                             .replaceAll(
                               '{replaced}',
                               _result!.replaced.toString(),
                             )
-                            .replaceAll('{skipped}', _result!.skipped.toString()),
-                        style: const TextStyle(fontWeight: FontWeight.w800),
+                            .replaceAll(
+                              '{skipped}',
+                              _result!.skipped.toString(),
+                            ),
+                        style: const TextStyle(fontWeight: FontWeight.w600),
                       ),
                     ],
                   ],
@@ -2160,7 +2183,9 @@ class _ImportProgressPageState extends State<_ImportProgressPage> {
                   decoration: BoxDecoration(
                     color: colors.surfaceVariant.withOpacity(0.18),
                     borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: colors.outline.withOpacity(0.10)),
+                    border: Border.all(
+                      color: colors.outline.withValues(alpha: 0.30),
+                    ),
                   ),
                   child: _logs.isEmpty
                       ? Center(

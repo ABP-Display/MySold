@@ -53,7 +53,9 @@ class _ComptePageState extends State<ComptePage> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            context.tr('Ce compte est utilise par des transactions ou investissements.'),
+            context.tr(
+              'Ce compte est utilise par des transactions ou investissements.',
+            ),
           ),
         ),
       );
@@ -121,7 +123,9 @@ class _ComptePageState extends State<ComptePage> {
           }
 
           if (snapshot.hasError) {
-            return Center(child: Text('${context.tr('Erreur')} : ${snapshot.error}'));
+            return Center(
+              child: Text('${context.tr('Erreur')} : ${snapshot.error}'),
+            );
           }
 
           final accounts = (snapshot.data?.docs ?? []).map((doc) {
@@ -134,8 +138,7 @@ class _ComptePageState extends State<ComptePage> {
               managedByInvestments: data['managedByInvestments'] == true,
               snapshot: doc,
             );
-          }).toList()
-            ..sort((a, b) => b.balance.compareTo(a.balance));
+          }).toList()..sort((a, b) => b.balance.compareTo(a.balance));
 
           final totalBalance = accounts.fold(0.0, (sum, account) {
             return sum + account.balance;
@@ -186,7 +189,9 @@ class _ComptePageState extends State<ComptePage> {
                 height: 44,
                 width: 44,
                 decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.primary.withOpacity(0.12),
+                  color: Theme.of(
+                    context,
+                  ).colorScheme.primary.withOpacity(0.12),
                   borderRadius: BorderRadius.circular(15),
                 ),
                 child: Icon(
@@ -202,19 +207,16 @@ class _ComptePageState extends State<ComptePage> {
                     Text(
                       context.tr('Solde total'),
                       style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                            color: Theme.of(context)
-                                .colorScheme
-                                .onSurface
-                                .withOpacity(0.65),
-                          ),
+                        color: Theme.of(
+                          context,
+                        ).colorScheme.onSurface.withOpacity(0.65),
+                      ),
                     ),
                     const SizedBox(height: 2),
                     Text(
                       privacy.money(totalBalance, currency),
-                      style:
-                          Theme.of(context).textTheme.headlineSmall?.copyWith(
-                                fontWeight: FontWeight.w900,
-                              ),
+                      style: Theme.of(context).textTheme.headlineSmall
+                          ?.copyWith(fontWeight: FontWeight.w600),
                     ),
                   ],
                 ),
@@ -225,9 +227,8 @@ class _ComptePageState extends State<ComptePage> {
           Text(
             '$accountCount compte${accountCount > 1 ? 's' : ''} bancaire${accountCount > 1 ? 's' : ''}',
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color:
-                      Theme.of(context).colorScheme.onSurface.withOpacity(0.65),
-                ),
+              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.65),
+            ),
           ),
         ],
       ),
@@ -246,8 +247,8 @@ class _ComptePageState extends State<ComptePage> {
     final color = privacy.hideAmounts
         ? Theme.of(context).colorScheme.onSurface.withOpacity(0.48)
         : account.balance >= 0
-            ? Colors.green
-            : Colors.redAccent;
+        ? Colors.green
+        : Colors.redAccent;
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -276,8 +277,8 @@ class _ComptePageState extends State<ComptePage> {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.w900,
-                          ),
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                     if (account.description.isNotEmpty) ...[
                       const SizedBox(height: 2),
@@ -286,11 +287,10 @@ class _ComptePageState extends State<ComptePage> {
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                              color: Theme.of(context)
-                                  .colorScheme
-                                  .onSurface
-                                  .withOpacity(0.62),
-                            ),
+                          color: Theme.of(
+                            context,
+                          ).colorScheme.onSurface.withOpacity(0.62),
+                        ),
                       ),
                     ],
                     if (account.managedByInvestments) ...[
@@ -298,9 +298,9 @@ class _ComptePageState extends State<ComptePage> {
                       Text(
                         context.tr('Compte investissement auto'),
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                              color: Theme.of(context).colorScheme.primary,
-                              fontWeight: FontWeight.w800,
-                            ),
+                          color: Theme.of(context).colorScheme.primary,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                     ],
                   ],
@@ -329,7 +329,10 @@ class _ComptePageState extends State<ComptePage> {
                     value: 'delete',
                     child: Row(
                       children: [
-                        const Icon(Icons.delete_outline, color: Colors.redAccent),
+                        const Icon(
+                          Icons.delete_outline,
+                          color: Colors.redAccent,
+                        ),
                         const SizedBox(width: 8),
                         Text(context.tr('Supprimer')),
                       ],
@@ -346,20 +349,19 @@ class _ComptePageState extends State<ComptePage> {
                 child: Text(
                   privacy.money(account.balance, currency),
                   style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                        color: color,
-                        fontWeight: FontWeight.w900,
-                      ),
+                    color: color,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ),
               Text(
                 privacy.percent(share * 100),
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      fontWeight: FontWeight.w800,
-                      color: Theme.of(context)
-                          .colorScheme
-                          .onSurface
-                          .withOpacity(0.64),
-                    ),
+                  fontWeight: FontWeight.w600,
+                  color: Theme.of(
+                    context,
+                  ).colorScheme.onSurface.withOpacity(0.64),
+                ),
               ),
             ],
           ),
@@ -400,9 +402,9 @@ class _ComptePageState extends State<ComptePage> {
             const SizedBox(height: 18),
             Text(
               context.tr('Aucun compte'),
-              style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.w900,
-                  ),
+              style: Theme.of(
+                context,
+              ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w600),
             ),
             const SizedBox(height: 8),
             Text(
@@ -411,9 +413,10 @@ class _ComptePageState extends State<ComptePage> {
               ),
               textAlign: TextAlign.center,
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color:
-                        Theme.of(context).colorScheme.onSurface.withOpacity(0.65),
-                  ),
+                color: Theme.of(
+                  context,
+                ).colorScheme.onSurface.withOpacity(0.65),
+              ),
             ),
             const SizedBox(height: 18),
             ElevatedButton.icon(
@@ -429,10 +432,10 @@ class _ComptePageState extends State<ComptePage> {
 
   BoxDecoration _panelDecoration() {
     return BoxDecoration(
-      color: Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.24),
-      borderRadius: BorderRadius.circular(20),
+      color: Theme.of(context).colorScheme.surface,
+      borderRadius: BorderRadius.circular(12),
       border: Border.all(
-        color: Theme.of(context).colorScheme.outline.withOpacity(0.10),
+        color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.30),
       ),
     );
   }

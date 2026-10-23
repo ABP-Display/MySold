@@ -1,3 +1,4 @@
+import 'package:mysold/widgets/app_design.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
@@ -200,7 +201,6 @@ class _AddTransactionDialogState extends State<AddTransactionDialog> {
     }
 
     return Dialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       child: Padding(
         padding: const EdgeInsets.all(20),
         child: SingleChildScrollView(
@@ -209,50 +209,40 @@ class _AddTransactionDialogState extends State<AddTransactionDialog> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Text(
-                  isEditing
+                AppDialogHeader(
+                  icon: Icons.receipt_long_outlined,
+                  title: isEditing
                       ? context.tr('Modifier la transaction')
                       : context.tr('Nouvelle transaction'),
-                  style: const TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                  ),
                 ),
                 const SizedBox(height: 20),
                 Card(
-                  elevation: 1,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
+                  elevation: 0,
                   child: Padding(
                     padding: const EdgeInsets.all(16),
                     child: Column(
                       children: [
-                        ToggleButtons(
-                          borderRadius: BorderRadius.circular(12),
-                          isSelected: [_type == 'expense', _type == 'income'],
-                          onPressed: (index) {
-                            final types = ['expense', 'income'];
-                            final newType = types[index];
-                            if (_type != newType) {
-                              setState(() {
-                                _type = newType;
-                                _categorieId = null;
-                                _loadDropdownData();
-                              });
-                            }
-                          },
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
                           children: [
-                            Padding(
-                              padding:
-                                  const EdgeInsets.symmetric(horizontal: 16),
-                              child: Text(context.tr('Depense')),
-                            ),
-                            Padding(
-                              padding:
-                                  const EdgeInsets.symmetric(horizontal: 16),
-                              child: Text(context.tr('Revenu')),
-                            ),
+                            for (final type in ['expense', 'income'])
+                              ChoiceChip(
+                                label: Text(
+                                  context.tr(
+                                    type == 'expense' ? 'Depense' : 'Revenu',
+                                  ),
+                                ),
+                                selected: _type == type,
+                                onSelected: (_) {
+                                  if (_type == type) return;
+                                  setState(() {
+                                    _type = type;
+                                    _categorieId = null;
+                                  });
+                                  _loadDropdownData();
+                                },
+                              ),
                           ],
                         ),
                         const SizedBox(height: 16),
@@ -262,8 +252,7 @@ class _AddTransactionDialogState extends State<AddTransactionDialog> {
                             decimal: true,
                           ),
                           decoration: InputDecoration(
-                            labelText:
-                                '${context.tr('Montant')} ($currency)',
+                            labelText: '${context.tr('Montant')} ($currency)',
                             prefixIcon: const Icon(Icons.euro),
                           ),
                           validator: (v) {
@@ -305,6 +294,7 @@ class _AddTransactionDialogState extends State<AddTransactionDialog> {
                         ),
                         const Divider(height: 24),
                         DropdownButtonFormField<String>(
+                          isExpanded: true,
                           value: _compteId,
                           items: _comptes.entries
                               .map(
@@ -317,12 +307,14 @@ class _AddTransactionDialogState extends State<AddTransactionDialog> {
                           onChanged: (v) => setState(() => _compteId = v),
                           decoration: InputDecoration(
                             labelText: context.tr('Compte'),
-                            prefixIcon:
-                                const Icon(Icons.account_balance_wallet),
+                            prefixIcon: const Icon(
+                              Icons.account_balance_wallet,
+                            ),
                           ),
                         ),
                         const SizedBox(height: 12),
                         DropdownButtonFormField<String>(
+                          isExpanded: true,
                           value: _categorieId,
                           items: _categories.entries
                               .map(

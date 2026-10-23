@@ -1,3 +1,4 @@
+import 'package:mysold/widgets/app_design.dart';
 import 'package:mysold/data/local_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
@@ -33,38 +34,16 @@ class InvestmentTransactionTile extends StatelessWidget {
     final source = accounts[t.fromAccountId] ?? context.tr('Compte source');
     final destination =
         accounts[t.toAccountId] ?? context.tr('Compte investissement');
-    final investment = investments[t.investmentId] ?? context.tr('Investissement');
+    final investment =
+        investments[t.investmentId] ?? context.tr('Investissement');
 
-    return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      elevation: 2,
-      child: ListTile(
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        leading: CircleAvatar(
-          radius: 24,
-          backgroundColor: Theme.of(context).colorScheme.primary.withOpacity(0.12),
-          child: Icon(
-            Icons.trending_up_rounded,
-            color: Theme.of(context).colorScheme.primary,
-          ),
-        ),
-        title: Text(
-          '$source -> $destination',
-          style: const TextStyle(fontWeight: FontWeight.w700),
-        ),
-        subtitle: Text('$investment\n$formattedDate'),
-        isThreeLine: true,
-        trailing: Text(
-          '+${privacy.money(t.amount, currency)}',
-          style: TextStyle(
-            color: Theme.of(context).colorScheme.primary,
-            fontWeight: FontWeight.w900,
-            fontSize: 16,
-          ),
-        ),
-        onTap: () => _showOptions(context),
-      ),
+    return AppOperationCard(
+      title: investment,
+      subtitle: '$source → $destination · $formattedDate',
+      amount: '+${privacy.money(t.amount, currency)}',
+      icon: Icons.trending_up_outlined,
+      color: Theme.of(context).colorScheme.primary,
+      onTap: () => _showOptions(context),
     );
   }
 
@@ -75,9 +54,10 @@ class InvestmentTransactionTile extends StatelessWidget {
     final source = accounts[t.fromAccountId] ?? context.tr('Compte source');
     final destination =
         accounts[t.toAccountId] ?? context.tr('Compte investissement');
-    final investment = investments[t.investmentId] ?? context.tr('Investissement');
+    final investment =
+        investments[t.investmentId] ?? context.tr('Investissement');
 
-    showModalBottomSheet(
+    showAppSheet(
       context: context,
       builder: (ctx) {
         return SafeArea(
@@ -87,21 +67,11 @@ class InvestmentTransactionTile extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Container(
-                  width: 42,
-                  height: 4,
-                  margin: const EdgeInsets.only(bottom: 18),
-                  decoration: BoxDecoration(
-                    color: Theme.of(context).dividerColor,
-                    borderRadius: BorderRadius.circular(99),
-                  ),
-                  alignment: Alignment.center,
-                ),
                 Text(
                   investment,
-                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                        fontWeight: FontWeight.w800,
-                      ),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w600),
                 ),
                 const SizedBox(height: 14),
                 _detailRow(context, context.tr('Date'), formattedDate),
@@ -160,8 +130,8 @@ class InvestmentTransactionTile extends StatelessWidget {
             child: Text(
               label,
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: Theme.of(context).hintColor,
-                  ),
+                color: Theme.of(context).hintColor,
+              ),
             ),
           ),
           Flexible(

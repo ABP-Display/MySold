@@ -75,7 +75,9 @@ class _CategoriePageState extends State<CategoriePage>
     if (isUsed) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(context.tr('Cette categorie est utilisee par des transactions.')),
+          content: Text(
+            context.tr('Cette categorie est utilisee par des transactions.'),
+          ),
         ),
       );
       return;
@@ -111,8 +113,9 @@ class _CategoriePageState extends State<CategoriePage>
     final authorized = await SecurityGate.requestPin(
       context,
       title: context.tr('Suppression protegee'),
-      message:
-          context.tr('Confirmez votre PIN avant de supprimer cette categorie.'),
+      message: context.tr(
+        'Confirmez votre PIN avant de supprimer cette categorie.',
+      ),
     );
     if (!authorized || !mounted) return;
 
@@ -143,10 +146,7 @@ class _CategoriePageState extends State<CategoriePage>
       ),
       body: TabBarView(
         controller: _tabController,
-        children: [
-          _buildTabContent('expense'),
-          _buildTabContent('income'),
-        ],
+        children: [_buildTabContent('expense'), _buildTabContent('income')],
       ),
     );
   }
@@ -164,20 +164,25 @@ class _CategoriePageState extends State<CategoriePage>
         }
 
         if (categorySnapshot.hasError) {
-          return Center(child: Text('${context.tr('Erreur')} : ${categorySnapshot.error}'));
+          return Center(
+            child: Text('${context.tr('Erreur')} : ${categorySnapshot.error}'),
+          );
         }
 
         final categories = (categorySnapshot.data?.docs ?? []).map((doc) {
           final data = doc.data();
           return _CategoryViewModel.fromFirestore(doc.id, data, doc);
-        }).toList()
-          ..sort((a, b) => a.name.compareTo(b.name));
+        }).toList()..sort((a, b) => a.name.compareTo(b.name));
 
         return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
           stream: _transactionsRef.where('type', isEqualTo: type).snapshots(),
           builder: (context, transactionSnapshot) {
             if (transactionSnapshot.hasError) {
-              return Center(child: Text('${context.tr('Erreur')} : ${transactionSnapshot.error}'));
+              return Center(
+                child: Text(
+                  '${context.tr('Erreur')} : ${transactionSnapshot.error}',
+                ),
+              );
             }
 
             final totals = <String, double>{};
@@ -272,19 +277,18 @@ class _CategoriePageState extends State<CategoriePage>
                         ? 'Categories de depenses'
                         : 'Categories de revenus',
                   ),
-                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                        fontWeight: FontWeight.w900,
-                      ),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w600),
                 ),
                 const SizedBox(height: 4),
                 Text(
                   '$count categorie${count > 1 ? 's' : ''} - Total ${privacy.money(totalAmount, currency)}',
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: Theme.of(context)
-                            .colorScheme
-                            .onSurface
-                            .withOpacity(0.64),
-                      ),
+                    color: Theme.of(
+                      context,
+                    ).colorScheme.onSurface.withOpacity(0.64),
+                  ),
                 ),
               ],
             ),
@@ -333,18 +337,17 @@ class _CategoriePageState extends State<CategoriePage>
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.w900,
-                          ),
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                     const SizedBox(height: 2),
                     Text(
                       '$transactionCount transaction${transactionCount > 1 ? 's' : ''}',
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: Theme.of(context)
-                                .colorScheme
-                                .onSurface
-                                .withOpacity(0.62),
-                          ),
+                        color: Theme.of(
+                          context,
+                        ).colorScheme.onSurface.withOpacity(0.62),
+                      ),
                     ),
                   ],
                 ),
@@ -372,7 +375,10 @@ class _CategoriePageState extends State<CategoriePage>
                     value: 'delete',
                     child: Row(
                       children: [
-                        const Icon(Icons.delete_outline, color: Colors.redAccent),
+                        const Icon(
+                          Icons.delete_outline,
+                          color: Colors.redAccent,
+                        ),
                         const SizedBox(width: 8),
                         Text(context.tr('Supprimer')),
                       ],
@@ -389,20 +395,19 @@ class _CategoriePageState extends State<CategoriePage>
                 child: Text(
                   privacy.money(amount, currency),
                   style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                        color: isExpense ? Colors.redAccent : Colors.green,
-                        fontWeight: FontWeight.w900,
-                      ),
+                    color: isExpense ? Colors.redAccent : Colors.green,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ),
               Text(
                 privacy.percent(share * 100),
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      fontWeight: FontWeight.w800,
-                      color: Theme.of(context)
-                          .colorScheme
-                          .onSurface
-                          .withOpacity(0.64),
-                    ),
+                  fontWeight: FontWeight.w600,
+                  color: Theme.of(
+                    context,
+                  ).colorScheme.onSurface.withOpacity(0.64),
+                ),
               ),
             ],
           ),
@@ -443,18 +448,21 @@ class _CategoriePageState extends State<CategoriePage>
             const SizedBox(height: 18),
             Text(
               context.tr(isExpense ? 'Aucune depense' : 'Aucun revenu'),
-              style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.w900,
-                  ),
+              style: Theme.of(
+                context,
+              ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w600),
             ),
             const SizedBox(height: 8),
             Text(
-              context.tr('Ajoutez une categorie pour organiser vos transactions.'),
+              context.tr(
+                'Ajoutez une categorie pour organiser vos transactions.',
+              ),
               textAlign: TextAlign.center,
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color:
-                        Theme.of(context).colorScheme.onSurface.withOpacity(0.65),
-                  ),
+                color: Theme.of(
+                  context,
+                ).colorScheme.onSurface.withOpacity(0.65),
+              ),
             ),
             const SizedBox(height: 18),
             ElevatedButton.icon(
@@ -470,10 +478,10 @@ class _CategoriePageState extends State<CategoriePage>
 
   BoxDecoration _panelDecoration() {
     return BoxDecoration(
-      color: Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.24),
-      borderRadius: BorderRadius.circular(20),
+      color: Theme.of(context).colorScheme.surface,
+      borderRadius: BorderRadius.circular(12),
       border: Border.all(
-        color: Theme.of(context).colorScheme.outline.withOpacity(0.10),
+        color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.30),
       ),
     );
   }

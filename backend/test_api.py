@@ -5,7 +5,7 @@ import unittest
 from concurrent.futures import ThreadPoolExecutor
 from app import app, connect, migrate
 
-HEADERS = {'X-MySold-Request': '1', 'Origin': 'http://localhost:8080'}
+HEADERS = {'X-MySold-Request': '1', 'Origin': 'http://localhost:28085'}
 PASSWORD = 'Test-password-123!'
 DATE = {'_type': 'timestamp', 'value': '2026-10-22T12:00:00.000Z'}
 
@@ -16,7 +16,7 @@ class ApiTests(unittest.TestCase):
         if not os.environ.get('POSTGRES_DB', '').endswith('_test'):
             raise RuntimeError('Tests require a separate database ending in _test.')
         os.environ['COOKIE_SECURE'] = 'false'
-        os.environ['PUBLIC_ORIGIN'] = 'http://localhost:8080'
+        os.environ['APP_ORIGIN'] = 'http://localhost:28085'
         migrate()
 
     def setUp(self):
@@ -72,6 +72,8 @@ class ApiTests(unittest.TestCase):
 
     def test_csrf_and_unknown_collections(self):
         self.assertEqual(self.client.post('/api/auth/logout', json={}).status_code, 403)
+        self.assertEqual(self.client.post('/api/auth/logout', headers={'Origin': 'https://example.test'}, json={}).status_code, 403)
+        self.assertEqual(self.client.post('/api/auth/logout', headers={'X-MySold-Request': '1'}, json={}).status_code, 403)
         self.assertEqual(self.client.post('/api/auth/logout', headers={**HEADERS, 'Origin': 'https://evil.test'}, json={}).status_code, 403)
         self.assertEqual(self.commit([self.operation('../secrets', {})]).status_code, 400)
 

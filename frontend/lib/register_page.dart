@@ -1,1277 +1,611 @@
-// ignore_for_file: unused_element
-
 import 'dart:convert';
 
-import 'package:flutter/material.dart';
-import 'package:mysold/data/document_store.dart';
 import 'package:crypto/crypto.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
-import 'package:mysold/services/auth_service.dart';
+import 'package:mysold/data/document_store.dart';
 import 'package:mysold/l10n/app_localizations.dart';
-import 'package:mysold/providers/user_data_provider.dart';
-import 'package:mysold/screens/settings/currency_selector.dart';
-import 'package:mysold/screens/settings/currency_provider.dart';
-import 'package:mysold/screens/settings/language_selector.dart';
-import 'package:mysold/screens/settings/language_provider.dart';
-import 'package:mysold/screens/settings/theme_selector.dart';
-import 'package:mysold/screens/settings/theme_settings.dart';
-import 'package:mysold/main.dart';
 import 'package:mysold/login_page.dart';
+import 'package:mysold/main.dart';
+import 'package:mysold/providers/user_data_provider.dart';
+import 'package:mysold/screens/settings/currency_provider.dart';
+import 'package:mysold/screens/settings/language_provider.dart';
+import 'package:mysold/screens/settings/theme_settings.dart';
+import 'package:mysold/services/auth_service.dart';
+import 'package:mysold/widgets/auth_layout.dart';
 
 class Register extends StatefulWidget {
   const Register({super.key});
 
   @override
-  _RegisterFlowState createState() => _RegisterFlowState();
+  State<Register> createState() => _RegisterFlowState();
 }
 
 class _RegisterFlowState extends State<Register> {
-  final PageController _pageController = PageController();
-  int _currentPage = 0;
+  final _forms = List.generate(3, (_) => GlobalKey<FormState>());
+  final _scrollController = ScrollController();
+  final _firstName = TextEditingController();
+  final _lastName = TextEditingController();
+  final _email = TextEditingController();
+  final _phone = TextEditingController();
+  final _password = TextEditingController();
+  final _confirmation = TextEditingController();
+  final _pin = TextEditingController();
+  int _step = 0;
+  bool _busy = false;
+  bool _hidePassword = true;
+  bool _hideConfirmation = true;
+  bool _hidePin = true;
+  String? _error;
+  String _currency = CurrencyProvider.defaultCurrencyCode;
+  String _language = LanguageProvider.defaultLanguageCode;
+  String _theme = AppThemes.defaultThemeName;
+  String _reconnection = 'never';
 
-  // Données collectées
-  String _selectedCurrencyCode = CurrencyProvider.defaultCurrencyCode;
-  String _selectedLanguageCode = LanguageProvider.defaultLanguageCode;
-  String _selectedTheme = AppThemes.defaultThemeName;
-
-  final TextEditingController _firstNameController = TextEditingController();
-  final TextEditingController _lastNameController = TextEditingController();
-  final TextEditingController _emailController = TextEditingController();
-  final TextEditingController _phoneController = TextEditingController();
-  final TextEditingController _passwordController = TextEditingController();
-  final TextEditingController _confirmPasswordController =
-      TextEditingController();
-  final TextEditingController _pinController = TextEditingController();
-
-  bool _personalInfoConfirmed = false;
-  bool _accountInfoConfirmed = false;
-  bool _securityConfirmed = false;
-
-  bool _obscurePassword = true;
-  bool _obscureConfirmPassword = true;
-  bool _obscurePin = true;
-
-  bool _isValidEmail(String email) {
-    final emailRegex = RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$');
-    return emailRegex.hasMatch(email);
-  }
-
-  bool _isSecurePassword(String password) {
-    final regex = RegExp(r'^(?=.*[A-Z])(?=.*\d)(?=.*[!@#\$&*~%?+=]).+$');
-    return regex.hasMatch(password);
-  }
-
-  String _reconnectionFrequency = 'never';
-  final List<String> _frequencies = [
-    'never',
-    'always',
-  ];
-
-  String _frequencyLabel(String value) {
-    return value == 'always' ? context.tr('Toujours') : context.tr('Jamais');
-  }
-
-  void _nextPage() {
-    if (_currentPage < 6) {
-      _pageController.nextPage(
-        duration: Duration(milliseconds: 300),
-        curve: Curves.ease,
-      );
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    for (final controller in [
+      _firstName,
+      _lastName,
+      _email,
+      _phone,
+      _password,
+      _confirmation,
+      _pin,
+    ]) {
+      controller.dispose();
     }
-  }
-
-  void _previousPage() {
-    if (_currentPage > 0) {
-      _pageController.previousPage(
-        duration: Duration(milliseconds: 300),
-        curve: Curves.ease,
-      );
-    }
+    super.dispose();
   }
 
   void _goToLogin() {
     Navigator.of(
       context,
-    ).pushReplacement(MaterialPageRoute(builder: (context) => LoginPage()));
+    ).pushReplacement(MaterialPageRoute(builder: (_) => const LoginPage()));
+  }
+
+  void _changeStep(int step) {
+    FocusManager.instance.primaryFocus?.unfocus();
+    setState(() {
+      _step = step;
+      _error = null;
+    });
+    if (_scrollController.hasClients) _scrollController.jumpTo(0);
+  }
+
+  void _continue() {
+    if (_busy || !_forms[_step].currentState!.validate()) return;
+    if (_step < 2) {
+      _changeStep(_step + 1);
+    } else {
+      _register();
+    }
   }
 
   Future<void> _register() async {
-    if (_passwordController.text != _confirmPasswordController.text) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(context.tr('Les mots de passe ne correspondent pas.')),
-        ),
+    if (_busy) return;
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
+    var accountCreated = false;
+    try {
+      final user = await context.read<AuthService>().signUp(
+        email: _email.text.trim(),
+        password: _password.text,
+        additionalData: {
+          'firstName': _firstName.text.trim(),
+          'lastName': _lastName.text.trim(),
+          'phone': _phone.text.trim(),
+          'pin': sha256.convert(utf8.encode(_pin.text)).toString(),
+          'theme': AppThemes.normalizeThemeName(_theme),
+          'currency': CurrencyProvider.optionForCode(_currency).symbol,
+          'currencyCode': _currency,
+          'language': LanguageProvider.optionForCode(_language).name,
+          'languageCode': _language,
+          'reconnectionFrequency': _reconnection,
+          'lockDelayMinutes': 0,
+          'createdAt': Timestamp.now(),
+        },
       );
-      return;
-    }
-
-    final authService = AuthService();
-    final hashedPin = sha256
-        .convert(utf8.encode(_pinController.text))
-        .toString();
-    final user = await authService.signUp(
-      email: _emailController.text.trim(),
-      password: _passwordController.text,
-      additionalData: {
-        'firstName': _firstNameController.text.trim(),
-        'lastName': _lastNameController.text.trim(),
-        'phone': _phoneController.text.trim(),
-        'pin': hashedPin,
-        'theme': AppThemes.normalizeThemeName(_selectedTheme),
-        'currency': CurrencyProvider.optionForCode(_selectedCurrencyCode).symbol,
-        'currencyCode': CurrencyProvider.normalizeCurrencyCode(
-          _selectedCurrencyCode,
-        ),
-        'language': LanguageProvider.optionForCode(
-          _selectedLanguageCode,
-        ).name,
-        'languageCode': LanguageProvider.normalizeLanguageCode(
-          _selectedLanguageCode,
-        ),
-        'reconnectionFrequency': _reconnectionFrequency,
-        'lockDelayMinutes': 0,
-        'createdAt': Timestamp.now(),
-      },
-    );
-
-    if (user != null && mounted) {
+      if (!mounted) return;
+      if (user == null) {
+        setState(
+          () => _error = context.tr(
+            'Impossible de créer ce compte. Vérifiez vos informations et réessayez.',
+          ),
+        );
+        return;
+      }
+      accountCreated = true;
+      TextInput.finishAutofillContext();
       final references = context.read<UserDataProvider>();
       references.setUser(user.uid);
       await references.ensureReferences();
       if (!mounted) return;
-      Navigator.pushReplacement(
+      Navigator.of(
         context,
-        MaterialPageRoute(builder: (context) => HomeScreen()),
-      );
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(context.tr('Erreur lors de la creation du compte')),
-        ),
-      );
+      ).pushReplacement(MaterialPageRoute(builder: (_) => HomeScreen()));
+    } catch (_) {
+      if (!mounted) return;
+      if (accountCreated) {
+        // The account exists: do not offer a second registration attempt.
+        _goToLogin();
+      } else {
+        setState(
+          () => _error = context.tr(
+            'Connexion au serveur impossible. Veuillez réessayer.',
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _busy = false);
     }
   }
 
   @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      body: PageView(
-        controller: _pageController,
-        physics: NeverScrollableScrollPhysics(),
-        onPageChanged: (index) {
-          setState(() {
-            _currentPage = index;
-          });
-        },
-        children: [
-          // Page 0: Présentation 1
-          _buildModernPresentationPage(
-            title: 'Espace financier personnel',
-            description:
-                '👋 Bienvenue dans votre espace financier personnel ! 👋\n\n'
-                '🔄 Synchronisation multiplateforme 🔄\n Accédez à vos données où que vous soyez — sur mobile, tablette ou ordinateur — grâce à un compte sécurisé et synchronisé. \n\n'
-                '💼 Accès fluide et continu à ses finances personnelles 💼\n Créez votre compte en quelques secondes pour commencer à gérer vos finances simplement, efficacement et en toute sécurité.',
-            imageAsset: 'assets/icons/welcome_icon.png',
-            pageIndex: 0,
-          ),
-          // Page 1: Présentation 2
-          _buildModernPresentationPage(
-            title: 'Fonctionnalités',
-            description:
-                '💡 Fonctionnalités puissantes, liberté totale.💡\n\n'
-                'Prenez le contrôle total de vos finances personnelles grâce à une application 100% autonome, simple et intuitive.\n\n'
-                '⚙️ Fonctionnalités clés ⚙️\n\n'
-                '🧾 Gestion de budget personnalisée 🧾\n'
-                '📊 Visualisations graphiques claires 📊\n'
-                '🗂️ Catégorisation libre 🗂️\n'
-                '💼 Simulation d\'investissement simple 💼\n'
-                '🗓️ Vue mensuelle et vue globale 🗓️\n',
-            imageAsset: 'assets/icons/fonctionalities_icon.png',
-            pageIndex: 1,
-          ),
-          // Page 2: Présentation 3
-          _buildModernPresentationPage(
-            title: 'Sécurité',
-            description:
-                '🔐 La sécurité de vos données est notre priorité. 🔐\n\n'
-                'Vos informations personnelles sont chiffrées et stockées de manière sécurisée, accessibles uniquement par vous. '
-                'Grâce à un compte protégé et une synchronisation sécurisée, vous gérez vos finances en toute confiance, sur toutes vos plateformes.',
-            imageAsset: 'assets/icons/security_icon.png',
-            pageIndex: 2,
-          ),
-          // Page 3: Sélection des options
-          _buildModernSettingsSelectionPage(),
+  Widget build(BuildContext context) => AuthScaffold(
+    scrollController: _scrollController,
+    formBuilder: (context, compact) => _formPanel(context, compact: compact),
+  );
 
-          // Page 4: Formulaire d'inscription
-          _buildRegistrationForm(),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildModernPresentationPage({
-    required String title,
-    required String description,
-    required String imageAsset,
-    required int pageIndex,
-  }) {
-    final bullets = _presentationBullets(pageIndex);
-
-    return _buildOnboardingShell(
-      pageIndex: pageIndex,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          const SizedBox(height: 12),
-          _buildProgressDots(pageIndex),
-          const SizedBox(height: 24),
-          Expanded(
-            child: SingleChildScrollView(
-              child: Column(
-                children: [
-                  Container(
-                    height: 210,
-                    width: double.infinity,
-                    decoration: BoxDecoration(
-                      color: Theme.of(
-                        context,
-                      ).colorScheme.surfaceVariant.withOpacity(0.35),
-                      borderRadius: BorderRadius.circular(28),
-                    ),
-                    child: Padding(
-                      padding: const EdgeInsets.all(24),
-                      child: Image.asset(imageAsset, fit: BoxFit.contain),
-                    ),
-                  ),
-                  const SizedBox(height: 28),
-                  Text(
-                    title,
-                    textAlign: TextAlign.center,
-                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                      fontWeight: FontWeight.w800,
-                      height: 1.1,
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  Text(
-                    _presentationIntro(pageIndex),
-                    textAlign: TextAlign.center,
-                    style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                      height: 1.45,
-                      color: Theme.of(
-                        context,
-                      ).colorScheme.onSurface.withOpacity(0.72),
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-                  ...bullets.map(
-                    (item) => _buildFeatureRow(
-                      icon: item.icon,
-                      title: item.title,
-                      subtitle: item.subtitle,
-                    ),
-                  ),
-                ],
+  Widget _formPanel(BuildContext context, {required bool compact}) {
+    final titles = [
+      'Faisons connaissance',
+      'Protégez votre espace',
+      'À votre image',
+    ];
+    final descriptions = [
+      'Quelques informations pour créer votre profil.',
+      'Choisissez vos identifiants et votre code de verrouillage.',
+      'Ces préférences pourront être modifiées dans les paramètres.',
+    ];
+    return Padding(
+      padding: EdgeInsets.all(compact ? 22 : 40),
+      child: AutofillGroup(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (compact) ...[const AuthBrand(), const SizedBox(height: 28)],
+            _progress(),
+            const SizedBox(height: 30),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: AuthPalette.tint,
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: Icon(
+                  [Icons.person_outline, Icons.lock_outline, Icons.tune][_step],
+                  color: AuthPalette.accent,
+                  size: 24,
+                ),
               ),
             ),
-          ),
-          const SizedBox(height: 16),
-          _buildNavigationButtons(
-            backLabel: pageIndex == 0 ? 'Connexion' : 'Retour',
-            onBack: pageIndex == 0 ? _goToLogin : _previousPage,
-            onNext: _nextPage,
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildModernSettingsSelectionPage() {
-    return _buildOnboardingShell(
-      pageIndex: 3,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          const SizedBox(height: 12),
-          _buildProgressDots(3),
-          const SizedBox(height: 20),
-          Expanded(
-            child: SingleChildScrollView(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Text(
-                    'Personnalisation',
-                    textAlign: TextAlign.center,
-                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Choisissez les preferences qui suivront votre compte.',
-                    textAlign: TextAlign.center,
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: Theme.of(
-                        context,
-                      ).colorScheme.onSurface.withOpacity(0.68),
-                    ),
-                  ),
-                  const SizedBox(height: 18),
-                  Image.asset(
-                    'assets/icons/user_settings_icon.png',
-                    height: 150,
-                  ),
-                  const SizedBox(height: 24),
-                  _buildPreferenceCard(
-                    icon: Icons.payments_outlined,
-                    title: 'Devise',
-                    subtitle: 'Format utilise dans vos comptes et graphiques.',
-                    child: CurrencySelector(
-                      initialCurrencyCode: _selectedCurrencyCode,
-                      onCurrencyChanged: (value) {
-                        setState(() {
-                          _selectedCurrencyCode = value;
-                        });
-                      },
-                    ),
-                  ),
-                  const SizedBox(height: 14),
-                  _buildPreferenceCard(
-                    icon: Icons.translate_outlined,
-                    title: 'Langue',
-                    subtitle: 'Preference sauvegardee pour votre profil.',
-                    child: LanguageSelector(
-                      initialLanguageCode: _selectedLanguageCode,
-                      onLanguageChanged: (value) {
-                        setState(() {
-                          _selectedLanguageCode = value;
-                        });
-                      },
-                    ),
-                  ),
-                  const SizedBox(height: 14),
-                  _buildPreferenceCard(
-                    icon: Icons.palette_outlined,
-                    title: 'Theme',
-                    subtitle: 'L apparence change directement pendant le choix.',
-                    child: ThemeSelector(
-                      initialTheme: _selectedTheme,
-                      onThemeChanged: (value) {
-                        setState(() {
-                          _selectedTheme = value;
-                        });
-                      },
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-                ],
+            const SizedBox(height: 16),
+            Text(
+              context.tr(titles[_step]),
+              style: const TextStyle(
+                color: AuthPalette.text,
+                fontSize: 27,
+                fontWeight: FontWeight.w600,
+                letterSpacing: -0.8,
               ),
             ),
-          ),
-          const SizedBox(height: 16),
-          _buildNavigationButtons(
-            backLabel: 'Retour',
-            onBack: _previousPage,
-            onNext: _nextPage,
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildOnboardingShell({
-    required int pageIndex,
-    required Widget child,
-  }) {
-    return SafeArea(
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(20, 12, 20, 18),
-        child: child,
-      ),
-    );
-  }
-
-  Widget _buildProgressDots(int pageIndex) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: List.generate(5, (index) {
-        final isActive = index == pageIndex;
-        return AnimatedContainer(
-          duration: const Duration(milliseconds: 220),
-          margin: const EdgeInsets.symmetric(horizontal: 4),
-          height: 8,
-          width: isActive ? 26 : 8,
-          decoration: BoxDecoration(
-            color: isActive
-                ? Theme.of(context).colorScheme.primary
-                : Theme.of(context).colorScheme.outline.withOpacity(0.35),
-            borderRadius: BorderRadius.circular(999),
-          ),
-        );
-      }),
-    );
-  }
-
-  Widget _buildFeatureRow({
-    required IconData icon,
-    required String title,
-    required String subtitle,
-  }) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.28),
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(
-          color: Theme.of(context).colorScheme.outline.withOpacity(0.12),
+            const SizedBox(height: 8),
+            Text(
+              context.tr(descriptions[_step]),
+              style: const TextStyle(
+                color: AuthPalette.muted,
+                fontSize: 13,
+                height: 1.5,
+              ),
+            ),
+            const SizedBox(height: 26),
+            Form(
+              key: _forms[_step],
+              autovalidateMode: AutovalidateMode.onUserInteraction,
+              child: AbsorbPointer(
+                absorbing: _busy,
+                child: switch (_step) {
+                  0 => _profileFields(),
+                  1 => _securityFields(),
+                  _ => _preferences(),
+                },
+              ),
+            ),
+            if (_error != null) ...[
+              const SizedBox(height: 16),
+              Semantics(
+                liveRegion: true,
+                child: Text(
+                  _error!,
+                  style: TextStyle(
+                    color: Theme.of(context).colorScheme.error,
+                    height: 1.5,
+                  ),
+                ),
+              ),
+            ],
+            const SizedBox(height: 28),
+            FilledButton(
+              onPressed: _busy ? null : _continue,
+              style: FilledButton.styleFrom(
+                backgroundColor: AuthPalette.accent,
+                foregroundColor: AuthPalette.background,
+                minimumSize: const Size.fromHeight(48),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    if (_busy) ...[
+                      const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: AuthPalette.background,
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                    ],
+                    Flexible(
+                      child: Text(
+                        context.tr(
+                          _busy
+                              ? 'Création en cours…'
+                              : _step == 2
+                              ? 'Créer mon compte'
+                              : 'Continuer',
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                    if (!_busy) ...[
+                      const SizedBox(width: 10),
+                      const Icon(Icons.arrow_forward, size: 18),
+                    ],
+                  ],
+                ),
+              ),
+            ),
+            if (_step > 0)
+              TextButton(
+                onPressed: _busy ? null : () => _changeStep(_step - 1),
+                child: Text(context.tr('Retour')),
+              ),
+            const SizedBox(height: 18),
+            Wrap(
+              alignment: WrapAlignment.center,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              children: [
+                Text(
+                  context.tr('Déjà un compte ?'),
+                  style: const TextStyle(
+                    color: AuthPalette.muted,
+                    fontSize: 13,
+                  ),
+                ),
+                TextButton(
+                  onPressed: _busy ? null : _goToLogin,
+                  child: Text(context.tr('Se connecter')),
+                ),
+              ],
+            ),
+          ],
         ),
       ),
-      child: Row(
-        children: [
-          Container(
-            height: 42,
-            width: 42,
-            decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.primary.withOpacity(0.12),
-              borderRadius: BorderRadius.circular(14),
-            ),
-            child: Icon(icon, color: Theme.of(context).colorScheme.primary),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
+    );
+  }
+
+  Widget _progress() => Semantics(
+    label: context.tr('Étape ${_step + 1} sur 3'),
+    child: Row(
+      children: List.generate(3, (index) {
+        final active = index <= _step;
+        return Expanded(
+          child: Padding(
+            padding: EdgeInsets.only(right: index == 2 ? 0 : 12),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  title,
-                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                    fontWeight: FontWeight.w800,
+                Container(
+                  height: 3,
+                  decoration: BoxDecoration(
+                    color: active ? AuthPalette.accent : AuthPalette.border,
+                    borderRadius: BorderRadius.circular(4),
                   ),
                 ),
-                const SizedBox(height: 3),
+                const SizedBox(height: 9),
                 Text(
-                  subtitle,
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    height: 1.35,
-                    color: Theme.of(
-                      context,
-                    ).colorScheme.onSurface.withOpacity(0.66),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildPreferenceCard({
-    required IconData icon,
-    required String title,
-    required String subtitle,
-    required Widget child,
-  }) {
-    return Container(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 18),
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.24),
-        borderRadius: BorderRadius.circular(22),
-        border: Border.all(
-          color: Theme.of(context).colorScheme.outline.withOpacity(0.12),
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(icon, color: Theme.of(context).colorScheme.primary),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      title,
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      subtitle,
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: Theme.of(
-                          context,
-                        ).colorScheme.onSurface.withOpacity(0.62),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 14),
-          child,
-        ],
-      ),
-    );
-  }
-
-  Widget _buildNavigationButtons({
-    required String backLabel,
-    required VoidCallback onBack,
-    required VoidCallback onNext,
-  }) {
-    return Row(
-      children: [
-        SizedBox(
-          height: 52,
-          child: OutlinedButton.icon(
-            onPressed: onBack,
-            icon: const Icon(Icons.arrow_back),
-            label: Text(backLabel),
-          ),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: SizedBox(
-            height: 52,
-            child: ElevatedButton(
-              onPressed: onNext,
-              style: ElevatedButton.styleFrom(
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
-                ),
-              ),
-              child: const Text(
-                'Suivant',
-                style: TextStyle(fontWeight: FontWeight.w800),
-              ),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  String _presentationIntro(int pageIndex) {
-    switch (pageIndex) {
-      case 0:
-        return 'Un espace simple pour suivre vos comptes, vos mouvements et votre solde au quotidien.';
-      case 1:
-        return 'Des outils clairs pour classer vos revenus, vos depenses, vos transferts et vos investissements.';
-      case 2:
-        return 'Votre compte reste protege par authentification et code PIN avant acces a vos donnees.';
-      default:
-        return '';
-    }
-  }
-
-  List<_OnboardingBullet> _presentationBullets(int pageIndex) {
-    switch (pageIndex) {
-      case 0:
-        return const [
-          _OnboardingBullet(
-            icon: Icons.account_balance_wallet_outlined,
-            title: 'Vue claire',
-            subtitle: 'Retrouvez vos comptes et votre solde en quelques secondes.',
-          ),
-          _OnboardingBullet(
-            icon: Icons.sync_outlined,
-            title: 'Synchronisation',
-            subtitle: 'Vos donnees suivent votre compte sur vos appareils.',
-          ),
-          _OnboardingBullet(
-            icon: Icons.timeline_outlined,
-            title: 'Suivi mensuel',
-            subtitle: 'Gardez le fil de vos mouvements mois apres mois.',
-          ),
-        ];
-      case 1:
-        return const [
-          _OnboardingBullet(
-            icon: Icons.category_outlined,
-            title: 'Categories libres',
-            subtitle: 'Organisez vos depenses et revenus selon vos habitudes.',
-          ),
-          _OnboardingBullet(
-            icon: Icons.bar_chart_outlined,
-            title: 'Graphiques',
-            subtitle: 'Visualisez rapidement les tendances importantes.',
-          ),
-          _OnboardingBullet(
-            icon: Icons.trending_up_outlined,
-            title: 'Investissements',
-            subtitle: 'Suivez vos supports comme ETF, gold ou crypto.',
-          ),
-        ];
-      case 2:
-        return const [
-          _OnboardingBullet(
-            icon: Icons.lock_outline,
-            title: 'Code PIN',
-            subtitle: 'Une couche de protection rapide avant ouverture.',
-          ),
-          _OnboardingBullet(
-            icon: Icons.verified_user_outlined,
-            title: 'Compte protege',
-            subtitle: 'Connexion securisee et donnees liees a votre profil.',
-          ),
-          _OnboardingBullet(
-            icon: Icons.privacy_tip_outlined,
-            title: 'Controle',
-            subtitle: 'Vous gardez la main sur vos preferences utilisateur.',
-          ),
-        ];
-      default:
-        return const [];
-    }
-  }
-
-  Widget _buildPresentationPage({
-    required String title,
-    required String description,
-    required String imageAsset,
-    required int pageIndex,
-  }) {
-    return Padding(
-      padding: const EdgeInsets.all(16.0),
-      child: Column(
-        children: [
-          SizedBox(height: 16),
-
-          // Titre seul (plus impactant visuellement)
-          Text(
-            title.toUpperCase(),
-            style: TextStyle(
-              fontSize: 28,
-              fontWeight: FontWeight.bold,
-              letterSpacing: 1.2,
-            ),
-            textAlign: TextAlign.center,
-          ),
-          SizedBox(height: 12),
-
-          // Image illustrative
-          Image.asset(imageAsset, height: 200, fit: BoxFit.contain),
-
-          SizedBox(height: 24),
-
-          // Bloc description modernisé
-          Expanded(
-            child: SingleChildScrollView(
-              child: Container(
-                width: double.infinity,
-                padding: EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  color: Color.fromARGB(255, 53, 53, 53),
-                  borderRadius: BorderRadius.circular(16),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black26,
-                      blurRadius: 8,
-                      offset: Offset(0, 4),
-                    ),
-                  ],
-                ),
-                child: Text(
-                  description,
+                  '${index + 1}. ${context.tr(['Profil', 'Sécurité', 'Préférences'][index])}',
                   style: TextStyle(
-                    fontSize: 16,
-                    height: 1.6,
-                    color: Colors.white,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-              ),
-            ),
-          ),
-
-          SizedBox(height: 16),
-
-          // Boutons navigation
-          Row(
-            children: [
-              SizedBox(
-                width: MediaQuery.of(context).size.width * 0.15,
-                child: OutlinedButton(
-                  onPressed: () {
-                    if (pageIndex == 0) {
-                      _goToLogin();
-                    } else {
-                      _previousPage();
-                    }
-                  },
-                  child: Icon(Icons.arrow_back),
-                ),
-              ),
-              SizedBox(width: 12),
-              Expanded(
-                child: ElevatedButton(
-                  onPressed: _nextPage,
-                  style: ElevatedButton.styleFrom(
-                    padding: EdgeInsets.symmetric(vertical: 16),
-                    textStyle: TextStyle(fontSize: 18),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                  child: Text(context.tr('Suivant')),
-                ),
-              ),
-            ],
-          ),
-
-          SizedBox(height: 16),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildSettingsSelectionPage() {
-    return Padding(
-      padding: const EdgeInsets.all(16.0),
-      child: Column(
-        children: [
-          Expanded(
-            child: SingleChildScrollView(
-              child: Column(
-                children: [
-                  SizedBox(height: 16),
-                  Text(
-                    context.tr('Preferences utilisateur'),
-                    style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
-                    textAlign: TextAlign.center,
-                  ),
-                  Image.asset(
-                    'assets/icons/user_settings_icon.png',
-                    height: 200,
-                  ),
-                  SizedBox(height: 24),
-
-                  // --- Devise ---
-                  Container(
-                    padding: EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: Color.fromARGB(255, 53, 53, 53),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          context.tr('Selectionnez votre devise'),
-                          style: TextStyle(fontSize: 16, color: Colors.white),
-                        ),
-                        SizedBox(height: 8),
-                        CurrencySelector(
-                          initialCurrencyCode: _selectedCurrencyCode,
-                          onCurrencyChanged: (value) {
-                            setState(() {
-                              _selectedCurrencyCode = value;
-                            });
-                          },
-                        ),
-                      ],
-                    ),
-                  ),
-
-                  SizedBox(height: 16),
-
-                  // --- Langue ---
-                  Container(
-                    padding: EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: Color.fromARGB(255, 53, 53, 53),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          context.tr('Selectionnez votre langue'),
-                          style: TextStyle(fontSize: 16, color: Colors.white),
-                        ),
-                        SizedBox(height: 8),
-                        LanguageSelector(
-                          initialLanguageCode: _selectedLanguageCode,
-                          onLanguageChanged: (value) {
-                            setState(() {
-                              _selectedLanguageCode = value;
-                            });
-                          },
-                        ),
-                      ],
-                    ),
-                  ),
-
-                  SizedBox(height: 16),
-
-                  // --- Thème ---
-                  Container(
-                    padding: EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: Color.fromARGB(255, 53, 53, 53),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          context.tr('Selectionnez votre theme'),
-                          style: TextStyle(fontSize: 16, color: Colors.white),
-                        ),
-                        SizedBox(height: 8),
-                        ThemeSelector(
-                          initialTheme: _selectedTheme,
-                          onThemeChanged: (value) {
-                            setState(() {
-                              _selectedTheme = value;
-                            });
-                          },
-                        ),
-                      ],
-                    ),
-                  ),
-
-                  SizedBox(height: 24),
-                ],
-              ),
-            ),
-          ),
-
-          // --- Boutons bas de page ---
-          SizedBox(height: 16),
-          Row(
-            children: [
-              SizedBox(
-                width: MediaQuery.of(context).size.width * 0.13,
-                child: OutlinedButton(
-                  onPressed: _previousPage,
-                  child: Icon(Icons.arrow_back),
-                ),
-              ),
-              SizedBox(width: 15),
-              Expanded(
-                child: ElevatedButton(
-                  onPressed: _nextPage,
-                  style: ElevatedButton.styleFrom(
-                    padding: EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    textStyle: TextStyle(fontSize: 18),
-                  ),
-                  child: Text(context.tr('Suivant')),
-                ),
-              ),
-            ],
-          ),
-          SizedBox(height: 16),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildRegistrationForm() {
-    final bool allSectionsConfirmed =
-        _personalInfoConfirmed && _accountInfoConfirmed && _securityConfirmed;
-
-    return Padding(
-      padding: const EdgeInsets.all(16.0),
-      child: Column(
-        children: [
-          Expanded(
-            child: ListView(
-              children: [
-                const SizedBox(height: 8),
-                _buildProgressDots(4),
-                const SizedBox(height: 22),
-                Text(
-                  context.tr('Creation du compte'),
-                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                    fontWeight: FontWeight.w800,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  context.tr(
-                    'Completez chaque section pour securiser votre espace MySold.',
-                  ),
-                  textAlign: TextAlign.center,
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: Theme.of(
-                      context,
-                    ).colorScheme.onSurface.withOpacity(0.68),
-                  ),
-                ),
-                const SizedBox(height: 22),
-
-                // SECTION 1
-                _buildExpandableSection(
-                  title: context.tr('Informations personnelles'),
-                  confirmed: _personalInfoConfirmed,
-                  onEdit: () => setState(() => _personalInfoConfirmed = false),
-                  contentVisible: !_personalInfoConfirmed,
-                  content: Column(
-                    children: [
-                      TextField(
-                        controller: _firstNameController,
-                        decoration: InputDecoration(
-                          labelText: context.tr('Prenom'),
-                          border: OutlineInputBorder(),
-                        ),
-                      ),
-                      SizedBox(height: 12),
-                      TextField(
-                        controller: _lastNameController,
-                        decoration: InputDecoration(
-                          labelText: context.tr('Nom'),
-                          border: OutlineInputBorder(),
-                        ),
-                      ),
-                      SizedBox(height: 12),
-                      TextField(
-                        controller: _phoneController,
-                        keyboardType: TextInputType.phone,
-                        inputFormatters: [
-                          FilteringTextInputFormatter.digitsOnly,
-                        ],
-                        decoration: InputDecoration(
-                          labelText: context.tr('Telephone'),
-                          border: OutlineInputBorder(),
-                        ),
-                      ),
-                      SizedBox(height: 12),
-                      ElevatedButton.icon(
-                        icon: Icon(Icons.check),
-                        label: Text(context.tr('Confirmer')),
-                        onPressed: () {
-                          if (_firstNameController.text.isNotEmpty &&
-                              _lastNameController.text.isNotEmpty &&
-                              _phoneController.text.isNotEmpty) {
-                            setState(() => _personalInfoConfirmed = true);
-                          } else {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text(
-                                  context.tr(
-                                    'Veuillez remplir tous les champs personnels.',
-                                  ),
-                                ),
-                              ),
-                            );
-                          }
-                        },
-                      ),
-                    ],
-                  ),
-                ),
-
-                SizedBox(height: 24),
-
-                // SECTION 2
-                _buildExpandableSection(
-                  title: context.tr('Informations du compte'),
-                  confirmed: _accountInfoConfirmed,
-                  onEdit: () => setState(() => _accountInfoConfirmed = false),
-                  contentVisible:
-                      !_accountInfoConfirmed && _personalInfoConfirmed,
-                  content: Column(
-                    children: [
-                      TextField(
-                        controller: _emailController,
-                        keyboardType: TextInputType.emailAddress,
-                        decoration: InputDecoration(
-                          labelText: context.tr('Email'),
-                          border: OutlineInputBorder(),
-                        ),
-                      ),
-                      SizedBox(height: 12),
-                      TextField(
-                        controller: _passwordController,
-                        obscureText: _obscurePassword,
-                        decoration: InputDecoration(
-                          labelText: context.tr('Mot de passe'),
-                          border: OutlineInputBorder(),
-                          suffixIcon: IconButton(
-                            icon: Icon(
-                              _obscurePassword
-                                  ? Icons.visibility_off
-                                  : Icons.visibility,
-                            ),
-                            onPressed: () {
-                              setState(
-                                () => _obscurePassword = !_obscurePassword,
-                              );
-                            },
-                          ),
-                        ),
-                      ),
-                      SizedBox(height: 12),
-                      TextField(
-                        controller: _confirmPasswordController,
-                        obscureText: _obscureConfirmPassword,
-                        decoration: InputDecoration(
-                          labelText: context.tr('Confirmer le mot de passe'),
-                          border: OutlineInputBorder(),
-                          suffixIcon: IconButton(
-                            icon: Icon(
-                              _obscureConfirmPassword
-                                  ? Icons.visibility_off
-                                  : Icons.visibility,
-                            ),
-                            onPressed: () {
-                              setState(
-                                () => _obscureConfirmPassword =
-                                    !_obscureConfirmPassword,
-                              );
-                            },
-                          ),
-                        ),
-                      ),
-                      SizedBox(height: 12),
-                      ElevatedButton.icon(
-                        icon: Icon(Icons.check),
-                        label: Text(context.tr('Confirmer')),
-                        onPressed: () {
-                          if (_emailController.text.isNotEmpty &&
-                              _isValidEmail(_emailController.text) &&
-                              _passwordController.text.isNotEmpty &&
-                              _isSecurePassword(_passwordController.text) &&
-                              _confirmPasswordController.text ==
-                                  _passwordController.text) {
-                            setState(() => _accountInfoConfirmed = true);
-                          } else {
-                            String message;
-                            if (!_isValidEmail(_emailController.text)) {
-                              message = context.tr('Adresse email invalide.');
-                            } else if (!_isSecurePassword(
-                              _passwordController.text,
-                            )) {
-                              message = context.tr(
-                                'Le mot de passe doit contenir au moins 1 majuscule, 1 chiffre et 1 caractere special.',
-                              );
-                            } else if (_passwordController.text !=
-                                _confirmPasswordController.text) {
-                              message = context.tr(
-                                'Les mots de passe ne correspondent pas.',
-                              );
-                            } else {
-                              message = context.tr(
-                                'Veuillez remplir tous les champs du compte.',
-                              );
-                            }
-
-                            ScaffoldMessenger.of(
-                              context,
-                            ).showSnackBar(SnackBar(content: Text(message)));
-                          }
-                        },
-                      ),
-                    ],
-                  ),
-                ),
-
-                SizedBox(height: 24),
-
-                // SECTION 3
-                _buildExpandableSection(
-                  title: context.tr('Securite de l application'),
-                  confirmed: _securityConfirmed,
-                  onEdit: () => setState(() => _securityConfirmed = false),
-                  contentVisible:
-                      !_securityConfirmed &&
-                      _personalInfoConfirmed &&
-                      _accountInfoConfirmed,
-                  content: Column(
-                    children: [
-                      TextField(
-                        controller: _pinController,
-                        keyboardType: TextInputType.number,
-                        inputFormatters: [
-                          FilteringTextInputFormatter.digitsOnly,
-                        ],
-                        obscureText: _obscurePin,
-                        maxLength: 6,
-                        decoration: InputDecoration(
-                          labelText: context.tr('PIN (6 chiffres)'),
-                          border: OutlineInputBorder(),
-                          counterText: '',
-                          suffixIcon: IconButton(
-                            icon: Icon(
-                              _obscurePin
-                                  ? Icons.visibility_off
-                                  : Icons.visibility,
-                            ),
-                            onPressed: () {
-                              setState(() => _obscurePin = !_obscurePin);
-                            },
-                          ),
-                        ),
-                      ),
-                      SizedBox(height: 12),
-                      DropdownButtonFormField<String>(
-                        value: _reconnectionFrequency,
-                        items: _frequencies
-                            .map(
-                              (f) => DropdownMenuItem(
-                                value: f,
-                                child: Text(_frequencyLabel(f)),
-                              ),
-                            )
-                            .toList(),
-                        onChanged: (value) {
-                          if (value != null)
-                            setState(() => _reconnectionFrequency = value);
-                        },
-                        decoration: InputDecoration(
-                          labelText:
-                              context.tr('Demande de reconnexion tous les...'),
-                          border: OutlineInputBorder(),
-                        ),
-                      ),
-                      SizedBox(height: 12),
-                      ElevatedButton.icon(
-                        icon: Icon(Icons.check),
-                        label: Text(context.tr('Confirmer')),
-                        onPressed: () {
-                          if (_pinController.text.length == 6) {
-                            setState(() => _securityConfirmed = true);
-                          } else {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text(
-                                  context.tr(
-                                    'Le code PIN doit contenir 6 chiffres.',
-                                  ),
-                                ),
-                              ),
-                            );
-                          }
-                        },
-                      ),
-                    ],
+                    fontSize: 11,
+                    color: active ? AuthPalette.accent : AuthPalette.muted,
+                    fontWeight: index == _step
+                        ? FontWeight.w700
+                        : FontWeight.w400,
                   ),
                 ),
               ],
             ),
           ),
+        );
+      }),
+    ),
+  );
 
-          // BOUTON BAS DE PAGE
-          SizedBox(height: 16),
-          Row(
-            children: [
-              SizedBox(
-                width: MediaQuery.of(context).size.width * 0.13,
-                child: OutlinedButton(
-                  onPressed: _previousPage,
-                  child: Icon(Icons.arrow_back),
+  String? _required(String? value) => value == null || value.trim().isEmpty
+      ? context.tr('Ce champ est requis.')
+      : null;
+
+  Widget _field(
+    TextEditingController controller,
+    String label,
+    IconData icon, {
+    TextInputType? keyboard,
+    Iterable<String>? autofill,
+    String? Function(String?)? validator,
+    bool obscure = false,
+    VoidCallback? toggle,
+    String? helper,
+    List<TextInputFormatter>? formatters,
+    int? maxLength,
+  }) => Padding(
+    padding: const EdgeInsets.only(bottom: 16),
+    child: TextFormField(
+      controller: controller,
+      keyboardType: keyboard,
+      autofillHints: autofill,
+      obscureText: obscure,
+      autocorrect: toggle == null && keyboard == TextInputType.name,
+      enableSuggestions: toggle == null,
+      textInputAction: TextInputAction.next,
+      inputFormatters: formatters,
+      maxLength: maxLength,
+      validator: validator ?? _required,
+      decoration: InputDecoration(
+        labelText: context.tr(label),
+        prefixIcon: Icon(icon, size: 19),
+        helperText: helper == null ? null : context.tr(helper),
+        helperMaxLines: 3,
+        counterText: '',
+        suffixIcon: toggle == null
+            ? null
+            : IconButton(
+                tooltip: context.tr(obscure ? 'Afficher' : 'Masquer'),
+                onPressed: toggle,
+                icon: Icon(
+                  obscure
+                      ? Icons.visibility_off_outlined
+                      : Icons.visibility_outlined,
+                  size: 20,
                 ),
               ),
-              SizedBox(width: 15),
-              Expanded(
-                child: ElevatedButton(
-                  onPressed: () {
-                    if (allSectionsConfirmed) {
-                      _register();
-                    } else {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text(
-                            context.tr(
-                              'Veuillez completer toutes les sections.',
-                            ),
-                          ),
-                        ),
-                      );
-                    }
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: allSectionsConfirmed
-                        ? Colors.green
-                        : Theme.of(context).colorScheme.outline,
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                  ),
-                  child: Text(
-                    context.tr('Creer mon compte'),
-                    style: TextStyle(fontSize: 18, color: Colors.white),
-                  ),
-                ),
-              ),
-            ],
-          ),
-          SizedBox(height: 16),
-        ],
       ),
-    );
-  }
+    ),
+  );
 
-  Widget _buildExpandableSection({
-    required String title,
-    required bool confirmed,
-    required VoidCallback onEdit,
-    required bool contentVisible,
-    required Widget content,
-  }) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.24),
-        borderRadius: BorderRadius.circular(22),
-        border: Border.all(
-          color: confirmed
-              ? Colors.green.withOpacity(0.35)
-              : Theme.of(context).colorScheme.outline.withOpacity(0.14),
+  Widget _profileFields() => Column(
+    children: [
+      Builder(
+        builder: (context) {
+          final first = _field(
+            _firstName,
+            'Prénom',
+            Icons.person_outline,
+            keyboard: TextInputType.name,
+            autofill: [AutofillHints.givenName],
+          );
+          final last = _field(
+            _lastName,
+            'Nom',
+            Icons.person_outline,
+            keyboard: TextInputType.name,
+            autofill: [AutofillHints.familyName],
+          );
+          if (MediaQuery.sizeOf(context).width < 500)
+            return Column(children: [first, last]);
+          return Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(child: first),
+              const SizedBox(width: 12),
+              Expanded(child: last),
+            ],
+          );
+        },
+      ),
+      _field(
+        _email,
+        'Adresse e-mail',
+        Icons.mail_outline,
+        keyboard: TextInputType.emailAddress,
+        autofill: [AutofillHints.email],
+        validator: (value) {
+          if (value == null ||
+              !RegExp(r'^[^\s@]+@[^\s@]+\.[^\s@]+$').hasMatch(value.trim()) ||
+              value.trim().length > 254)
+            return context.tr('Adresse email invalide.');
+          return null;
+        },
+      ),
+      _field(
+        _phone,
+        'Téléphone',
+        Icons.phone_outlined,
+        keyboard: TextInputType.phone,
+        autofill: [AutofillHints.telephoneNumber],
+      ),
+    ],
+  );
+
+  Widget _securityFields() => Column(
+    children: [
+      _field(
+        _password,
+        'Mot de passe',
+        Icons.lock_outline,
+        autofill: [AutofillHints.newPassword],
+        obscure: _hidePassword,
+        toggle: () => setState(() => _hidePassword = !_hidePassword),
+        helper:
+            '8 caractères minimum, une majuscule, un chiffre et un caractère spécial.',
+        validator: (value) {
+          if (value == null ||
+              value.length < 8 ||
+              value.length > 256 ||
+              !RegExp(r'[A-Z]').hasMatch(value) ||
+              !RegExp(r'\d').hasMatch(value) ||
+              !RegExp(r'[!@#\$&*~%?+=]').hasMatch(value))
+            return context.tr(
+              'Choisissez un mot de passe respectant les critères indiqués.',
+            );
+          return null;
+        },
+      ),
+      _field(
+        _confirmation,
+        'Confirmer le mot de passe',
+        Icons.lock_outline,
+        autofill: [AutofillHints.newPassword],
+        obscure: _hideConfirmation,
+        toggle: () => setState(() => _hideConfirmation = !_hideConfirmation),
+        validator: (value) =>
+            value != _password.text || value == null || value.isEmpty
+            ? context.tr('Les mots de passe ne correspondent pas.')
+            : null,
+      ),
+      _field(
+        _pin,
+        'PIN (6 chiffres)',
+        Icons.dialpad_outlined,
+        keyboard: TextInputType.number,
+        obscure: _hidePin,
+        toggle: () => setState(() => _hidePin = !_hidePin),
+        formatters: [FilteringTextInputFormatter.digitsOnly],
+        maxLength: 6,
+        helper: 'Ce code verrouille votre interface MySold.',
+        validator: (value) =>
+            value == null || !RegExp(r'^\d{6}$').hasMatch(value)
+            ? context.tr('Le code PIN doit contenir 6 chiffres.')
+            : null,
+      ),
+      DropdownButtonFormField<String>(
+        initialValue: _reconnection,
+        isExpanded: true,
+        decoration: InputDecoration(
+          labelText: context.tr('Demander une reconnexion'),
+          prefixIcon: const Icon(Icons.shield_outlined, size: 19),
+        ),
+        items: ['never', 'always']
+            .map(
+              (value) => DropdownMenuItem(
+                value: value,
+                child: Text(
+                  context.tr(value == 'always' ? 'Toujours' : 'Jamais'),
+                ),
+              ),
+            )
+            .toList(),
+        onChanged: (value) =>
+            setState(() => _reconnection = value ?? _reconnection),
+      ),
+    ],
+  );
+
+  Widget _preferences() => Column(
+    children: [
+      DropdownButtonFormField<String>(
+        initialValue: _currency,
+        isExpanded: true,
+        decoration: InputDecoration(
+          labelText: context.tr('Devise'),
+          prefixIcon: const Icon(Icons.payments_outlined, size: 19),
+        ),
+        items: CurrencyProvider.currencies
+            .map(
+              (option) => DropdownMenuItem(
+                value: option.code,
+                child: Text(option.label, overflow: TextOverflow.ellipsis),
+              ),
+            )
+            .toList(),
+        onChanged: (value) => setState(() => _currency = value ?? _currency),
+      ),
+      const SizedBox(height: 18),
+      DropdownButtonFormField<String>(
+        initialValue: _language,
+        isExpanded: true,
+        decoration: InputDecoration(
+          labelText: context.tr('Langue'),
+          prefixIcon: const Icon(Icons.translate, size: 19),
+        ),
+        items: LanguageProvider.languages
+            .map(
+              (option) => DropdownMenuItem(
+                value: option.code,
+                child: Text(option.name),
+              ),
+            )
+            .toList(),
+        onChanged: (value) => setState(() => _language = value ?? _language),
+      ),
+      const SizedBox(height: 18),
+      DropdownButtonFormField<String>(
+        initialValue: _theme,
+        isExpanded: true,
+        decoration: InputDecoration(
+          labelText: context.tr('Thème'),
+          prefixIcon: const Icon(Icons.palette_outlined, size: 19),
+        ),
+        items: AppThemes.themes.keys
+            .map((name) => DropdownMenuItem(value: name, child: Text(name)))
+            .toList(),
+        onChanged: (value) => setState(() => _theme = value ?? _theme),
+      ),
+      const SizedBox(height: 20),
+      Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: AuthPalette.tint,
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Icon(
+              Icons.check_circle_outline,
+              size: 20,
+              color: AuthPalette.accent,
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                context.tr(
+                  'Tout est prêt. Votre espace personnel vous attend.',
+                ),
+                style: const TextStyle(
+                  color: AuthPalette.accent,
+                  fontSize: 13,
+                  height: 1.5,
+                ),
+              ),
+            ),
+          ],
         ),
       ),
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Header avec icône et bouton éditer
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Row(
-                children: [
-                  Icon(
-                    confirmed ? Icons.check_circle : Icons.cancel,
-                    color: confirmed ? Colors.green : Colors.red,
-                  ),
-                  SizedBox(width: 8),
-                  Text(title, style: TextStyle(fontSize: 18)),
-                ],
-              ),
-              IconButton(icon: Icon(Icons.edit), onPressed: onEdit),
-            ],
-          ),
-          SizedBox(height: 12),
-          // Contenu uniquement si nécessaire
-          if (contentVisible) content,
-        ],
-      ),
-    );
-  }
-}
-
-class _OnboardingBullet {
-  final IconData icon;
-  final String title;
-  final String subtitle;
-
-  const _OnboardingBullet({
-    required this.icon,
-    required this.title,
-    required this.subtitle,
-  });
+    ],
+  );
 }

@@ -17,6 +17,7 @@ from psycopg.rows import dict_row
 from psycopg.types.json import Jsonb
 from werkzeug.exceptions import HTTPException
 from werkzeug.security import check_password_hash, generate_password_hash
+from origin_policy import DEFAULT_APP_ORIGIN, is_allowed_origin
 
 UTC = timezone.utc
 COLLECTIONS = {'accounts', 'categories', 'investments', 'transactions', 'budgetAlerts'}
@@ -86,13 +87,12 @@ def unexpected(error):
 
 
 @app.before_request
-def same_origin():
+def require_application_header():
     if request.method in {'POST', 'PUT', 'PATCH', 'DELETE'}:
         if request.headers.get('X-MySold-Request') != '1':
             raise Problem('Requête refusée.', 'csrf', 403)
-        origin = request.headers.get('Origin')
-        expected = os.environ.get('PUBLIC_ORIGIN', 'http://localhost:8080').rstrip('/')
-        if origin and origin.rstrip('/') != expected:
+        if not is_allowed_origin(request.headers.get('Origin'),
+                                 os.getenv('APP_ORIGIN', DEFAULT_APP_ORIGIN)):
             raise Problem('Origine refusée.', 'csrf', 403)
 
 

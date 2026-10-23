@@ -4,6 +4,7 @@ import hashlib
 import os
 import secrets
 from app import app, connect
+from origin_policy import DEFAULT_APP_ORIGIN
 
 if os.environ.get('MYSOLD_UI_TEST') != '1':
     raise SystemExit('Set MYSOLD_UI_TEST=1 for this local test fixture.')
@@ -20,7 +21,8 @@ if args.remove:
 else:
     email = 'mysold-ui-' + secrets.token_hex(4) + '@example.invalid'
     # Synthetic local test credentials, not an application default account.
-    headers = {'X-MySold-Request': '1', 'Origin': os.environ['PUBLIC_ORIGIN']}
+    headers = {'X-MySold-Request': '1',
+               'Origin': os.getenv('APP_ORIGIN', DEFAULT_APP_ORIGIN).split(',')[0].strip().rstrip('/')}
     client = app.test_client()
     result = client.post('/api/auth/register', headers=headers, json={
         'email': email, 'password': 'MySold-Test-123!', 'profile': {

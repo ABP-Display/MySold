@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:mysold/enterPinPage.dart';
 import 'package:mysold/services/auth_service.dart';
 import 'package:mysold/l10n/app_localizations.dart';
 import 'package:mysold/providers/user_data_provider.dart';
 import 'package:mysold/register_page.dart';
+import 'package:mysold/widgets/auth_layout.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -14,191 +16,283 @@ class LoginPage extends StatefulWidget {
 }
 
 class _LoginPageState extends State<LoginPage> {
-  final TextEditingController emailController = TextEditingController();
-  final TextEditingController passwordController = TextEditingController();
+  final _form = GlobalKey<FormState>();
+  final emailController = TextEditingController();
+  final passwordController = TextEditingController();
   bool loading = false;
   bool obscurePassword = true;
+  String? _error;
 
   void _showLegalNotice(String title, String body) {
     showDialog<void>(
       context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: Text(dialogContext.tr(title)),
-        content: SingleChildScrollView(
-          child: Text(dialogContext.tr(body)),
+      builder: (dialogContext) => Theme(
+        data: AuthPalette.theme,
+        child: AlertDialog(
+          title: Text(dialogContext.tr(title)),
+          content: SingleChildScrollView(child: Text(dialogContext.tr(body))),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: Text(dialogContext.tr('Fermer')),
+            ),
+          ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext),
-            child: Text(dialogContext.tr('Fermer')),
-          ),
-        ],
       ),
     );
   }
 
-  Future<void> _openPasswordResetDialog() async {
-    _showLegalNotice('Mot de passe oublié',
-        'Contactez la personne qui administre votre instance MySold pour réinitialiser votre mot de passe.');
-  }
+  void _openPasswordResetDialog() => _showLegalNotice(
+    'Mot de passe oublié',
+    'Contactez la personne qui administre votre instance MySold pour réinitialiser votre mot de passe.',
+  );
 
   Future<void> _signIn() async {
-    if (loading) return;
-
-    setState(() => loading = true);
-    final authService = context.read<AuthService>();
-    final user = await authService.signIn(
-      email: emailController.text.trim(),
-      password: passwordController.text,
-    );
-
-    if (!mounted) return;
-    setState(() => loading = false);
-
-    if (user != null) {
+    if (loading || !_form.currentState!.validate()) return;
+    FocusManager.instance.primaryFocus?.unfocus();
+    setState(() {
+      loading = true;
+      _error = null;
+    });
+    try {
+      final user = await context.read<AuthService>().signIn(
+        email: emailController.text.trim(),
+        password: passwordController.text,
+      );
+      if (!mounted) return;
+      if (user == null) {
+        setState(() => _error = context.tr('Erreur de connexion'));
+        return;
+      }
+      TextInput.finishAutofillContext();
       final references = context.read<UserDataProvider>();
       references.setUser(user.uid);
       await references.ensureReferences();
       if (!mounted) return;
-      Navigator.pushReplacement(
-        context,
+      Navigator.of(context).pushReplacement(
         MaterialPageRoute(builder: (_) => const EnterPinPage()),
       );
-      return;
+    } catch (_) {
+      if (mounted)
+        setState(
+          () => _error = context.tr(
+            'Connexion au serveur impossible. Veuillez réessayer.',
+          ),
+        );
+    } finally {
+      if (mounted) setState(() => loading = false);
     }
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(context.tr('Erreur de connexion'))),
-    );
   }
 
   @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colors = theme.colorScheme;
-
-    return Scaffold(
-      body: SafeArea(
-        child: Center(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.fromLTRB(24, 28, 24, 28),
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 460),
+  Widget build(BuildContext context) => AuthScaffold(
+    formBuilder: (context, compact) => Padding(
+      padding: EdgeInsets.all(compact ? 22 : 40),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (compact) ...[const AuthBrand(), const SizedBox(height: 32)],
+          Align(
+            alignment: Alignment.centerLeft,
+            child: Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: AuthPalette.tint,
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: const Icon(
+                Icons.lock_outline,
+                color: AuthPalette.accent,
+                size: 24,
+              ),
+            ),
+          ),
+          const SizedBox(height: 20),
+          Text(
+            context.tr('HEUREUX DE VOUS RETROUVER'),
+            style: const TextStyle(
+              color: AuthPalette.accent,
+              fontSize: 11,
+              letterSpacing: 1.3,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            context.tr('Votre espace personnel'),
+            style: const TextStyle(
+              color: AuthPalette.text,
+              fontSize: 28,
+              fontWeight: FontWeight.w600,
+              letterSpacing: -0.8,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            context.tr('Retrouvez vos comptes, votre budget et vos projets.'),
+            style: const TextStyle(
+              color: AuthPalette.muted,
+              fontSize: 13,
+              height: 1.6,
+            ),
+          ),
+          const SizedBox(height: 28),
+          AutofillGroup(
+            child: Form(
+              key: _form,
+              autovalidateMode: AutovalidateMode.onUserInteraction,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  const _AuthHeader(),
-                  const SizedBox(height: 28),
-                  DecoratedBox(
-                    decoration: BoxDecoration(
-                      color: colors.surfaceVariant.withOpacity(0.34),
-                      borderRadius: BorderRadius.circular(24),
-                      border: Border.all(
-                        color: colors.outline.withOpacity(0.12),
-                      ),
-                    ),
-                    child: Padding(
-                      padding: const EdgeInsets.all(18),
-                      child: Column(
-                        children: [
-                          TextField(
-                            controller: emailController,
-                            keyboardType: TextInputType.emailAddress,
-                            textInputAction: TextInputAction.next,
-                            decoration: InputDecoration(
-                              labelText: context.tr('Email'),
-                              prefixIcon: const Icon(Icons.mail_outline),
-                            ),
-                          ),
-                          const SizedBox(height: 14),
-                          TextField(
-                            controller: passwordController,
-                            obscureText: obscurePassword,
-                            textInputAction: TextInputAction.done,
-                            onSubmitted: (_) => _signIn(),
-                            decoration: InputDecoration(
-                              labelText: context.tr('Mot de passe'),
-                              prefixIcon: const Icon(Icons.lock_outline),
-                              suffixIcon: IconButton(
-                                tooltip: obscurePassword
-                                    ? context.tr('Afficher')
-                                    : context.tr('Masquer'),
-                                onPressed: () => setState(
-                                  () => obscurePassword = !obscurePassword,
-                                ),
-                                icon: Icon(
-                                  obscurePassword
-                                      ? Icons.visibility_outlined
-                                      : Icons.visibility_off_outlined,
-                                ),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(height: 6),
-                          Align(
-                            alignment: Alignment.centerRight,
-                            child: TextButton(
-                              onPressed: _openPasswordResetDialog,
-                              child: Text(context.tr('Mot de passe oublie ?')),
-                            ),
-                          ),
-                          const SizedBox(height: 12),
-                          SizedBox(
-                            width: double.infinity,
-                            height: 52,
-                            child: ElevatedButton.icon(
-                              onPressed: loading ? null : _signIn,
-                              icon: loading
-                                  ? SizedBox(
-                                      width: 18,
-                                      height: 18,
-                                      child: CircularProgressIndicator(
-                                        strokeWidth: 2,
-                                        color: colors.onPrimary,
-                                      ),
-                                    )
-                                  : const Icon(Icons.login_rounded),
-                              label: Text(
-                                loading
-                                    ? context.tr('Connexion...')
-                                    : context.tr('Connexion'),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
+                  TextFormField(
+                    controller: emailController,
+                    enabled: !loading,
+                    keyboardType: TextInputType.emailAddress,
+                    autofillHints: const [AutofillHints.username],
+                    autocorrect: false,
+                    textInputAction: TextInputAction.next,
+                    validator: (value) =>
+                        value == null ||
+                            !RegExp(
+                              r'^[^\s@]+@[^\s@]+\.[^\s@]+$',
+                            ).hasMatch(value.trim())
+                        ? context.tr('Adresse email invalide.')
+                        : null,
+                    decoration: InputDecoration(
+                      labelText: context.tr('Adresse e-mail'),
+                      prefixIcon: const Icon(Icons.mail_outline, size: 19),
                     ),
                   ),
                   const SizedBox(height: 18),
-                  OutlinedButton.icon(
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (_) => const Register()),
-                      );
-                    },
-                    icon: const Icon(Icons.person_add_alt_1_outlined),
-                    label: Text(context.tr('Creer un compte')),
-                  ),
-                  const SizedBox(height: 14),
-                  _LegalNotice(
-                    onTermsTap: () => _showLegalNotice(
-                      'Conditions generales d utilisation',
-                      'legal_terms_full',
+                  TextFormField(
+                    controller: passwordController,
+                    enabled: !loading,
+                    obscureText: obscurePassword,
+                    autofillHints: const [AutofillHints.password],
+                    autocorrect: false,
+                    enableSuggestions: false,
+                    textInputAction: TextInputAction.done,
+                    onFieldSubmitted: (_) => _signIn(),
+                    validator: (value) => value == null || value.isEmpty
+                        ? context.tr('Ce champ est requis.')
+                        : null,
+                    decoration: InputDecoration(
+                      labelText: context.tr('Mot de passe'),
+                      prefixIcon: const Icon(Icons.lock_outline, size: 19),
+                      suffixIcon: IconButton(
+                        tooltip: context.tr(
+                          obscurePassword ? 'Afficher' : 'Masquer',
+                        ),
+                        onPressed: loading
+                            ? null
+                            : () => setState(
+                                () => obscurePassword = !obscurePassword,
+                              ),
+                        icon: Icon(
+                          obscurePassword
+                              ? Icons.visibility_off_outlined
+                              : Icons.visibility_outlined,
+                          size: 20,
+                        ),
+                      ),
                     ),
-                    onPrivacyTap: () => _showLegalNotice(
-                      'Politique de confidentialite',
-                      'privacy_policy_full',
+                  ),
+                  const SizedBox(height: 6),
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: TextButton(
+                      onPressed: loading ? null : _openPasswordResetDialog,
+                      child: Text(context.tr('Mot de passe oublie ?')),
+                    ),
+                  ),
+                  if (_error != null) ...[
+                    const SizedBox(height: 6),
+                    Semantics(
+                      liveRegion: true,
+                      child: Text(
+                        _error!,
+                        style: TextStyle(
+                          color: Theme.of(context).colorScheme.error,
+                          height: 1.5,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                  ],
+                  const SizedBox(height: 8),
+                  FilledButton(
+                    onPressed: loading ? null : _signIn,
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        if (loading) ...[
+                          const SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: AuthPalette.background,
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                        ],
+                        Flexible(
+                          child: Text(
+                            context.tr(
+                              loading ? 'Connexion...' : 'Se connecter',
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                        ),
+                        if (!loading) ...[
+                          const SizedBox(width: 10),
+                          const Icon(Icons.arrow_forward, size: 18),
+                        ],
+                      ],
                     ),
                   ),
                 ],
               ),
             ),
           ),
-        ),
+          const SizedBox(height: 18),
+          Wrap(
+            alignment: WrapAlignment.center,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              Text(
+                context.tr('Pas encore de compte ?'),
+                style: const TextStyle(color: AuthPalette.muted, fontSize: 13),
+              ),
+              TextButton(
+                onPressed: loading
+                    ? null
+                    : () => Navigator.of(context).push(
+                        MaterialPageRoute(builder: (_) => const Register()),
+                      ),
+                child: Text(context.tr('Creer un compte')),
+              ),
+            ],
+          ),
+          const SizedBox(height: 22),
+          const Divider(color: AuthPalette.border),
+          const SizedBox(height: 10),
+          _LegalNotice(
+            onTermsTap: () => _showLegalNotice(
+              'Conditions generales d utilisation',
+              'legal_terms_full',
+            ),
+            onPrivacyTap: () => _showLegalNotice(
+              'Politique de confidentialite',
+              'privacy_policy_full',
+            ),
+          ),
+        ],
       ),
-    );
-  }
+    ),
+  );
 
   @override
   void dispose() {
@@ -211,92 +305,28 @@ class _LoginPageState extends State<LoginPage> {
 class _LegalNotice extends StatelessWidget {
   final VoidCallback onTermsTap;
   final VoidCallback onPrivacyTap;
-
-  const _LegalNotice({
-    required this.onTermsTap,
-    required this.onPrivacyTap,
-  });
+  const _LegalNotice({required this.onTermsTap, required this.onPrivacyTap});
 
   @override
-  Widget build(BuildContext context) {
-    final style = Theme.of(context).textTheme.bodySmall?.copyWith(
-          color: Theme.of(context).colorScheme.onSurface.withOpacity(0.62),
-        );
-
-    return Wrap(
-      alignment: WrapAlignment.center,
-      crossAxisAlignment: WrapCrossAlignment.center,
-      children: [
-        Text(
-          context.tr('En continuant, vous acceptez les'),
-          textAlign: TextAlign.center,
-          style: style,
-        ),
-        TextButton(
-          onPressed: onTermsTap,
-          child: Text(context.tr('CGU')),
-        ),
-        Text(
-          context.tr('et la'),
-          style: style,
-        ),
-        TextButton(
-          onPressed: onPrivacyTap,
-          child: Text(context.tr('Politique de confidentialite')),
-        ),
-        Text('.', style: style),
-      ],
-    );
-  }
-}
-
-class _AuthHeader extends StatelessWidget {
-  const _AuthHeader();
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colors = theme.colorScheme;
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.center,
-      children: [
-        Container(
-          width: 150,
-          height: 150,
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: colors.surfaceVariant.withOpacity(0.42),
-            borderRadius: BorderRadius.circular(28),
-            border: Border.all(color: colors.outline.withOpacity(0.12)),
-          ),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(20),
-            child: Image.asset(
-              'assets/icons/app_icon.png',
-              fit: BoxFit.contain,
-            ),
-          ),
-        ),
-        const SizedBox(height: 20),
-        Text(
-          'MySold',
-          textAlign: TextAlign.center,
-          style: theme.textTheme.headlineLarge?.copyWith(
-            fontWeight: FontWeight.w900,
-            letterSpacing: 0,
-          ),
-        ),
-        const SizedBox(height: 8),
-        Text(
-          context.tr('Connectez-vous a votre espace bancaire.'),
-          textAlign: TextAlign.center,
-          style: theme.textTheme.bodyLarge?.copyWith(
-            color: colors.onSurface.withOpacity(0.70),
-            height: 1.35,
-          ),
-        ),
-      ],
-    );
-  }
+  Widget build(BuildContext context) => Wrap(
+    alignment: WrapAlignment.center,
+    crossAxisAlignment: WrapCrossAlignment.center,
+    children: [
+      Text(
+        context.tr('En continuant, vous acceptez les'),
+        textAlign: TextAlign.center,
+        style: const TextStyle(color: AuthPalette.muted, fontSize: 12),
+      ),
+      TextButton(onPressed: onTermsTap, child: Text(context.tr('CGU'))),
+      Text(
+        context.tr('et la'),
+        style: const TextStyle(color: AuthPalette.muted, fontSize: 12),
+      ),
+      TextButton(
+        onPressed: onPrivacyTap,
+        child: Text(context.tr('Politique de confidentialite')),
+      ),
+      const Text('.', style: TextStyle(color: AuthPalette.muted, fontSize: 12)),
+    ],
+  );
 }

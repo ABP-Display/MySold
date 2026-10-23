@@ -20,10 +20,10 @@ services:
     restart: unless-stopped
     environment:
       DB_HOST: db
+      APP_ORIGIN: ${APP_ORIGIN-http://localhost:28085,https://mysold.ydoxide.fr}
       POSTGRES_DB: ${POSTGRES_DB:-mysold}
       POSTGRES_USER: ${POSTGRES_USER:-mysold}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Run node scripts/setup.mjs}
-      PUBLIC_ORIGIN: ${PUBLIC_ORIGIN:-http://localhost:8080}
       COOKIE_SECURE: ${COOKIE_SECURE:-false}
       ALLOW_REGISTRATION: ${ALLOW_REGISTRATION:-true}
     depends_on:
@@ -47,7 +47,7 @@ services:
         FLUTTER_VERSION: ${FLUTTER_VERSION:-3.44.0}
     restart: unless-stopped
     ports:
-      - '${BIND_ADDRESS:-127.0.0.1}:${WEB_PORT:-8080}:8080'
+      - '${WEB_PORT:-28085}:8080'
     depends_on:
       api:
         condition: service_healthy

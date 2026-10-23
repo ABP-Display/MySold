@@ -28,13 +28,20 @@ node scripts/setup.mjs
 docker compose up -d --build
 ```
 
-Ouvrir [MySold](http://localhost:8080), puis créer son compte. Aucun compte de
+Ouvrir [MySold](http://localhost:28085), puis créer son compte. Aucun compte de
 démonstration, mot de passe par défaut ni solde fictif n’est créé. Chaque compte
 utilisateur possède son espace isolé.
 
 Sans Node.js, créer `.env` à partir de `.env.example` et remplacer
 `POSTGRES_PASSWORD` par un mot de passe aléatoire fort. Ne jamais publier `.env`.
 Le script conserve toujours un `.env` déjà présent.
+
+**Avant un accès par domaine ou adresse réseau**, modifier `APP_ORIGIN` dans
+`.env` pour y mettre votre propre URL (voir Configuration et HTTPS ci-dessous).
+
+Le port HTTP `28085` est publié sur toutes les interfaces du serveur.
+Ouvrir `http://ADRESSE_DU_SERVEUR:28085` depuis un appareil qui peut le joindre.
+Le pare-feu, le DNS et le reverse proxy sont configurés par l’administrateur.
 
 ## Architecture
 
@@ -78,17 +85,54 @@ pas conservées par le service worker.
 | --- | --- |
 | `POSTGRES_PASSWORD` | Secret de connexion de l’API à PostgreSQL |
 | `POSTGRES_DB`, `POSTGRES_USER` | Nom de base et utilisateur PostgreSQL |
-| `PUBLIC_ORIGIN` | Origine exacte du site, par exemple `https://finances.example.fr` |
-| `WEB_PORT` | Port HTTP local, `8080` par défaut |
-| `BIND_ADDRESS` | Interface d’écoute, `127.0.0.1` par défaut |
+| `WEB_PORT` | Port HTTP local, `28085` par défaut |
+| `APP_ORIGIN` | Origines autorisées pour les écritures, séparées par des virgules ; défaut : `http://localhost:28085,https://mysold.ydoxide.fr` |
 | `COOKIE_SECURE` | `true` lorsque l’accès au site utilise HTTPS |
 | `ALLOW_REGISTRATION` | `false` pour fermer les nouvelles inscriptions |
 | `FLUTTER_VERSION` | Version du SDK utilisée lors de la construction web |
 
-Pour un serveur public, placer un reverse proxy HTTPS devant le port web,
-configurer `PUBLIC_ORIGIN` avec le domaine réel et mettre `COOKIE_SECURE=true`.
-Si le proxy tourne dans un autre conteneur, adapter son réseau ou l’interface
-d’écoute. La base et l’API ne publient aucun port sur l’hôte. Ne pas exposer
+MySold publie le port `28085` sur toutes les interfaces. Toute machine pouvant
+joindre ce port peut charger le site ; les données restent protégées par la
+connexion utilisateur. Les écritures exigent une origine autorisée.
+L’administrateur gère son pare-feu, son DNS et son reverse proxy.
+
+**Chaque administrateur doit remplacer `APP_ORIGIN` par le domaine personnel de
+son instance.** `mysold.ydoxide.fr` est une valeur par défaut, à remplacer si vous
+hébergez MySold sur un autre domaine. Exemple pour votre propre site HTTPS :
+
+```dotenv
+APP_ORIGIN=https://finances.votre-domaine.fr
+COOKIE_SECURE=true
+```
+
+Renseigner l’origine exacte utilisée dans le navigateur : protocole (`http` ou
+`https`), nom de domaine ou adresse IP, et port s’il est non standard. Ne pas
+ajouter de chemin ni de barre oblique finale. Plusieurs accès peuvent être
+autorisés en les séparant par des virgules :
+
+```dotenv
+APP_ORIGIN=http://localhost:28085,https://finances.votre-domaine.fr
+```
+
+Pour un accès direct par IP, ajouter par exemple `http://192.168.1.20:28085`.
+Si `WEB_PORT` change, adapter aussi le port de l’origine HTTP correspondante.
+Une valeur vide n’autorise aucune écriture. Les jokers ne sont pas pris en charge.
+Une origine absente ou non autorisée entraîne une réponse `403 Origine refusée`
+sur les requêtes POST, PUT, PATCH et DELETE, notamment la connexion et
+l’inscription. Les scripts qui écrivent doivent aussi envoyer l’en-tête `Origin`.
+Ce contrôle ne remplace pas le pare-feu et ne configure ni le DNS ni le proxy.
+Le script de configuration conserve les `.env` existants : y ajouter manuellement
+`APP_ORIGIN` lors d’une mise à jour, puis recréer les conteneurs avec la commande
+ci-dessous.
+
+Pour HTTPS, diriger le proxy vers `http://ADRESSE_DU_SERVEUR:28085` et définir
+`COOKIE_SECURE=true` dans `.env`. Un proxy installé directement sur le même
+serveur peut utiliser `http://127.0.0.1:28085`. Dans un conteneur proxy,
+`127.0.0.1` désigne ce conteneur : utiliser une adresse joignable du serveur,
+ou un réseau Docker partagé avec `web` et la destination `http://web:8080`.
+Le port interne reste `8080`, même si `WEB_PORT` est modifié.
+
+La base et l’API ne publient aucun port sur l’hôte. Ne pas exposer
 PostgreSQL sur Internet. Changer le mot de passe dans `.env` après initialisation
 ne change pas automatiquement le mot de passe du rôle PostgreSQL existant.
 
@@ -99,6 +143,15 @@ docker compose up -d --build
 docker compose ps
 docker compose logs --tail=100 api web
 ```
+
+Depuis la machine du proxy, vérifier que sa destination HTTP répond, puis ouvrir
+le domaine HTTPS. Une erreur `502` ou un délai d’attente nécessite de vérifier
+l’adresse cible, le port, le réseau Docker et le pare-feu.
+
+Les lignes `GET / ... 200 ... Wget` toutes les 15 secondes sont normales :
+elles proviennent du contrôle de santé Docker du service `web`. Le code `200`
+confirme que Nginx répond dans le conteneur ; il ne vérifie pas l’accès au domaine
+depuis Internet.
 
 ## Installation mobile
 
@@ -139,7 +192,8 @@ identifiants de connexion, des sessions ou de la configuration du serveur.
 
 Les mots de passe utilisent scrypt. Les sessions utilisent un cookie HttpOnly,
 SameSite Strict, expirent après sept jours et sont stockées hachées en base.
-Les écritures exigent un en-tête applicatif et une origine autorisée. L’API
+Les écritures exigent un en-tête applicatif et une origine présente dans
+`APP_ORIGIN`. L’API
 vérifie l’utilisateur propriétaire, les références, les montants et les lots
 d’écritures atomiques. Les accès SQL utilisent des paramètres.
 

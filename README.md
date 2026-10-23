@@ -167,6 +167,15 @@ budgétaires sont enregistrés dans la base. Les notifications navigateur sont
 facultatives et déclenchées lorsque l’application est ouverte ; il n’y a pas de
 push externe ni de tâche bancaire exécutée en arrière-plan après sa fermeture.
 
+Dans **Profil → Paramètres → Mettre à jour l’application**, rechercher une nouvelle
+version. Si elle est disponible, choisir **Mettre à jour** pour l’activer et
+recharger l’application, ou **Plus tard** pour conserver la session actuelle.
+Enregistrer les modifications en cours avant de confirmer. La vérification
+nécessite une connexion au serveur ; elle fonctionne en HTTPS ou sur localhost.
+Le bouton installe la version déjà déployée par l’administrateur, sans mettre à
+jour les conteneurs du serveur. Chaque construction Docker versionne
+automatiquement le service worker à partir du contenu des fichiers web.
+
 ## Importer ses données Sold Up
 
 1. Dans Sold Up, exporter **les données utilisateur au format CSV**, depuis
@@ -253,6 +262,7 @@ flutter pub get
 dart run flutter_iconpicker:generate_packs --packs allMaterial
 flutter analyze --no-fatal-infos --no-fatal-warnings
 flutter build web --release --no-tree-shake-icons --no-web-resources-cdn
+dart run tool/stamp_web_build.dart
 ```
 
 Le catalogue d’icônes utilise des codes dynamiques : conserver

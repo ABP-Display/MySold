@@ -11,6 +11,7 @@ import 'package:mysold/screens/settings/security_privacy_page.dart';
 import 'package:mysold/screens/settings/theme_selector.dart';
 import 'package:mysold/services/security_gate.dart';
 import 'package:mysold/services/local_notification_service.dart';
+import 'package:mysold/services/pwa_update_service.dart';
 
 class SettingsSheet extends StatefulWidget {
   final bool withBack;
@@ -25,6 +26,65 @@ class _SettingsSheetState extends State<SettingsSheet> {
   bool _notificationsEnabled = true;
   bool _budgetAlertsEnabled = true;
   bool _monthlyReminderEnabled = false;
+  bool _checkingUpdate = false;
+
+  Future<void> _checkForUpdate() async {
+    if (_checkingUpdate) return;
+    setState(() => _checkingUpdate = true);
+    try {
+      final result = await PwaUpdateService.check();
+      if (!mounted) return;
+      if (result == 'available') {
+        final confirmed = await showDialog<bool>(
+          context: context,
+          builder: (dialogContext) => AlertDialog(
+            title: Text(context.tr('Une mise à jour est disponible')),
+            content: SingleChildScrollView(
+              child: Text(
+                context.tr(
+                  'Installer la nouvelle version de MySold ? L’application va se recharger. Enregistrez vos modifications avant de continuer.',
+                ),
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(dialogContext, false),
+                child: Text(context.tr('Plus tard')),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.pop(dialogContext, true),
+                child: Text(context.tr('Mettre à jour')),
+              ),
+            ],
+          ),
+        );
+        if (confirmed != true || !mounted) return;
+        final applied = await PwaUpdateService.apply();
+        if (!applied && mounted)
+          _showUpdateMessage(
+            'La mise à jour n’a pas pu être appliquée. Vérifiez votre connexion et réessayez.',
+          );
+      } else {
+        _showUpdateMessage(switch (result) {
+          'latest' => 'Votre application est à jour.',
+          'offline' =>
+            'Vous êtes hors connexion. Reconnectez-vous pour vérifier les mises à jour.',
+          'unsupported' =>
+            'La mise à jour PWA nécessite un navigateur compatible et une connexion HTTPS (ou localhost).',
+          _ =>
+            'Impossible de vérifier les mises à jour. Vérifiez votre connexion et réessayez.',
+        });
+      }
+    } finally {
+      if (mounted) setState(() => _checkingUpdate = false);
+    }
+  }
+
+  void _showUpdateMessage(String message) {
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(context.tr(message))));
+  }
 
   @override
   void initState() {
@@ -135,15 +195,12 @@ class _SettingsSheetState extends State<SettingsSheet> {
                       final ref = _userRef;
                       if (ref == null) return;
 
-                      await ref.set(
-                        {
-                          'firstName': firstNameCtrl.text.trim(),
-                          'lastName': lastNameCtrl.text.trim(),
-                          'phone': phoneCtrl.text.trim(),
-                          'updatedAt': FieldValue.serverTimestamp(),
-                        },
-                        SetOptions(merge: true),
-                      );
+                      await ref.set({
+                        'firstName': firstNameCtrl.text.trim(),
+                        'lastName': lastNameCtrl.text.trim(),
+                        'phone': phoneCtrl.text.trim(),
+                        'updatedAt': FieldValue.serverTimestamp(),
+                      }, SetOptions(merge: true));
 
                       if (context.mounted) Navigator.pop(context, true);
                     },
@@ -160,7 +217,9 @@ class _SettingsSheetState extends State<SettingsSheet> {
 
     if (saved == true && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(context.tr('Donnees personnelles enregistrees'))),
+        SnackBar(
+          content: Text(context.tr('Donnees personnelles enregistrees')),
+        ),
       );
     }
   }
@@ -249,7 +308,7 @@ class _SettingsSheetState extends State<SettingsSheet> {
                         value: _monthlyReminderEnabled,
                         onChanged: _notificationsEnabled
                             ? (value) =>
-                                update('monthly_reminder_enabled', value)
+                                  update('monthly_reminder_enabled', value)
                             : null,
                         title: Text(context.tr('Rappel mensuel')),
                         subtitle: Text(
@@ -312,9 +371,9 @@ class _SettingsSheetState extends State<SettingsSheet> {
       alignment: Alignment.centerLeft,
       child: Text(
         context.tr(title),
-        style: Theme.of(context).textTheme.titleLarge?.copyWith(
-              fontWeight: FontWeight.w900,
-            ),
+        style: Theme.of(
+          context,
+        ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900),
       ),
     );
   }
@@ -399,6 +458,15 @@ class _SettingsSheetState extends State<SettingsSheet> {
                 subtitle: 'Version et informations app',
                 onTap: _openAboutSheet,
               ),
+              const _PanelDivider(),
+              _SettingsRow(
+                icon: Icons.system_update_outlined,
+                title: _checkingUpdate
+                    ? 'Vérification en cours…'
+                    : 'Mettre à jour l’application',
+                subtitle: 'Rechercher une nouvelle version de MySold',
+                onTap: _checkForUpdate,
+              ),
             ],
           ),
           const SizedBox(height: 24),
@@ -474,7 +542,11 @@ class _SelectorBlock extends StatelessWidget {
         children: [
           Row(
             children: [
-              Icon(icon, size: 18, color: Theme.of(context).colorScheme.primary),
+              Icon(
+                icon,
+                size: 18,
+                color: Theme.of(context).colorScheme.primary,
+              ),
               const SizedBox(width: 8),
               Text(
                 context.tr(title),

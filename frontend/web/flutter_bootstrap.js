@@ -12,6 +12,3 @@ window.mysoldNotify = async (title, body) => {
     await registration.showNotification(title, {body, icon: '/icons/Icon-192.png'});
   } catch (_) { /* Unsupported browsers still show the in-app alert. */ }
 };
-if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => navigator.serviceWorker.register('/sw.js'));
-}

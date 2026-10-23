@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_svg/flutter_svg.dart';
 import 'package:mysold/l10n/app_localizations.dart';
 
 abstract final class AuthPalette {
@@ -75,8 +74,9 @@ class AuthBrand extends StatelessWidget {
           borderRadius: BorderRadius.circular(13),
           border: Border.all(color: AuthPalette.border),
         ),
-        child: SvgPicture.asset(
-          'assets/icons/logo.svg',
+        child: Image.asset(
+          'assets/icons/logo.png',
+          fit: BoxFit.contain,
           excludeFromSemantics: true,
         ),
       ),

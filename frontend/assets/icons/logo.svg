@@ -1,8 +1,0 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64" fill="none">
-  <title>MySold</title>
-  <path d="M7 49 18 35 27 42 39 34 48 45 57 48" stroke="#D88883" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
-  <path d="m52 48 6 1-2-6" stroke="#D88883" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
-  <path d="m7 55 15-10 12-14 9 4 14-18" stroke="#A8CBA6" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
-  <path d="m51 18 7-3-1 8" stroke="#A8CBA6" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
-  <path d="M45 12C40 9 35 8 29 8 18 8 12 14 12 23c0 9 8 13 16 17 7 3 12 6 12 10 0 4-4 6-10 6-7 0-13-2-19-6v10c6 3 12 4 19 4 13 0 21-6 21-16 0-9-7-13-16-17-7-3-12-6-12-10 0-3 3-5 8-5 5 0 9 1 13 4l1-8Z" fill="#F0F2E4" transform="translate(3 1) scale(.88)"/>
-</svg>

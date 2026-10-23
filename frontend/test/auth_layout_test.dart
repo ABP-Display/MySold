@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_svg/flutter_svg.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mysold/widgets/auth_layout.dart';
 
@@ -10,7 +9,7 @@ void main() {
     const Size(1440, 900),
   ]) {
     for (final scale in [1.0, 2.0]) {
-      testWidgets('Dark auth card and SVG fit $size at text scale $scale', (
+      testWidgets('Dark auth card and logo fit $size at text scale $scale', (
         tester,
       ) async {
         tester.view.physicalSize = size;
@@ -53,7 +52,7 @@ void main() {
         );
         await tester.pumpAndSettle();
         expect(tester.takeException(), isNull);
-        expect(find.byType(SvgPicture), findsOneWidget);
+        expect(find.byType(Image), findsOneWidget);
         expect(
           Theme.of(tester.element(find.byType(TextField).first)).brightness,
           Brightness.dark,

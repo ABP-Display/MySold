@@ -1,3 +1,5 @@
+import 'package:mysold/widgets/graphiques/chart_info_region.dart';
+import 'package:mysold/widgets/graphiques/viewport_bar_chart.dart';
 import 'package:mysold/widgets/app_design.dart';
 import 'dart:math' as math;
 
@@ -882,7 +884,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        final viewportWidth = (constraints.maxWidth - 46)
+        final viewportWidth = (constraints.maxWidth - 50)
             .clamp(0.0, double.infinity)
             .toDouble();
         final chartWidth = math.max(groupWidth * 12, viewportWidth);
@@ -924,153 +926,108 @@ class _DashboardScreenState extends State<DashboardScreen> {
               ),
               const SizedBox(width: 4),
               Expanded(
-                child: Scrollbar(
+                child: ViewportBarChart(
                   controller: _monthlyChartScrollController,
-                  thumbVisibility: chartWidth > viewportWidth,
-                  child: SingleChildScrollView(
-                    controller: _monthlyChartScrollController,
-                    scrollDirection: Axis.horizontal,
-                    physics: const BouncingScrollPhysics(),
-                    child: SizedBox(
-                      width: chartWidth,
-                      height: chartHeight,
-                      child: BarChart(
-                        BarChartData(
-                          minY: minY,
-                          maxY: maxY,
-                          groupsSpace: 12,
-                          alignment: BarChartAlignment.spaceEvenly,
-                          gridData: FlGridData(
-                            show: minY < 0,
-                            drawVerticalLine: false,
-                            horizontalInterval: maxY == minY
-                                ? 1.0
-                                : ((maxY - minY) / 4)
-                                      .abs()
-                                      .clamp(1, double.infinity)
-                                      .toDouble(),
-                            getDrawingHorizontalLine: (value) {
-                              final isZero = value.abs() < 0.001;
-                              return FlLine(
-                                color: isZero
-                                    ? zeroLineColor
-                                    : Colors.transparent,
-                                strokeWidth: isZero ? 1 : 0,
-                              );
-                            },
-                          ),
-                          borderData: FlBorderData(show: false),
-                          barTouchData: BarTouchData(
-                            touchTooltipData: BarTouchTooltipData(
-                              tooltipBgColor: Colors.grey.shade800,
-                              tooltipRoundedRadius: 10,
-                              fitInsideVertically: true,
-                              fitInsideHorizontally: true,
-                              getTooltipItem: (group, groupIndex, rod, rodIndex) {
-                                final month = _monthLabels[group.x.toInt()];
-                                final series = activeSeries[rodIndex];
-                                final style = seriesStyles[series]!;
-                                final value = style.values[group.x.toInt()];
-                                return BarTooltipItem(
-                                  '$month\n',
-                                  const TextStyle(
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.w700,
-                                  ),
-                                  children: [
-                                    TextSpan(
-                                      text:
-                                          '${context.tr(style.label)}: ${_money(value, currency, privacy)}',
-                                      style: const TextStyle(
-                                        color: Colors.white,
-                                        fontWeight: FontWeight.w400,
-                                      ),
-                                    ),
-                                  ],
-                                );
-                              },
-                            ),
-                          ),
-                          titlesData: FlTitlesData(
-                            topTitles: const AxisTitles(
-                              sideTitles: SideTitles(showTitles: false),
-                            ),
-                            rightTitles: const AxisTitles(
-                              sideTitles: SideTitles(showTitles: false),
-                            ),
-                            leftTitles: const AxisTitles(
-                              sideTitles: SideTitles(showTitles: false),
-                            ),
-                            bottomTitles: AxisTitles(
-                              sideTitles: SideTitles(
-                                showTitles: true,
-                                reservedSize: 28,
-                                getTitlesWidget: (value, meta) {
-                                  final index = value.toInt();
-                                  if (index < 0 || index > 11) {
-                                    return const SizedBox.shrink();
-                                  }
-                                  final isCurrentMonth =
-                                      data.year == DateTime.now().year &&
-                                      index == DateTime.now().month - 1;
-                                  return Padding(
-                                    padding: const EdgeInsets.only(top: 8),
-                                    child: Text(
-                                      _monthLabels[index],
-                                      style: TextStyle(
-                                        fontSize: 10,
-                                        fontWeight: isCurrentMonth
-                                            ? FontWeight.w600
-                                            : FontWeight.w700,
-                                        color: isCurrentMonth
-                                            ? Theme.of(
-                                                context,
-                                              ).colorScheme.primary
-                                            : null,
-                                      ),
-                                    ),
-                                  );
-                                },
+                  contentWidth: chartWidth,
+                  info: (groupIndex, rodIndex) {
+                    final series = activeSeries[rodIndex];
+                    final style = seriesStyles[series]!;
+                    return ChartInfo(
+                      _monthLabels[groupIndex],
+                      '${context.tr(style.label)} : ${_money(style.values[groupIndex], currency, privacy)}',
+                      color: style.color,
+                    );
+                  },
+                  data: BarChartData(
+                    minY: minY,
+                    maxY: maxY,
+                    groupsSpace: 12,
+                    alignment: BarChartAlignment.spaceEvenly,
+                    gridData: FlGridData(
+                      show: minY < 0,
+                      drawVerticalLine: false,
+                      horizontalInterval: maxY == minY
+                          ? 1.0
+                          : ((maxY - minY) / 4)
+                                .abs()
+                                .clamp(1, double.infinity)
+                                .toDouble(),
+                      getDrawingHorizontalLine: (value) {
+                        final isZero = value.abs() < 0.001;
+                        return FlLine(
+                          color: isZero ? zeroLineColor : Colors.transparent,
+                          strokeWidth: isZero ? 1 : 0,
+                        );
+                      },
+                    ),
+                    borderData: FlBorderData(show: false),
+                    titlesData: FlTitlesData(
+                      topTitles: const AxisTitles(
+                        sideTitles: SideTitles(showTitles: false),
+                      ),
+                      rightTitles: const AxisTitles(
+                        sideTitles: SideTitles(showTitles: false),
+                      ),
+                      leftTitles: const AxisTitles(
+                        sideTitles: SideTitles(showTitles: false),
+                      ),
+                      bottomTitles: AxisTitles(
+                        sideTitles: SideTitles(
+                          showTitles: true,
+                          reservedSize: 28,
+                          getTitlesWidget: (value, meta) {
+                            final index = value.toInt();
+                            if (index < 0 || index > 11) {
+                              return const SizedBox.shrink();
+                            }
+                            final isCurrentMonth =
+                                data.year == DateTime.now().year &&
+                                index == DateTime.now().month - 1;
+                            return Padding(
+                              padding: const EdgeInsets.only(top: 8),
+                              child: Text(
+                                _monthLabels[index],
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  fontWeight: isCurrentMonth
+                                      ? FontWeight.w600
+                                      : FontWeight.w700,
+                                  color: isCurrentMonth
+                                      ? Theme.of(context).colorScheme.primary
+                                      : null,
+                                ),
                               ),
-                            ),
-                          ),
-                          barGroups: List.generate(12, (monthIndex) {
-                            return BarChartGroupData(
-                              x: monthIndex,
-                              barsSpace: barsSpace,
-                              barRods: activeSeries.map((series) {
-                                final style = seriesStyles[series]!;
-                                final toY = style.values[monthIndex];
-                                return BarChartRodData(
-                                  toY: toY,
-                                  width: barWidth,
-                                  color: style.color,
-                                  borderRadius: BorderRadius.only(
-                                    topLeft: const Radius.circular(5),
-                                    topRight: const Radius.circular(5),
-                                    bottomLeft: Radius.circular(
-                                      toY < 0 ? 5 : 0,
-                                    ),
-                                    bottomRight: Radius.circular(
-                                      toY < 0 ? 5 : 0,
-                                    ),
-                                  ),
-                                  backDrawRodData: BackgroundBarChartRodData(
-                                    show: true,
-                                    toY: maxY,
-                                    color: style.color.withOpacity(0.06),
-                                  ),
-                                );
-                              }).toList(),
                             );
-                          }),
+                          },
                         ),
-                        swapAnimationDuration: const Duration(
-                          milliseconds: 350,
-                        ),
-                        swapAnimationCurve: Curves.easeOutCubic,
                       ),
                     ),
+                    barGroups: List.generate(12, (monthIndex) {
+                      return BarChartGroupData(
+                        x: monthIndex,
+                        barsSpace: barsSpace,
+                        barRods: activeSeries.map((series) {
+                          final style = seriesStyles[series]!;
+                          final toY = style.values[monthIndex];
+                          return BarChartRodData(
+                            toY: toY,
+                            width: barWidth,
+                            color: style.color,
+                            borderRadius: BorderRadius.only(
+                              topLeft: const Radius.circular(5),
+                              topRight: const Radius.circular(5),
+                              bottomLeft: Radius.circular(toY < 0 ? 5 : 0),
+                              bottomRight: Radius.circular(toY < 0 ? 5 : 0),
+                            ),
+                            backDrawRodData: BackgroundBarChartRodData(
+                              show: true,
+                              toY: maxY,
+                              color: style.color.withOpacity(0.06),
+                            ),
+                          );
+                        }).toList(),
+                      );
+                    }),
                   ),
                 ),
               ),
@@ -1279,11 +1236,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
       children: [
         Icon(icon, size: 20, color: Theme.of(context).colorScheme.primary),
         const SizedBox(width: 8),
-        Text(
-          context.tr(title),
-          style: Theme.of(
-            context,
-          ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
+        Expanded(
+          child: Text(
+            context.tr(title),
+            style: Theme.of(
+              context,
+            ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
+          ),
         ),
       ],
     );

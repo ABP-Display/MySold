@@ -1,3 +1,6 @@
+import 'dart:math' as math;
+import 'package:mysold/widgets/graphiques/chart_info_region.dart';
+import 'package:mysold/widgets/graphiques/viewport_bar_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:provider/provider.dart';
@@ -338,27 +341,52 @@ class MonthGraph extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           SizedBox(
-            height: 180,
-            child: PieChart(
-              PieChartData(
-                sectionsSpace: 2,
-                centerSpaceRadius: 40,
-                sections: slices.map((slice) {
-                  final percentage = (slice.amount / total) * 100;
-                  return PieChartSectionData(
-                    color: slice.color,
-                    value: slice.amount,
-                    title: percentage >= 6
-                        ? '${percentage.toStringAsFixed(1)}%'
-                        : '',
-                    radius: 60,
-                    titleStyle: const TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                    ),
-                  );
-                }).toList(),
+            height: 220,
+            child: ChartInfoRegion(
+              resolve: (position, size) {
+                final relative =
+                    position - Offset(size.width / 2, size.height / 2);
+                if (relative.distance < 40 ||
+                    relative.distance > 100 ||
+                    total <= 0)
+                  return null;
+                final angle =
+                    (math.atan2(relative.dy, relative.dx) + 2 * math.pi) %
+                    (2 * math.pi);
+                var endAngle = 0.0;
+                for (final slice in slices) {
+                  endAngle += slice.amount / total * 2 * math.pi;
+                  if (angle <= endAngle)
+                    return ChartInfo(
+                      slice.label,
+                      '${privacy.money(slice.amount, currency)} · ${(slice.amount / total * 100).toStringAsFixed(1)} %',
+                      color: slice.color,
+                    );
+                }
+                return null;
+              },
+              child: PieChart(
+                PieChartData(
+                  pieTouchData: PieTouchData(enabled: false),
+                  sectionsSpace: 2,
+                  centerSpaceRadius: 40,
+                  sections: slices.map((slice) {
+                    final percentage = (slice.amount / total) * 100;
+                    return PieChartSectionData(
+                      color: slice.color,
+                      value: slice.amount,
+                      title: percentage >= 6
+                          ? '${percentage.toStringAsFixed(1)}%'
+                          : '',
+                      radius: 60,
+                      titleStyle: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                    );
+                  }).toList(),
+                ),
               ),
             ),
           ),
@@ -444,24 +472,19 @@ class MonthGraph extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: SizedBox(
         height: chartHeight,
-        child: BarChart(
-          BarChartData(
+        child: ViewportBarChart(
+          info: (groupIndex, rodIndex) => ChartInfo(
+            labels[groupIndex],
+            privacy.money(
+              barGroups[groupIndex].barRods[rodIndex].toY,
+              currency,
+            ),
+            color: barGroups[groupIndex].barRods[rodIndex].color,
+          ),
+          data: BarChartData(
             alignment: BarChartAlignment.spaceAround,
             maxY: maxY,
             barGroups: barGroups,
-            barTouchData: BarTouchData(
-              enabled: true,
-              touchTooltipData: BarTouchTooltipData(
-                tooltipBgColor: Colors.grey.shade700,
-                getTooltipItem: (group, groupIndex, rod, rodIndex) {
-                  final label = labels[group.x.toInt()];
-                  return BarTooltipItem(
-                    '$label\n${privacy.money(rod.toY, currency)}',
-                    const TextStyle(color: Colors.white),
-                  );
-                },
-              ),
-            ),
             titlesData: FlTitlesData(
               leftTitles: AxisTitles(
                 sideTitles: SideTitles(

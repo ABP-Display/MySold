@@ -19,6 +19,14 @@ PC et défilent horizontalement sur petit écran. Les sélecteurs de comptes,
 catégories et investissements disposent d’une recherche, d’icônes et d’un repère
 de sélection, dans une fenêtre sur ordinateur ou un volet sur mobile.
 
+Dans le budget mensuel, le titre et le sélecteur du mois restent sur la même
+ligne, titre à gauche et mois à droite ; le mois est abrégé sur petit écran.
+Les cadres d’information des graphiques en barres et de la répartition des
+revenus sont affichés au-dessus de la zone visible du graphique. Ils restent
+dans ses limites pendant un glissement, même lorsque les barres défilent
+horizontalement, sans être découpés par le défilement ni déborder sur les panneaux voisins.
+Le défilement vertical de la page reste possible depuis le graphique.
+
 ## Mode discret
 
 Le bouton œil de la navigation masque ou réaffiche les montants. Le réglage
@@ -46,7 +54,7 @@ restent accessibles.
 Depuis `frontend/` :
 
 ```sh
-flutter test test/workspace_design_test.dart test/privacy_provider_test.dart test/auth_layout_test.dart test/stamp_web_build_test.dart test/operation_controls_test.dart
+flutter test test/workspace_design_test.dart test/privacy_provider_test.dart test/auth_layout_test.dart test/stamp_web_build_test.dart test/operation_controls_test.dart test/mobile_charts_test.dart
 node --test test/pwa_updates.test.cjs test/sw.test.cjs tool/privacy_gesture_test.cjs
 ```
 

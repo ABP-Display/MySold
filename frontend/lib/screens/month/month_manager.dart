@@ -1,3 +1,4 @@
+import 'package:mysold/widgets/month_page_header.dart';
 import 'package:mysold/widgets/app_choice_tabs.dart';
 import 'package:mysold/widgets/app_select_field.dart';
 import 'package:mysold/widgets/app_design.dart';
@@ -686,35 +687,19 @@ class _MonthManagerState extends State<MonthManagerScreen>
             children: [
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 20, 16, 4),
-                child: PageIntro(
+                child: MonthPageHeader(
                   eyebrow: _t('VOTRE BUDGET'),
                   title: _t('Budget mensuel'),
                   subtitle: _t('Vos opérations, simplement.'),
-                  action: Container(
-                    decoration: AppDesign.panel(context),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        IconButton(
-                          tooltip: _t('Mois précédent'),
-                          onPressed: _prevMonth,
-                          icon: const Icon(Icons.chevron_left),
-                        ),
-                        Text(
-                          monthLabel,
-                          style: const TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        IconButton(
-                          tooltip: _t('Mois suivant'),
-                          onPressed: _nextMonth,
-                          icon: const Icon(Icons.chevron_right),
-                        ),
-                      ],
-                    ),
-                  ),
+                  monthLabel: monthLabel,
+                  compactMonthLabel: DateFormat(
+                    'MMM yyyy',
+                    Localizations.localeOf(context).toString(),
+                  ).format(_currentMonth),
+                  previousLabel: _t('Mois précédent'),
+                  nextLabel: _t('Mois suivant'),
+                  onPrevious: _prevMonth,
+                  onNext: _nextMonth,
                 ),
               ),
               Padding(

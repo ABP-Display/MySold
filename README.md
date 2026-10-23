@@ -183,7 +183,13 @@ injoignable ; le bouton des paramètres permet de réessayer.
 Chaque construction Docker génère un numéro au format `AAAA.MM.JJ.HHMM`, par
 exemple `2026.10.23.2145`, à partir de l’heure **Europe/Paris**, même si le serveur
 utilise UTC. Ce numéro est intégré au client et publié dans `version.json`.
-Un condensat du contenu versionne aussi le cache du service worker. Chaque
+Un condensat du contenu versionne aussi le cache du service worker. Les scripts
+de démarrage et le code Flutter portent ce numéro dans leur URL pour éviter
+qu’une ancienne copie du navigateur soit réutilisée après installation. Le
+client confirme le numéro et le condensat du worker actif avant de recharger ;
+si l’installation échoue, il affiche une erreur au lieu de recharger en boucle.
+L’activation retire les anciens caches de ressources MySold et Flutter, sans
+effacer les préférences ou la session de l’utilisateur. Chaque
 nouvelle version publiée doit avoir un numéro distinct ; éviter de publier deux
 builds différents dans la même minute. Pour imposer un numéro en construction
 manuelle ou en CI, après `flutter build web`, utiliser :

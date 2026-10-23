@@ -13,6 +13,12 @@ Les six palettes MySold sont conservées, y compris le fond noir du thème Sombr
 - Les couleurs des surfaces, bordures, champs et fenêtres viennent du thème.
   Les catégories gardent leur couleur dans les icônes des opérations.
 
+Les montants des opérations occupent une colonne centrée verticalement à droite,
+sur mobile et ordinateur. Les quatre types d’opérations ont la même largeur sur
+PC et défilent horizontalement sur petit écran. Les sélecteurs de comptes,
+catégories et investissements disposent d’une recherche, d’icônes et d’un repère
+de sélection, dans une fenêtre sur ordinateur ou un volet sur mobile.
+
 ## Mode discret
 
 Le bouton œil de la navigation masque ou réaffiche les montants. Le réglage
@@ -40,8 +46,8 @@ restent accessibles.
 Depuis `frontend/` :
 
 ```sh
-flutter test test/workspace_design_test.dart test/privacy_provider_test.dart test/auth_layout_test.dart
-node --test test/pwa_updates.test.cjs tool/privacy_gesture_test.cjs
+flutter test test/workspace_design_test.dart test/privacy_provider_test.dart test/auth_layout_test.dart test/stamp_web_build_test.dart test/operation_controls_test.dart
+node --test test/pwa_updates.test.cjs test/sw.test.cjs tool/privacy_gesture_test.cjs
 ```
 
 La matrice des composants couvre les six thèmes, trois tailles d’écran et un

@@ -1,3 +1,4 @@
+import 'package:mysold/widgets/app_select_field.dart';
 import 'package:mysold/widgets/app_design.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
@@ -366,18 +367,14 @@ class _AddTransferDialogState extends State<AddTransferDialog> {
                 ),
                 const SizedBox(height: 12),
                 if (_isInvestmentWithdrawal)
-                  DropdownButtonFormField<String>(
-                    isExpanded: true,
+                  AppSelectField<String>(
                     value: _investments.containsKey(_sourceInvestmentId)
                         ? _sourceInvestmentId
                         : null,
-                    hint: Text(context.tr('Selectionner un investissement')),
-                    items: _investments.entries
+                    hint: context.tr('Selectionner un investissement'),
+                    options: _investments.entries
                         .map(
-                          (e) => DropdownMenuItem(
-                            value: e.key,
-                            child: Text(e.value),
-                          ),
+                          (e) => AppSelectOption(value: e.key, label: e.value),
                         )
                         .toList(),
                     onChanged: (v) => setState(() => _sourceInvestmentId = v),
@@ -390,24 +387,18 @@ class _AddTransferDialogState extends State<AddTransferDialog> {
                       }
                       return null;
                     },
-                    decoration: InputDecoration(
-                      labelText: context.tr('Actif source'),
-                      prefixIcon: const Icon(Icons.trending_down),
-                    ),
+                    label: context.tr('Actif source'),
+                    icon: Icons.trending_down,
                   )
                 else
-                  DropdownButtonFormField<String>(
-                    isExpanded: true,
+                  AppSelectField<String>(
                     value: _accounts.containsKey(_sourceAccountId)
                         ? _sourceAccountId
                         : null,
-                    hint: Text(context.tr('Selectionner un compte')),
-                    items: _accounts.entries
+                    hint: context.tr('Selectionner un compte'),
+                    options: _accounts.entries
                         .map(
-                          (e) => DropdownMenuItem(
-                            value: e.key,
-                            child: Text(e.value),
-                          ),
+                          (e) => AppSelectOption(value: e.key, label: e.value),
                         )
                         .toList(),
                     onChanged: (v) {
@@ -421,41 +412,29 @@ class _AddTransferDialogState extends State<AddTransferDialog> {
                     validator: (v) => v == null
                         ? context.tr('Choisir un compte source')
                         : null,
-                    decoration: InputDecoration(
-                      labelText: context.tr('Compte source'),
-                      prefixIcon: const Icon(Icons.account_balance_wallet),
-                    ),
+                    label: context.tr('Compte source'),
+                    icon: Icons.account_balance_wallet,
                   ),
                 const SizedBox(height: 12),
-                DropdownButtonFormField<String>(
-                  isExpanded: true,
+                AppSelectField<String>(
                   value: _accounts.containsKey(_destinationAccountId)
                       ? _destinationAccountId
                       : null,
-                  hint: Text(context.tr('Selectionner un compte')),
-                  items: _accounts.entries
+                  hint: context.tr('Selectionner un compte'),
+                  options: _accounts.entries
                       .where(
                         (e) =>
                             _isInvestmentWithdrawal ||
                             e.key != _sourceAccountId,
                       )
-                      .map(
-                        (e) => DropdownMenuItem(
-                          value: e.key,
-                          child: Text(e.value),
-                        ),
-                      )
+                      .map((e) => AppSelectOption(value: e.key, label: e.value))
                       .toList(),
                   onChanged: (v) => setState(() => _destinationAccountId = v),
                   validator: (v) => v == null
                       ? context.tr('Choisir un compte destination')
                       : null,
-                  decoration: InputDecoration(
-                    labelText: context.tr('Compte destination'),
-                    prefixIcon: const Icon(
-                      Icons.account_balance_wallet_outlined,
-                    ),
-                  ),
+                  label: context.tr('Compte destination'),
+                  icon: Icons.account_balance_wallet_outlined,
                 ),
                 const SizedBox(height: 20),
                 if (!_isInvestmentWithdrawal && _accounts.length < 2)

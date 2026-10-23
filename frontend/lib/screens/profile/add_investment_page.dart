@@ -1,3 +1,4 @@
+import 'package:mysold/widgets/app_select_field.dart';
 import 'package:mysold/data/document_store.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -353,23 +354,20 @@ class _AddInvestmentPageState extends State<AddInvestmentPage> {
               },
             ),
             const SizedBox(height: 14),
-            DropdownButtonFormField<String>(
+            AppSelectField<String>(
               value: _holdingAccountId,
-              items: accounts.map((account) {
+              options: accounts.map((account) {
                 final data = account.data();
                 final isManaged = data['managedByInvestments'] == true;
                 final name = data['name'] ?? context.tr('Sans nom');
                 final label = isManaged
                     ? '$name - ${context.tr('Auto')}'
                     : name.toString();
-                return DropdownMenuItem(value: account.id, child: Text(label));
+                return AppSelectOption(value: account.id, label: label);
               }).toList(),
               onChanged: (value) => setState(() => _holdingAccountId = value),
-              decoration: InputDecoration(
-                labelText: context.tr('Compte de detention'),
-                prefixIcon: const Icon(Icons.account_balance_wallet_outlined),
-                border: const OutlineInputBorder(),
-              ),
+              label: context.tr('Compte de detention'),
+              icon: Icons.account_balance_wallet_outlined,
               validator: (value) {
                 if (value == null) return context.tr('Choisir un compte');
                 return null;

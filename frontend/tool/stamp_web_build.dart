@@ -21,6 +21,18 @@ void main([List<String> arguments = const []]) {
   final clientDeclaration = RegExp(r"const LOCAL_BUILD = '[^']*';");
   const workerPlaceholder = "const BUILD = '__MYSOLD_BUILD_ID__';";
   const clientPlaceholder = "const LOCAL_BUILD = '__MYSOLD_BUILD_VERSION__';";
+  final entryScripts = RegExp(
+    r'''(["'])(privacy_gesture\.js|pwa_updates\.js|flutter_bootstrap\.js|main\.dart\.js)(?:\?mysold_build=[^"']*)?(["'])''',
+  );
+  String normalizeEntryScripts(String source) => source.replaceAllMapped(
+    entryScripts,
+    (match) => '${match[1]}${match[2]}${match[3]}',
+  );
+  final entryTemplates = <String, String>{
+    for (final name in ['index.html', 'flutter_bootstrap.js'])
+      if (File('build/web/$name').existsSync())
+        name: normalizeEntryScripts(File('build/web/$name').readAsStringSync()),
+  };
   final workerTemplate = worker.readAsStringSync().replaceFirst(
     workerDeclaration,
     workerPlaceholder,
@@ -44,6 +56,8 @@ void main([List<String> arguments = const []]) {
         final bytes = switch (path) {
           'sw.js' => utf8.encode(workerTemplate),
           'pwa_updates.js' => utf8.encode(clientTemplate),
+          'index.html' ||
+          'flutter_bootstrap.js' => utf8.encode(entryTemplates[path]!),
           _ => file.readAsBytesSync(),
         };
         return '$path:${sha256.convert(bytes)}';
@@ -86,6 +100,15 @@ void main([List<String> arguments = const []]) {
       "const LOCAL_BUILD = '$version';",
     ),
   );
+  for (final entry in entryTemplates.entries) {
+    File('build/web/${entry.key}').writeAsStringSync(
+      entry.value.replaceAllMapped(
+        entryScripts,
+        (match) =>
+            '${match[1]}${match[2]}?mysold_build=$version-$hash${match[3]}',
+      ),
+    );
+  }
   manifestFile.writeAsStringSync(
     jsonEncode({'build': version, 'contentHash': hash}),
   );

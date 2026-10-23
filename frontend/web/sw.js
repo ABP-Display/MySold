@@ -7,11 +7,12 @@ self.addEventListener('install', event => {
   event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(SHELL)));
 });
 self.addEventListener('message', event => {
-  if (event.data?.type === 'MYSOLD_SKIP_WAITING') self.skipWaiting();
+  if (event.data?.type === 'MYSOLD_GET_BUILD') event.ports?.[0]?.postMessage({build: BUILD});
+  if (event.data?.type === 'MYSOLD_SKIP_WAITING') event.waitUntil(self.skipWaiting());
 });
 self.addEventListener('activate', event => {
   event.waitUntil(caches.keys().then(keys => Promise.all(
-    keys.filter(key => key.startsWith('mysold-shell-') && key !== CACHE).map(key => caches.delete(key))
+    keys.filter(key => (key.startsWith('mysold-shell-') && key !== CACHE) || ['flutter-app-cache', 'flutter-temp-cache', 'flutter-app-manifest'].includes(key)).map(key => caches.delete(key))
   )).then(() => self.clients.claim()));
 });
 self.addEventListener('fetch', event => {
@@ -19,6 +20,6 @@ self.addEventListener('fetch', event => {
   if (event.request.method !== 'GET' || url.origin !== self.location.origin ||
       url.pathname.startsWith('/api/') || url.pathname === '/version.json') return;
   if (event.request.mode === 'navigate') {
-    event.respondWith(fetch(event.request).catch(() => caches.match('/index.html')));
+    event.respondWith(fetch(event.request, {cache: 'no-store'}).catch(() => caches.match('/index.html')));
   }
 });

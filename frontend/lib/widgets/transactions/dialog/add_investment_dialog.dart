@@ -1,3 +1,4 @@
+import 'package:mysold/widgets/app_select_field.dart';
 import 'package:mysold/widgets/app_design.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
@@ -141,9 +142,9 @@ class _AddInvestmentDialogState extends State<AddInvestmentDialog> {
     if (d != null) setState(() => _selectedDate = d);
   }
 
-  List<DropdownMenuItem<String>> _buildDropdownItems(Map<String, String> data) {
+  List<AppSelectOption<String>> _buildSelectOptions(Map<String, String> data) {
     return data.entries
-        .map((e) => DropdownMenuItem(value: e.key, child: Text(e.value)))
+        .map((e) => AppSelectOption(value: e.key, label: e.value))
         .toList();
   }
 
@@ -310,37 +311,31 @@ class _AddInvestmentDialogState extends State<AddInvestmentDialog> {
                   ],
                 ),
                 const SizedBox(height: 12),
-                DropdownButtonFormField<String>(
-                  isExpanded: true,
+                AppSelectField<String>(
                   value: _sourceAccountId,
-                  items: _buildDropdownItems(_sourceAccounts),
+                  options: _buildSelectOptions(_sourceAccounts),
                   onChanged: (v) {
                     setState(() {
                       _sourceAccountId = v;
                     });
                   },
-                  decoration: InputDecoration(
-                    labelText: context.tr('Compte source'),
-                    prefixIcon: const Icon(Icons.account_balance_wallet),
-                  ),
+                  label: context.tr('Compte source'),
+                  icon: Icons.account_balance_wallet,
                   validator: (v) =>
                       v == null ? context.tr('Choisir un compte source') : null,
                 ),
                 const SizedBox(height: 12),
-                DropdownButtonFormField<String>(
-                  isExpanded: true,
+                AppSelectField<String>(
                   value: _destinationInvestmentId,
-                  items: _buildDropdownItems(_investments),
+                  options: _buildSelectOptions(_investments),
                   onChanged: (v) => setState(() {
                     _destinationInvestmentId = v;
                     _destinationAccountId = v == null
                         ? null
                         : _investmentHoldingAccounts[v];
                   }),
-                  decoration: InputDecoration(
-                    labelText: context.tr('Destination (action, fonds...)'),
-                    prefixIcon: const Icon(Icons.trending_up),
-                  ),
+                  label: context.tr('Destination (action, fonds...)'),
+                  icon: Icons.trending_up,
                   validator: (v) {
                     if (v == null)
                       return context.tr('Choisir un investissement');

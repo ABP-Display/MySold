@@ -7,6 +7,8 @@ const LOCAL_BUILD = '__MYSOLD_BUILD_VERSION__';
     : null;
   registration?.catch(() => {});
   let availableBuild = '';
+  let availableManifest = null;
+  let applying = null;
   let checking = null;
   window.mysoldBuildVersion = LOCAL_BUILD;
   window.mysoldUpdateVersion = '';
@@ -40,7 +42,7 @@ const LOCAL_BUILD = '__MYSOLD_BUILD_VERSION__';
       if (typeof data.build !== 'string' || !/^\d{4}\.\d{2}\.\d{2}\.\d{4}$/.test(data.build)) {
         throw new Error('Invalid version');
       }
-      return data.build;
+      return data;
     } finally {
       clearTimeout(timeout);
     }
@@ -51,7 +53,8 @@ const LOCAL_BUILD = '__MYSOLD_BUILD_VERSION__';
     if (!navigator.onLine) return 'offline';
     try {
       const latest = await serverBuild();
-      availableBuild = latest === LOCAL_BUILD ? '' : latest;
+      availableManifest = latest;
+      availableBuild = latest.build === LOCAL_BUILD ? '' : latest.build;
       window.mysoldUpdateVersion = availableBuild;
       if (!availableBuild) return 'latest';
       const current = await registration;
@@ -70,27 +73,69 @@ const LOCAL_BUILD = '__MYSOLD_BUILD_VERSION__';
     return checking;
   };
 
-  window.mysoldApplyUpdate = async () => {
-    if (!supported || !navigator.onLine || !availableBuild) return false;
-    if (await serverBuild() === LOCAL_BUILD) return false;
-    const current = await registration;
-    if (!current.waiting) {
-      window.location.reload();
-      return true;
-    }
-    return new Promise((resolve, reject) => {
-      const timeout = setTimeout(() => {
-        navigator.serviceWorker.removeEventListener('controllerchange', onChange);
-        reject(new Error('Activation timed out'));
-      }, 20000);
-      const onChange = () => {
+  function workerMatches(worker, manifest) {
+    if (!worker) return Promise.resolve(false);
+    return new Promise(resolve => {
+      const channel = new MessageChannel();
+      const timeout = setTimeout(() => finish(false), 3000);
+      const finish = matches => {
+        clearTimeout(timeout);
+        channel.port1.close();
+        channel.port2.close();
+        resolve(matches);
+      };
+      channel.port1.onmessage = event => {
+        const expected = manifest.contentHash ? `${manifest.build}-${manifest.contentHash}` : null;
+        const build = event.data?.build;
+        finish(typeof build === 'string' && (expected ? build === expected : build.startsWith(`${manifest.build}-`)));
+      };
+      try { worker.postMessage({type: 'MYSOLD_GET_BUILD'}, [channel.port2]); }
+      catch (_) { finish(false); }
+    });
+  }
+
+  function activate(worker, manifest) {
+    return new Promise(resolve => {
+      const timeout = setTimeout(() => finish(false), 20000);
+      let finished = false;
+      const finish = result => {
+        if (finished) return;
+        finished = true;
         clearTimeout(timeout);
         navigator.serviceWorker.removeEventListener('controllerchange', onChange);
-        resolve(true);
-        window.location.reload();
+        resolve(result);
       };
+      const onChange = async () => finish(await workerMatches(navigator.serviceWorker.controller, manifest));
       navigator.serviceWorker.addEventListener('controllerchange', onChange);
-      current.waiting.postMessage({type: 'MYSOLD_SKIP_WAITING'});
+      try { worker.postMessage({type: 'MYSOLD_SKIP_WAITING'}); }
+      catch (_) { finish(false); }
     });
+  }
+
+  async function apply() {
+    if (!supported || !navigator.onLine || !availableBuild) return false;
+    try {
+      const latest = await serverBuild();
+      if (latest.build === LOCAL_BUILD || latest.build !== availableBuild ||
+          latest.contentHash !== availableManifest?.contentHash) return false;
+      const current = await registration;
+      await current.update();
+      if (current.installing) await waitForInstallation(current.installing);
+      const worker = current.waiting || current.active;
+      // Never reload while an old or unidentified worker still serves the app.
+      if (!await workerMatches(worker, latest)) return false;
+      if (current.waiting && !await activate(worker, latest)) return false;
+      if (!await workerMatches(navigator.serviceWorker.controller, latest)) return false;
+      // A distinct navigation URL also bypasses a stale HTTP navigation cache.
+      const url = new URL(window.location.href);
+      url.searchParams.set('mysold_update', latest.build);
+      window.location.replace(url.href);
+      return true;
+    } catch (_) { return false; }
+  }
+
+  window.mysoldApplyUpdate = () => {
+    if (!applying) applying = apply().finally(() => { applying = null; });
+    return applying;
   };
 })();

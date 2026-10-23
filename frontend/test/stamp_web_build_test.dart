@@ -29,10 +29,30 @@ void main() {
           'build/web/pwa_updates.js',
         )..writeAsStringSync("const LOCAL_BUILD = '__MYSOLD_BUILD_VERSION__';");
         final app = File('build/web/main.dart.js')..writeAsStringSync('app-v1');
+        final index = File('build/web/index.html')
+          ..writeAsStringSync(
+            '<script src="pwa_updates.js"></script><script src="flutter_bootstrap.js"></script>',
+          );
+        final bootstrap = File('build/web/flutter_bootstrap.js')
+          ..writeAsStringSync('{"mainJsPath":"main.dart.js"}');
         final logo = File('build/web/logo.png')..writeAsBytesSync([1, 2, 3]);
         final manifest = File('build/web/version.json');
         stamp.main(['--build-version=2026.10.23.2145']);
         final first = worker.readAsStringSync();
+        expect(
+          index.readAsStringSync(),
+          contains('pwa_updates.js?mysold_build=2026.10.23.2145-'),
+        );
+        expect(
+          index.readAsStringSync(),
+          contains('flutter_bootstrap.js?mysold_build=2026.10.23.2145-'),
+        );
+        expect(
+          bootstrap.readAsStringSync(),
+          contains('main.dart.js?mysold_build=2026.10.23.2145-'),
+        );
+        final firstIndex = index.readAsStringSync();
+        final firstBootstrap = bootstrap.readAsStringSync();
         expect(client.readAsStringSync(), contains("'2026.10.23.2145'"));
         expect(
           jsonDecode(manifest.readAsStringSync())['build'],
@@ -40,6 +60,8 @@ void main() {
         );
         stamp.main();
         expect(worker.readAsStringSync(), first);
+        expect(index.readAsStringSync(), firstIndex);
+        expect(bootstrap.readAsStringSync(), firstBootstrap);
         app.writeAsStringSync('app-v2');
         expect(
           () => stamp.main(['--build-version=2026.10.23.2145']),
@@ -47,6 +69,8 @@ void main() {
         );
         stamp.main(['--build-version=2026.10.23.2200']);
         final second = worker.readAsStringSync();
+        expect(index.readAsStringSync(), isNot(firstIndex));
+        expect(bootstrap.readAsStringSync(), isNot(firstBootstrap));
         expect(second, isNot(first));
         logo.writeAsBytesSync([4, 5, 6]);
         stamp.main(['--build-version=2026.10.23.2210']);

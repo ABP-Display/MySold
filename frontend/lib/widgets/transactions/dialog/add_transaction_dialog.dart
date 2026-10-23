@@ -1,3 +1,4 @@
+import 'package:mysold/widgets/app_select_field.dart';
 import 'package:mysold/widgets/app_design.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
@@ -293,42 +294,37 @@ class _AddTransactionDialogState extends State<AddTransactionDialog> {
                           ],
                         ),
                         const Divider(height: 24),
-                        DropdownButtonFormField<String>(
-                          isExpanded: true,
+                        AppSelectField<String>(
                           value: _compteId,
-                          items: _comptes.entries
+                          options: _comptes.entries
                               .map(
-                                (e) => DropdownMenuItem(
+                                (e) => AppSelectOption(
                                   value: e.key,
-                                  child: Text(e.value),
+                                  label: e.value,
                                 ),
                               )
                               .toList(),
                           onChanged: (v) => setState(() => _compteId = v),
-                          decoration: InputDecoration(
-                            labelText: context.tr('Compte'),
-                            prefixIcon: const Icon(
-                              Icons.account_balance_wallet,
-                            ),
-                          ),
+                          label: context.tr('Compte'),
+                          icon: Icons.account_balance_wallet,
                         ),
                         const SizedBox(height: 12),
-                        DropdownButtonFormField<String>(
-                          isExpanded: true,
+                        AppSelectField<String>(
                           value: _categorieId,
-                          items: _categories.entries
+                          options: _categories.entries
                               .map(
-                                (e) => DropdownMenuItem(
+                                (e) => AppSelectOption(
                                   value: e.key,
-                                  child: Text(e.value['name'] ?? ''),
+                                  label: (e.value['name'] ?? '').toString(),
+                                  color: e.value['color'] is int
+                                      ? Color(e.value['color'])
+                                      : null,
                                 ),
                               )
                               .toList(),
                           onChanged: (v) => setState(() => _categorieId = v),
-                          decoration: InputDecoration(
-                            labelText: context.tr('Categorie'),
-                            prefixIcon: const Icon(Icons.category),
-                          ),
+                          label: context.tr('Categorie'),
+                          icon: Icons.category,
                         ),
                         const SizedBox(height: 20),
                         if (_isSaving)

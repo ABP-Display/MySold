@@ -1,3 +1,5 @@
+import 'package:mysold/widgets/app_choice_tabs.dart';
+import 'package:mysold/widgets/app_select_field.dart';
 import 'package:mysold/widgets/app_design.dart';
 // month_manager.dart
 import 'package:flutter/material.dart';
@@ -407,23 +409,19 @@ class _MonthManagerState extends State<MonthManagerScreen>
                       ),
                     ),
                     const SizedBox(height: 16),
-                    DropdownButtonFormField<String?>(
+                    AppSelectField<String?>(
                       value: tempAccountId,
-                      decoration: InputDecoration(
-                        labelText: _t('Compte'),
-                        prefixIcon: const Icon(
-                          Icons.account_balance_wallet_outlined,
-                        ),
-                      ),
-                      items: [
-                        DropdownMenuItem<String?>(
+                      label: _t('Compte'),
+                      icon: Icons.account_balance_wallet_outlined,
+                      options: [
+                        AppSelectOption<String?>(
                           value: null,
-                          child: Text(_t('Tous les comptes')),
+                          label: _t('Tous les comptes'),
                         ),
                         ..._accountIds.entries.map(
-                          (entry) => DropdownMenuItem<String?>(
+                          (entry) => AppSelectOption<String?>(
                             value: entry.key,
-                            child: Text(entry.value),
+                            label: entry.value,
                           ),
                         ),
                       ],
@@ -433,23 +431,24 @@ class _MonthManagerState extends State<MonthManagerScreen>
                     if (currentType == 'expense' || currentType == 'income')
                       Padding(
                         padding: const EdgeInsets.only(top: 12),
-                        child: DropdownButtonFormField<String?>(
+                        child: AppSelectField<String?>(
                           value: tempCategoryId,
-                          decoration: InputDecoration(
-                            labelText: _t('Categorie'),
-                            prefixIcon: const Icon(Icons.category_outlined),
-                          ),
-                          items: [
-                            DropdownMenuItem<String?>(
+                          label: _t('Categorie'),
+                          icon: Icons.category_outlined,
+                          options: [
+                            AppSelectOption<String?>(
                               value: null,
-                              child: Text(_t('Toutes les categories')),
+                              label: _t('Toutes les categories'),
                             ),
                             ...categoryEntries.map(
-                              (entry) => DropdownMenuItem<String?>(
+                              (entry) => AppSelectOption<String?>(
                                 value: entry.key,
-                                child: Text(
-                                  entry.value['name']?.toString() ?? 'Sans nom',
-                                ),
+                                label:
+                                    entry.value['name']?.toString() ??
+                                    'Sans nom',
+                                color: entry.value['color'] is int
+                                    ? Color(entry.value['color'])
+                                    : null,
                               ),
                             ),
                           ],
@@ -718,42 +717,26 @@ class _MonthManagerState extends State<MonthManagerScreen>
                   ),
                 ),
               ),
-              SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
+              Padding(
                 padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-                child: Row(
-                  children: [
-                    for (var index = 0; index < 4; index++) ...[
-                      ChoiceChip(
-                        showCheckmark: false,
-                        avatar: Icon(
-                          [
-                            Icons.money_off_outlined,
-                            Icons.attach_money,
-                            Icons.trending_up_outlined,
-                            Icons.sync_alt,
-                          ][index],
-                          size: 17,
-                        ),
-                        label: Text(
-                          _typeLabel(
-                            [
-                              'expense',
-                              'income',
-                              'investment',
-                              'transfer',
-                            ][index],
-                          ),
-                        ),
-                        selected: _selectedIndex == index,
-                        onSelected: (_) => setState(() {
-                          _selectedIndex = index;
-                          _selectedCategoryId = null;
-                        }),
-                      ),
-                      const SizedBox(width: 8),
-                    ],
+                child: AppChoiceTabs(
+                  labels: [
+                    'expense',
+                    'income',
+                    'investment',
+                    'transfer',
+                  ].map(_typeLabel).toList(),
+                  icons: const [
+                    Icons.money_off_outlined,
+                    Icons.attach_money,
+                    Icons.trending_up_outlined,
+                    Icons.sync_alt,
                   ],
+                  selectedIndex: _selectedIndex,
+                  onSelected: (index) => setState(() {
+                    _selectedIndex = index;
+                    _selectedCategoryId = null;
+                  }),
                 ),
               ),
               Padding(

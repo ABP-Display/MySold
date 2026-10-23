@@ -147,15 +147,13 @@ class AppOperationCard extends StatelessWidget {
         child: LayoutBuilder(
           builder: (context, constraints) {
             final colors = Theme.of(context).colorScheme;
-            final compact =
-                constraints.maxWidth < 420 ||
-                MediaQuery.textScalerOf(context).scale(14) > 20;
             final amountText = Text(
               amount,
+              textAlign: TextAlign.right,
               style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
             );
             return Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 Container(
                   width: 38,
@@ -189,14 +187,14 @@ class AppOperationCard extends StatelessWidget {
                           color: colors.onSurfaceVariant,
                         ),
                       ),
-                      if (compact) ...[const SizedBox(height: 10), amountText],
                     ],
                   ),
                 ),
-                if (!compact) ...[
-                  const SizedBox(width: 16),
-                  Flexible(child: amountText),
-                ],
+                const SizedBox(width: 12),
+                SizedBox(
+                  width: (constraints.maxWidth * 0.37).clamp(88.0, 180.0),
+                  child: amountText,
+                ),
               ],
             );
           },

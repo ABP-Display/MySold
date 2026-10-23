@@ -1,3 +1,4 @@
+import 'package:mysold/widgets/app_design.dart';
 import 'package:mysold/data/document_store.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -109,7 +110,10 @@ class _ComptePageState extends State<ComptePage> {
     final privacy = context.watch<PrivacyProvider>();
 
     return Scaffold(
-      appBar: AppBar(title: Text(context.tr('Gestion des comptes'))),
+      appBar: appPageBar(
+        context,
+        title: Text(context.tr('Gestion des comptes')),
+      ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _openAddCompte(),
         icon: const Icon(Icons.add),

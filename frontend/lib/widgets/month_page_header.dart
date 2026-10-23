@@ -21,98 +21,55 @@ class MonthPageHeader extends StatelessWidget {
   Widget build(BuildContext context) => LayoutBuilder(
     builder: (context, constraints) {
       final compact = constraints.maxWidth < 600;
-      final colors = Theme.of(context).colorScheme;
-      return Padding(
-        padding: const EdgeInsets.only(bottom: 24),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text(
-              eyebrow.toUpperCase(),
-              style: TextStyle(
-                color: colors.primary,
-                fontSize: 10,
-                fontWeight: FontWeight.w600,
-                letterSpacing: 1.6,
+      return PageIntro(
+        title: title,
+        titleKey: const ValueKey('month-page-title'),
+        eyebrow: eyebrow,
+        subtitle: subtitle,
+        action: Container(
+          key: const ValueKey('month-selector'),
+          decoration: AppDesign.panel(context),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              IconButton(
+                tooltip: previousLabel,
+                onPressed: onPrevious,
+                icon: const Icon(Icons.chevron_left, size: 20),
+                style: IconButton.styleFrom(
+                  minimumSize: const Size(36, 44),
+                  padding: EdgeInsets.zero,
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                ),
               ),
-            ),
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                Expanded(
+              Flexible(
+                child: Semantics(
+                  label: monthLabel,
+                  excludeSemantics: true,
                   child: Text(
-                    title,
-                    key: const ValueKey('month-page-title'),
-                    style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                      fontSize: compact ? 20 : 28,
+                    compact ? compactMonthLabel : monthLabel,
+                    textAlign: TextAlign.center,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 12,
                       fontWeight: FontWeight.w600,
-                      letterSpacing: -0.7,
                     ),
                   ),
                 ),
-                const SizedBox(width: 12),
-                ConstrainedBox(
-                  constraints: BoxConstraints(
-                    maxWidth: constraints.maxWidth * 0.52,
-                  ),
-                  child: Container(
-                    key: const ValueKey('month-selector'),
-                    decoration: AppDesign.panel(context),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        IconButton(
-                          tooltip: previousLabel,
-                          onPressed: onPrevious,
-                          icon: const Icon(Icons.chevron_left, size: 20),
-                          style: IconButton.styleFrom(
-                            minimumSize: const Size(36, 44),
-                            padding: EdgeInsets.zero,
-                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                          ),
-                        ),
-                        Flexible(
-                          child: Semantics(
-                            label: monthLabel,
-                            excludeSemantics: true,
-                            child: Text(
-                              compact ? compactMonthLabel : monthLabel,
-                              textAlign: TextAlign.center,
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ),
-                        ),
-                        IconButton(
-                          tooltip: nextLabel,
-                          onPressed: onNext,
-                          icon: const Icon(Icons.chevron_right, size: 20),
-                          style: IconButton.styleFrom(
-                            minimumSize: const Size(36, 44),
-                            padding: EdgeInsets.zero,
-                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Text(
-              subtitle,
-              style: TextStyle(
-                color: colors.onSurfaceVariant,
-                height: 1.6,
-                fontSize: 13,
               ),
-            ),
-          ],
+              IconButton(
+                tooltip: nextLabel,
+                onPressed: onNext,
+                icon: const Icon(Icons.chevron_right, size: 20),
+                style: IconButton.styleFrom(
+                  minimumSize: const Size(36, 44),
+                  padding: EdgeInsets.zero,
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                ),
+              ),
+            ],
+          ),
         ),
       );
     },

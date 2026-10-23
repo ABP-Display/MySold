@@ -1,3 +1,4 @@
+import 'package:mysold/widgets/app_design.dart';
 import 'dart:convert';
 import 'dart:typed_data';
 
@@ -1175,13 +1176,19 @@ class _SecurityPrivacyPageState extends State<SecurityPrivacyPage> {
   Widget build(BuildContext context) {
     if (_isLoading) {
       return Scaffold(
-        appBar: AppBar(title: Text(context.tr('Securite et confidentialite'))),
+        appBar: appPageBar(
+          context,
+          title: Text(context.tr('Securite et confidentialite')),
+        ),
         body: const Center(child: CircularProgressIndicator()),
       );
     }
 
     return Scaffold(
-      appBar: AppBar(title: Text(context.tr('Securite et confidentialite'))),
+      appBar: appPageBar(
+        context,
+        title: Text(context.tr('Securite et confidentialite')),
+      ),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 12, 16, 28),
         children: [
@@ -1487,7 +1494,7 @@ class _LegalTextPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text(title)),
+      appBar: appPageBar(context, title: Text(title)),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 16, 16, 28),
         children: [
@@ -2106,7 +2113,10 @@ class _ImportProgressPageState extends State<_ImportProgressPage> {
     return PopScope(
       canPop: canClose,
       child: Scaffold(
-        appBar: AppBar(title: Text(context.tr('Import des donnees'))),
+        appBar: appPageBar(
+          context,
+          title: Text(context.tr('Import des donnees')),
+        ),
         body: Padding(
           padding: const EdgeInsets.all(18),
           child: Column(

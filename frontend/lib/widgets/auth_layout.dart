@@ -68,21 +68,7 @@ class AuthBrand extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Row(
     children: [
-      Container(
-        width: logoSize,
-        height: logoSize,
-        padding: const EdgeInsets.all(2),
-        decoration: BoxDecoration(
-          color: AuthPalette.field,
-          borderRadius: BorderRadius.circular(13),
-          border: Border.all(color: AuthPalette.border),
-        ),
-        child: Image.asset(
-          'assets/icons/logo.png',
-          fit: BoxFit.contain,
-          excludeFromSemantics: true,
-        ),
-      ),
+      AuthLogo(size: logoSize),
       const SizedBox(width: 11),
       const Expanded(
         child: Text(
@@ -94,6 +80,70 @@ class AuthBrand extends StatelessWidget {
             letterSpacing: -0.8,
           ),
         ),
+      ),
+    ],
+  );
+}
+
+/// The original logo, shared by authentication screens.
+class AuthLogo extends StatelessWidget {
+  final double size;
+  const AuthLogo({super.key, this.size = 100});
+
+  @override
+  Widget build(BuildContext context) => Semantics(
+    image: true,
+    label: 'MySold',
+    child: Container(
+      width: size,
+      height: size,
+      padding: const EdgeInsets.all(2),
+      decoration: BoxDecoration(
+        color: AuthPalette.field,
+        borderRadius: BorderRadius.circular(13),
+        border: Border.all(color: AuthPalette.border),
+      ),
+      child: Image.asset(
+        'assets/icons/logo.png',
+        fit: BoxFit.contain,
+        excludeFromSemantics: true,
+      ),
+    ),
+  );
+}
+
+class AuthPinHeader extends StatelessWidget {
+  final String title, description;
+  const AuthPinHeader({
+    super.key,
+    required this.title,
+    required this.description,
+  });
+
+  @override
+  Widget build(BuildContext context) => Column(
+    crossAxisAlignment: CrossAxisAlignment.stretch,
+    children: [
+      const Center(child: AuthLogo(size: 112)),
+      const SizedBox(height: 24),
+      Semantics(
+        header: true,
+        child: Text(
+          title,
+          textAlign: TextAlign.center,
+          style: const TextStyle(
+            color: AuthPalette.text,
+            fontSize: 28,
+            fontWeight: FontWeight.w600,
+            letterSpacing: -0.8,
+          ),
+        ),
+      ),
+      const SizedBox(height: 12),
+      Text(
+        description,
+        textAlign: TextAlign.center,
+        style: const TextStyle(color: AuthPalette.muted, height: 1.6),
       ),
     ],
   );

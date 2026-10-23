@@ -373,7 +373,8 @@ class _SettingsSheetState extends State<SettingsSheet> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: widget.withBack
-          ? AppBar(
+          ? appPageBar(
+              context,
               leading: BackButton(onPressed: () => Navigator.pop(context)),
               title: Text(context.tr('Parametres')),
             )

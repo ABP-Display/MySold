@@ -230,7 +230,10 @@ class _BudgetAlertPageState extends State<BudgetAlertPage> {
     final currency = context.watch<CurrencyProvider>().currency;
 
     return Scaffold(
-      appBar: AppBar(title: Text(context.tr('Limites budgetaires'))),
+      appBar: appPageBar(
+        context,
+        title: Text(context.tr('Limites budgetaires')),
+      ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _openAlertEditor(),
         icon: const Icon(Icons.add),

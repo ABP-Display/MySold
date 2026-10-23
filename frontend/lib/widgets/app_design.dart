@@ -3,6 +3,10 @@ import 'package:flutter/material.dart';
 abstract final class AppDesign {
   static const contentWidth = 1280.0;
   static const radius = 12.0;
+  static TextStyle pageTitle(BuildContext context) => Theme.of(context)
+      .textTheme
+      .headlineMedium!
+      .copyWith(fontSize: 28, fontWeight: FontWeight.w600, letterSpacing: -0.8);
   static Color border(BuildContext context) =>
       Theme.of(context).colorScheme.outline.withValues(alpha: 0.38);
   static BoxDecoration panel(BuildContext context) => BoxDecoration(
@@ -12,71 +16,128 @@ abstract final class AppDesign {
   );
 }
 
+/// Keep long navigation titles readable, including with enlarged system text.
+AppBar appPageBar(
+  BuildContext context, {
+  required Text title,
+  Widget? leading,
+  PreferredSizeWidget? bottom,
+  Color? backgroundColor,
+}) {
+  final style = AppDesign.pageTitle(context);
+  final measurement =
+      TextPainter(
+        text: TextSpan(text: title.data, style: style),
+        textDirection: Directionality.of(context),
+        textScaler: MediaQuery.textScalerOf(context),
+        locale: Localizations.maybeLocaleOf(context),
+      )..layout(
+        maxWidth: (MediaQuery.sizeOf(context).width - 88).clamp(
+          1,
+          double.infinity,
+        ),
+      );
+  final height = (measurement.height + 24).clamp(76.0, double.infinity);
+  measurement.dispose();
+  return AppBar(
+    leading: leading,
+    title: Semantics(
+      header: true,
+      child: Text(
+        title.data!,
+        key: title.key,
+        style: style,
+        softWrap: true,
+        overflow: TextOverflow.visible,
+        textScaler: MediaQuery.textScalerOf(context),
+      ),
+    ),
+    titleTextStyle: style,
+    centerTitle: false,
+    titleSpacing: 16,
+    toolbarHeight: height,
+    bottom: bottom,
+    backgroundColor: backgroundColor,
+  );
+}
+
+/// Page headings share the same size on phones and desktop.
 class PageIntro extends StatelessWidget {
   final String title;
   final String subtitle;
   final String? eyebrow;
   final Widget? action;
+  final Key? titleKey;
   const PageIntro({
     super.key,
     required this.title,
     required this.subtitle,
     this.eyebrow,
     this.action,
+    this.titleKey,
   });
+
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
-    final text = Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        if (eyebrow != null) ...[
-          Text(
-            eyebrow!.toUpperCase(),
-            style: TextStyle(
-              color: colors.primary,
-              fontSize: 10,
-              fontWeight: FontWeight.w600,
-              letterSpacing: 1.6,
-            ),
-          ),
-          const SizedBox(height: 8),
-        ],
-        Text(
-          title,
-          style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-            fontWeight: FontWeight.w600,
-            letterSpacing: -0.8,
-          ),
-        ),
-        const SizedBox(height: 8),
-        Text(
-          subtitle,
-          style: TextStyle(
-            color: colors.onSurfaceVariant,
-            height: 1.6,
-            fontSize: 13,
-          ),
-        ),
-      ],
-    );
     return Padding(
       padding: const EdgeInsets.only(bottom: 24),
       child: LayoutBuilder(
         builder: (context, constraints) {
-          if (constraints.maxWidth < 600)
-            return Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                text,
-                if (action != null) ...[const SizedBox(height: 16), action!],
-              ],
-            );
-          return Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
+          final stacked =
+              constraints.maxWidth <
+              240 * MediaQuery.textScalerOf(context).scale(14) / 14;
+          final heading = Semantics(
+            header: true,
+            child: Text(
+              title,
+              key: titleKey,
+              style: AppDesign.pageTitle(context),
+            ),
+          );
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Expanded(child: text),
-              if (action != null) ...[const SizedBox(width: 20), action!],
+              if (eyebrow != null) ...[
+                Text(
+                  eyebrow!.toUpperCase(),
+                  style: TextStyle(
+                    color: colors.primary,
+                    fontSize: 10,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: 1.6,
+                  ),
+                ),
+                const SizedBox(height: 8),
+              ],
+              if (action == null || stacked)
+                heading
+              else
+                Row(
+                  children: [
+                    Expanded(child: heading),
+                    const SizedBox(width: 12),
+                    ConstrainedBox(
+                      constraints: BoxConstraints(
+                        maxWidth: constraints.maxWidth * 0.52,
+                      ),
+                      child: action!,
+                    ),
+                  ],
+                ),
+              if (action != null && stacked) ...[
+                const SizedBox(height: 12),
+                Align(alignment: Alignment.centerRight, child: action!),
+              ],
+              const SizedBox(height: 8),
+              Text(
+                subtitle,
+                style: TextStyle(
+                  color: colors.onSurfaceVariant,
+                  height: 1.6,
+                  fontSize: 13,
+                ),
+              ),
             ],
           );
         },

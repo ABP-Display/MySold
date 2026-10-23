@@ -1,3 +1,4 @@
+import 'package:mysold/widgets/app_design.dart';
 import 'package:mysold/data/document_store.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_colorpicker/flutter_colorpicker.dart';
@@ -215,7 +216,8 @@ class _AddCategoryPageState extends State<AddCategoryPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
+      appBar: appPageBar(
+        context,
         title: Text(
           _isEditing
               ? context.tr('Modifier la categorie')

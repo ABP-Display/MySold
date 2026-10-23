@@ -19,8 +19,15 @@ PC et défilent horizontalement sur petit écran. Les sélecteurs de comptes,
 catégories et investissements disposent d’une recherche, d’icônes et d’un repère
 de sélection, dans une fenêtre sur ordinateur ou un volet sur mobile.
 
-Dans le budget mensuel, le titre et le sélecteur du mois restent sur la même
-ligne, titre à gauche et mois à droite ; le mois est abrégé sur petit écran.
+Les titres des pages utilisent une taille commune de 28 pixels sur mobile et
+ordinateur, avec le même alignement à gauche et les mêmes espacements.
+Les titres des pages secondaires peuvent revenir à la ligne et leur barre
+de navigation adapte sa hauteur au texte, y compris avec un texte agrandi.
+Dans le budget mensuel et la vue globale, le sélecteur est à droite du titre ;
+le mois est abrégé sur petit écran. Si la largeur ou le texte agrandi ne permet
+plus cette disposition, le sélecteur passe dessous, aligné à droite.
+La page PIN garde son fond noir et le logo original : logo centré, titre dessous,
+puis texte d’aide et espace de 32 pixels avant la saisie.
 Les cadres d’information des graphiques en barres et de la répartition des
 revenus sont affichés au-dessus de la zone visible du graphique. Ils restent
 dans ses limites pendant un glissement, même lorsque les barres défilent
@@ -54,7 +61,7 @@ restent accessibles.
 Depuis `frontend/` :
 
 ```sh
-flutter test test/workspace_design_test.dart test/privacy_provider_test.dart test/auth_layout_test.dart test/stamp_web_build_test.dart test/operation_controls_test.dart test/mobile_charts_test.dart
+flutter test test/workspace_design_test.dart test/privacy_provider_test.dart test/auth_layout_test.dart test/stamp_web_build_test.dart test/operation_controls_test.dart test/mobile_charts_test.dart test/page_headers_test.dart
 node --test test/pwa_updates.test.cjs test/sw.test.cjs tool/privacy_gesture_test.cjs
 ```
 

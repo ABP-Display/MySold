@@ -32,7 +32,7 @@ void main() {
   for (final width in [320.0, 390.0, 768.0, 1440.0]) {
     for (final scale in [1.0, 2.0]) {
       testWidgets(
-        'Month title stays left of the month on one row at $width/$scale',
+        'Month heading keeps its size and adapts the selector at $width/$scale',
         (tester) async {
           tester.view.physicalSize = Size(width, 700);
           tester.view.devicePixelRatio = 1;
@@ -75,8 +75,19 @@ void main() {
             find.byKey(const ValueKey('month-selector')),
           );
           expect(title.left, 16);
-          expect(title.right, lessThan(selector.left));
-          expect(title.center.dy, closeTo(selector.center.dy, 0.5));
+          expect(
+            tester
+                .widget<Text>(find.byKey(const ValueKey('month-page-title')))
+                .style!
+                .fontSize,
+            28,
+          );
+          if (width - 32 >= 240 * scale) {
+            expect(title.right, lessThan(selector.left));
+            expect(title.center.dy, closeTo(selector.center.dy, 0.5));
+          } else {
+            expect(selector.top, greaterThan(title.bottom));
+          }
           expect(selector.right, closeTo(width - 16, 0.5));
           await tester.tap(find.byTooltip('Mois précédent'));
           await tester.tap(find.byTooltip('Mois suivant'));

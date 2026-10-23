@@ -1,3 +1,4 @@
+import 'package:mysold/widgets/app_design.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
@@ -78,7 +79,8 @@ class _SimulationScreenState extends State<SimulationScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
+      appBar: appPageBar(
+        context,
         backgroundColor: Theme.of(context).scaffoldBackgroundColor,
         title: const Text('Simulation'),
         bottom: PreferredSize(

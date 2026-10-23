@@ -1,3 +1,4 @@
+import 'package:mysold/widgets/app_design.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:qr/qr.dart';
@@ -161,7 +162,10 @@ class _MfaSettingsPageState extends State<MfaSettingsPage> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: Text(context.tr('Double authentification'))),
+    appBar: appPageBar(
+      context,
+      title: Text(context.tr('Double authentification')),
+    ),
     body: SingleChildScrollView(
       padding: const EdgeInsets.all(20),
       child: Center(

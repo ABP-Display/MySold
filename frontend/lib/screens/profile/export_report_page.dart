@@ -1,3 +1,4 @@
+import 'package:mysold/widgets/app_design.dart';
 import 'package:mysold/data/local_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
@@ -101,7 +102,10 @@ class _ExportReportPageState extends State<ExportReportPage> {
     final inclusiveEnd = range.end.subtract(const Duration(days: 1));
 
     return Scaffold(
-      appBar: AppBar(title: Text(context.tr('Exporter un rapport'))),
+      appBar: appPageBar(
+        context,
+        title: Text(context.tr('Exporter un rapport')),
+      ),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
         children: [
@@ -317,7 +321,10 @@ class _ExportReportLoadingPageState extends State<ExportReportLoadingPage> {
     return PopScope(
       canPop: _done || _error != null,
       child: Scaffold(
-        appBar: AppBar(title: Text(context.tr('Generation du rapport'))),
+        appBar: appPageBar(
+          context,
+          title: Text(context.tr('Generation du rapport')),
+        ),
         body: Center(
           child: Padding(
             padding: const EdgeInsets.all(24),

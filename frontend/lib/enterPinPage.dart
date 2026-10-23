@@ -132,39 +132,17 @@ class _EnterPinPageState extends State<EnterPinPage> {
                       mainAxisSize: MainAxisSize.min,
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        const AuthBrand(logoSize: 100),
-                        const SizedBox(height: 28),
-                        const Icon(
-                          Icons.lock_outline,
-                          color: AuthPalette.accent,
-                          size: 32,
-                        ),
-                        const SizedBox(height: 16),
-                        Text(
-                          context.tr(
+                        AuthPinHeader(
+                          title: context.tr(
                             needsPinCreation ? 'Creer votre PIN' : 'Code PIN',
                           ),
-                          textAlign: TextAlign.center,
-                          style: const TextStyle(
-                            color: AuthPalette.text,
-                            fontSize: 27,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        const SizedBox(height: 10),
-                        Text(
-                          context.tr(
+                          description: context.tr(
                             needsPinCreation
                                 ? 'Choisissez un code a 6 chiffres pour securiser votre espace.'
                                 : 'Entrez votre code a 6 chiffres pour deverrouiller vos donnees.',
                           ),
-                          textAlign: TextAlign.center,
-                          style: const TextStyle(
-                            color: AuthPalette.muted,
-                            height: 1.6,
-                          ),
                         ),
-                        const SizedBox(height: 28),
+                        const SizedBox(height: 32),
                         if (loadingPinStatus)
                           const Center(child: CircularProgressIndicator())
                         else ...[

@@ -1,3 +1,4 @@
+import 'package:mysold/widgets/app_design.dart';
 import 'package:mysold/data/document_store.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -138,7 +139,8 @@ class _InvestmentPageState extends State<InvestmentPage>
     final privacy = context.watch<PrivacyProvider>();
 
     return Scaffold(
-      appBar: AppBar(
+      appBar: appPageBar(
+        context,
         title: Text(context.tr('Gestion des investissements')),
         bottom: TabBar(
           controller: _tabController,

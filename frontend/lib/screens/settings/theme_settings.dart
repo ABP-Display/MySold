@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:mysold/widgets/app_typography.dart';
 
 class AppThemes {
   static const String defaultThemeName = 'Sombre';
@@ -109,26 +110,24 @@ class AppThemes {
     required Color onSurface,
     required Color outline,
   }) {
-    final scheme = ColorScheme.fromSeed(
-      seedColor: seed,
-      brightness: brightness,
-    ).copyWith(
-      primary: primary,
-      onPrimary: onPrimary,
-      secondary: secondary,
-      onSecondary: onSecondary,
-      surface: surface,
-      surfaceVariant: surfaceVariant,
-      onSurface: onSurface,
-      outline: outline,
-      error: brightness == Brightness.dark
-          ? const Color(0xFFFFB4AB)
-          : const Color(0xFFBA1A1A),
-    );
+    final scheme = ColorScheme.fromSeed(seedColor: seed, brightness: brightness)
+        .copyWith(
+          primary: primary,
+          onPrimary: onPrimary,
+          secondary: secondary,
+          onSecondary: onSecondary,
+          surface: surface,
+          surfaceVariant: surfaceVariant,
+          onSurface: onSurface,
+          outline: outline,
+          error: brightness == Brightness.dark
+              ? const Color(0xFFFFB4AB)
+              : const Color(0xFFBA1A1A),
+        );
 
     final base = ThemeData(
-      fontFamily: 'Roboto',
-      fontFamilyFallback: const ['NotoSansJP', 'NotoEmoji'],
+      fontFamily: AppTypography.family,
+      fontFamilyFallback: AppTypography.fallback,
       useMaterial3: true,
       brightness: brightness,
       scaffoldBackgroundColor: scaffold,
@@ -214,8 +213,9 @@ class AppThemes {
       ),
       snackBarTheme: SnackBarThemeData(
         behavior: SnackBarBehavior.floating,
-        backgroundColor:
-            brightness == Brightness.dark ? const Color(0xFF252A32) : onSurface,
+        backgroundColor: brightness == Brightness.dark
+            ? const Color(0xFF252A32)
+            : onSurface,
         contentTextStyle: TextStyle(
           color: brightness == Brightness.dark ? onSurface : Colors.white,
         ),

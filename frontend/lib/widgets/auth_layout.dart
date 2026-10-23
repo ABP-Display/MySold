@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:mysold/l10n/app_localizations.dart';
+import 'package:mysold/widgets/app_typography.dart';
 
 abstract final class AuthPalette {
   static const background = Colors.black;
@@ -15,7 +16,8 @@ abstract final class AuthPalette {
   static final theme = ThemeData(
     useMaterial3: true,
     brightness: Brightness.dark,
-    fontFamily: 'Roboto',
+    fontFamily: AppTypography.family,
+    fontFamilyFallback: AppTypography.fallback,
     colorScheme: const ColorScheme.dark(
       primary: accent,
       onPrimary: background,
@@ -211,7 +213,7 @@ class _AuthStory extends StatelessWidget {
           context.tr('Plus de clarté.\nPlus de sérénité.'),
           style: const TextStyle(
             color: AuthPalette.text,
-            fontFamily: 'Georgia',
+            fontFamily: AppTypography.family,
             fontSize: 38,
             height: 1.15,
             letterSpacing: -1,

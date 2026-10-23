@@ -11,6 +11,8 @@ La licence MySold ne remplace pas les licences des dépendances et des ressource
   `frontend/assets/fonts/NotoSansJP-LICENSE.txt`.
 - Noto Emoji : SIL Open Font License 1.1, incluse dans
   `frontend/assets/fonts/NotoEmoji-LICENSE.txt`.
+- Noto Sans Symbols : SIL Open Font License 1.1, incluse dans
+  `frontend/assets/fonts/NotoSansSymbols-LICENSE.txt`, issue du dépôt Google Fonts.
 - Flask, Werkzeug, Psycopg, Gunicorn : licences fournies par leurs distributions.
 - PostgreSQL, Nginx et images de base : licences et avis de leurs projets.
 

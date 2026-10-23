@@ -1,5 +1,5 @@
 // Never cache API responses or financial data on a shared device.
-// Replaced with a content hash by tool/stamp_web_build.dart after each build.
+// Replaced with the dated build number and content hash after each build.
 const BUILD = '__MYSOLD_BUILD_ID__';
 const CACHE = `mysold-shell-${BUILD}`;
 const SHELL = ['/', '/index.html', '/manifest.json', '/favicon.png'];
@@ -17,7 +17,7 @@ self.addEventListener('activate', event => {
 self.addEventListener('fetch', event => {
   const url = new URL(event.request.url);
   if (event.request.method !== 'GET' || url.origin !== self.location.origin ||
-      url.pathname.startsWith('/api/')) return;
+      url.pathname.startsWith('/api/') || url.pathname === '/version.json') return;
   if (event.request.mode === 'navigate') {
     event.respondWith(fetch(event.request).catch(() => caches.match('/index.html')));
   }

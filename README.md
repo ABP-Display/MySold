@@ -167,14 +167,35 @@ budgétaires sont enregistrés dans la base. Les notifications navigateur sont
 facultatives et déclenchées lorsque l’application est ouverte ; il n’y a pas de
 push externe ni de tâche bancaire exécutée en arrière-plan après sa fermeture.
 
-Dans **Profil → Paramètres → Mettre à jour l’application**, rechercher une nouvelle
-version. Si elle est disponible, choisir **Mettre à jour** pour l’activer et
-recharger l’application, ou **Plus tard** pour conserver la session actuelle.
+À l’ouverture de la PWA et lors de son retour au premier plan, MySold interroge
+`/version.json` sans cache. Le numéro du build installé est comparé à celui
+déployé sur le serveur. S’ils sont identiques, aucune fenêtre ne s’affiche.
+S’ils diffèrent, une fenêtre affiche les deux versions et propose **Mettre à jour**
+pour recharger l’application, ou **Plus tard** pour continuer. Un même build
+refusé n’est pas proposé à nouveau pendant la session ouverte ; la recherche
+manuelle reste accessible dans **Profil → Paramètres → Mettre à jour l’application**.
 Enregistrer les modifications en cours avant de confirmer. La vérification
 nécessite une connexion au serveur ; elle fonctionne en HTTPS ou sur localhost.
 Le bouton installe la version déjà déployée par l’administrateur, sans mettre à
-jour les conteneurs du serveur. Chaque construction Docker versionne
-automatiquement le service worker à partir du contenu des fichiers web.
+jour les conteneurs du serveur. Le contrôle est silencieux si le serveur est
+injoignable ; le bouton des paramètres permet de réessayer.
+
+Chaque construction Docker génère un numéro au format `AAAA.MM.JJ.HHMM`, par
+exemple `2026.10.23.2145`, à partir de l’heure **Europe/Paris**, même si le serveur
+utilise UTC. Ce numéro est intégré au client et publié dans `version.json`.
+Un condensat du contenu versionne aussi le cache du service worker. Chaque
+nouvelle version publiée doit avoir un numéro distinct ; éviter de publier deux
+builds différents dans la même minute. Pour imposer un numéro en construction
+manuelle ou en CI, après `flutter build web`, utiliser :
+
+```sh
+dart run tool/stamp_web_build.dart --build-version=2026.10.23.2145
+```
+
+Sans argument, le numéro est automatique. Relancer le script sur des fichiers
+inchangés conserve leur numéro. Le numéro est visible dans **Paramètres → À propos**.
+Après une première installation de cette fonctionnalité,
+recharger une fois une ancienne PWA pour qu’elle dispose du contrôle automatique.
 
 ## Importer ses données Sold Up
 

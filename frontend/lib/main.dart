@@ -25,6 +25,7 @@ import 'package:mysold/services/auth_service.dart';
 import 'package:mysold/login_page.dart';
 import 'package:mysold/services/local_notification_service.dart';
 import 'package:mysold/widgets/icon_loader.dart';
+import 'package:mysold/widgets/pwa_update_prompt.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -53,21 +54,37 @@ void main() async {
   try {
     await LocalAuth.instance.initialize();
   } catch (_) {
-    runApp(MaterialApp(
-      title: 'MySold',
-      debugShowCheckedModeBanner: false,
-      theme: themeProvider.themeData,
-      home: Scaffold(body: Center(child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(mainAxisSize: MainAxisSize.min, children: [
-          const Icon(Icons.cloud_off_outlined, size: 40),
-          const SizedBox(height: 16),
-          const Text('Connexion à votre serveur MySold impossible.', textAlign: TextAlign.center),
-          const SizedBox(height: 16),
-          FilledButton.icon(onPressed: main, icon: const Icon(Icons.refresh), label: const Text('Réessayer')),
-        ]),
-      ))),
-    ));
+    runApp(
+      MaterialApp(
+        title: 'MySold',
+        debugShowCheckedModeBanner: false,
+        theme: themeProvider.themeData,
+        home: Scaffold(
+          body: Center(
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.cloud_off_outlined, size: 40),
+                  const SizedBox(height: 16),
+                  const Text(
+                    'Connexion à votre serveur MySold impossible.',
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 16),
+                  FilledButton.icon(
+                    onPressed: main,
+                    icon: const Icon(Icons.refresh),
+                    label: const Text('Réessayer'),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
     return;
   }
   await LocalNotificationService.initialize();
@@ -99,12 +116,18 @@ class MyApp extends StatefulWidget {
 }
 
 class _MyAppState extends State<MyApp> {
+  final _navigatorKey = GlobalKey<NavigatorState>();
   @override
   Widget build(BuildContext context) {
     final themeProvider = context.watch<ThemeProvider>();
     final languageProvider = context.watch<LanguageProvider>();
 
     return MaterialApp(
+      navigatorKey: _navigatorKey,
+      builder: (context, child) => PwaUpdatePrompt(
+        navigatorKey: _navigatorKey,
+        child: child ?? const SizedBox.shrink(),
+      ),
       title: 'MySold',
       debugShowCheckedModeBanner: false,
       theme: themeProvider.themeData,
@@ -217,11 +240,11 @@ class _HomeScreenState extends State<HomeScreen>
   DateTime _lastShakeAt = DateTime.fromMillisecondsSinceEpoch(0);
 
   List<_HomeNavItem> get _navItems => const [
-        _HomeNavItem(labelKey: 'Mois', icon: Icons.calendar_month_outlined),
-        _HomeNavItem(labelKey: 'Stats', icon: Icons.query_stats_rounded),
-        _HomeNavItem(labelKey: 'Global', icon: Icons.dashboard_outlined),
-        _HomeNavItem(labelKey: 'Profil', icon: Icons.person_outline),
-      ];
+    _HomeNavItem(labelKey: 'Mois', icon: Icons.calendar_month_outlined),
+    _HomeNavItem(labelKey: 'Stats', icon: Icons.query_stats_rounded),
+    _HomeNavItem(labelKey: 'Global', icon: Icons.dashboard_outlined),
+    _HomeNavItem(labelKey: 'Profil', icon: Icons.person_outline),
+  ];
 
   @override
   void initState() {
@@ -255,7 +278,10 @@ class _HomeScreenState extends State<HomeScreen>
 
     _isLocking = true;
     try {
-      final doc = await DocumentStore.instance.collection('users').doc(uid).get();
+      final doc = await DocumentStore.instance
+          .collection('users')
+          .doc(uid)
+          .get();
       final data = doc.data() ?? {};
       final frequency = _normalizeLockFrequency(data['reconnectionFrequency']);
       final delayMinutes = _normalizeLockDelay(data['lockDelayMinutes']);
@@ -264,8 +290,8 @@ class _HomeScreenState extends State<HomeScreen>
           : DateTime.now().difference(_backgroundAt!);
       _backgroundAt = null;
 
-      final shouldLock = frequency == 'always' &&
-          elapsed >= Duration(minutes: delayMinutes);
+      final shouldLock =
+          frequency == 'always' && elapsed >= Duration(minutes: delayMinutes);
 
       if (!shouldLock || !mounted) return;
 
@@ -292,10 +318,7 @@ class _HomeScreenState extends State<HomeScreen>
 
   int _normalizeLockDelay(dynamic value) {
     if (value is num) return value.toInt().clamp(0, 1440).toInt();
-    return int.tryParse((value ?? '0').toString())
-            ?.clamp(0, 1440)
-            .toInt() ??
-        0;
+    return int.tryParse((value ?? '0').toString())?.clamp(0, 1440).toInt() ?? 0;
   }
 
   void _startShakePrivacyListener() {
@@ -317,11 +340,13 @@ class _HomeScreenState extends State<HomeScreen>
       ScaffoldMessenger.of(context).clearSnackBars();
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(privacy.persistentHideAmounts
-              ? context.tr('Mode discret actif dans les parametres')
-              : privacy.shakeHideAmounts
-                  ? context.tr('Montants masques')
-                  : context.tr('Montants visibles')),
+          content: Text(
+            privacy.persistentHideAmounts
+                ? context.tr('Mode discret actif dans les parametres')
+                : privacy.shakeHideAmounts
+                ? context.tr('Montants masques')
+                : context.tr('Montants visibles'),
+          ),
           duration: const Duration(milliseconds: 900),
         ),
       );
@@ -352,9 +377,7 @@ class _HomeScreenState extends State<HomeScreen>
           decoration: BoxDecoration(
             color: colorScheme.surfaceVariant.withOpacity(0.28),
             borderRadius: BorderRadius.circular(20),
-            border: Border.all(
-              color: colorScheme.outline.withOpacity(0.10),
-            ),
+            border: Border.all(color: colorScheme.outline.withOpacity(0.10)),
           ),
           child: Row(
             children: List.generate(_navItems.length, (index) {
@@ -472,8 +495,5 @@ class _HomeNavItem {
   final String labelKey;
   final IconData icon;
 
-  const _HomeNavItem({
-    required this.labelKey,
-    required this.icon,
-  });
+  const _HomeNavItem({required this.labelKey, required this.icon});
 }

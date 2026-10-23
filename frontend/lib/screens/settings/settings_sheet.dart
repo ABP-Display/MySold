@@ -12,6 +12,7 @@ import 'package:mysold/screens/settings/theme_selector.dart';
 import 'package:mysold/services/security_gate.dart';
 import 'package:mysold/services/local_notification_service.dart';
 import 'package:mysold/services/pwa_update_service.dart';
+import 'package:mysold/widgets/pwa_update_prompt.dart';
 import 'package:mysold/screens/settings/mfa_settings_page.dart';
 
 class SettingsSheet extends StatefulWidget {
@@ -36,29 +37,7 @@ class _SettingsSheetState extends State<SettingsSheet> {
       final result = await PwaUpdateService.check();
       if (!mounted) return;
       if (result == 'available') {
-        final confirmed = await showDialog<bool>(
-          context: context,
-          builder: (dialogContext) => AlertDialog(
-            title: Text(context.tr('Une mise à jour est disponible')),
-            content: SingleChildScrollView(
-              child: Text(
-                context.tr(
-                  'Installer la nouvelle version de MySold ? L’application va se recharger. Enregistrez vos modifications avant de continuer.',
-                ),
-              ),
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(dialogContext, false),
-                child: Text(context.tr('Plus tard')),
-              ),
-              FilledButton(
-                onPressed: () => Navigator.pop(dialogContext, true),
-                child: Text(context.tr('Mettre à jour')),
-              ),
-            ],
-          ),
-        );
+        final confirmed = await PwaUpdatePrompt.offer(context);
         if (confirmed != true || !mounted) return;
         final applied = await PwaUpdateService.apply();
         if (!applied && mounted)
@@ -331,7 +310,7 @@ class _SettingsSheetState extends State<SettingsSheet> {
     showAboutDialog(
       context: context,
       applicationName: 'MySold',
-      applicationVersion: '2025.1.0+2',
+      applicationVersion: PwaUpdateService.currentBuild,
       applicationIcon: Container(
         height: 48,
         width: 48,

@@ -9,7 +9,8 @@
 *.sql.gz
 *.dump
 backups/
-data/
+# Runtime storage only; frontend/lib/data contains application source code.
+/data/
 frontend/.dart_tool/
 frontend/build/
 frontend/.flutter-plugins*

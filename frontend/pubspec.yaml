@@ -21,6 +21,7 @@ dependencies:
   shared_preferences: ^2.2.2
   provider: any
   crypto: any
+  qr: ^3.0.2
   http: ^1.2.2
   flutter_iconpicker: 4.0.3
   flutter_colorpicker: ^1.0.3

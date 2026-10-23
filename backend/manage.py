@@ -23,4 +23,5 @@ else:
         if not user:
             raise SystemExit('Compte introuvable.')
         db.execute('DELETE FROM sessions WHERE user_id=%s', (user['id'],))
+        db.execute('DELETE FROM mfa_challenges WHERE user_id=%s', (user['id'],))
     print('Mot de passe modifié. Les sessions existantes ont été fermées.')

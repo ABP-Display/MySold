@@ -12,6 +12,7 @@ import 'package:mysold/screens/settings/theme_selector.dart';
 import 'package:mysold/services/security_gate.dart';
 import 'package:mysold/services/local_notification_service.dart';
 import 'package:mysold/services/pwa_update_service.dart';
+import 'package:mysold/screens/settings/mfa_settings_page.dart';
 
 class SettingsSheet extends StatefulWidget {
   final bool withBack;
@@ -436,6 +437,15 @@ class _SettingsSheetState extends State<SettingsSheet> {
                 title: 'Securite et confidentialite',
                 subtitle: 'PIN, verrouillage et affichage discret',
                 onTap: _openSecurityPrivacyPage,
+              ),
+              const _PanelDivider(),
+              _SettingsRow(
+                icon: Icons.verified_user_outlined,
+                title: 'Double authentification',
+                subtitle: 'Authentificateur TOTP et codes de secours',
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const MfaSettingsPage()),
+                ),
               ),
               const _PanelDivider(),
               _SettingsRow(

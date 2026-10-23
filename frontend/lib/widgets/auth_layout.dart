@@ -60,15 +60,16 @@ abstract final class AuthPalette {
 }
 
 class AuthBrand extends StatelessWidget {
-  const AuthBrand({super.key});
+  final double logoSize;
+  const AuthBrand({super.key, this.logoSize = 80});
 
   @override
   Widget build(BuildContext context) => Row(
     children: [
       Container(
-        width: 44,
-        height: 44,
-        padding: const EdgeInsets.all(4),
+        width: logoSize,
+        height: logoSize,
+        padding: const EdgeInsets.all(2),
         decoration: BoxDecoration(
           color: AuthPalette.field,
           borderRadius: BorderRadius.circular(13),

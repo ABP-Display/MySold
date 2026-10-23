@@ -18,6 +18,7 @@ from psycopg.types.json import Jsonb
 from werkzeug.exceptions import HTTPException
 from werkzeug.security import check_password_hash, generate_password_hash
 from origin_policy import DEFAULT_APP_ORIGIN, is_allowed_origin
+import totp
 
 UTC = timezone.utc
 COLLECTIONS = {'accounts', 'categories', 'investments', 'transactions', 'budgetAlerts'}
@@ -125,12 +126,17 @@ def authenticated(function):
     return wrapped
 
 
-def cookie_response(user):
+def cookie_response(user, db=None):
     token = secrets.token_urlsafe(32)
-    with connect() as db:
-        db.execute('DELETE FROM sessions WHERE expires_at < now()')
-        db.execute('INSERT INTO sessions(token_hash,user_id,expires_at) VALUES (%s,%s,%s)',
+    def store(connection):
+        connection.execute('DELETE FROM sessions WHERE expires_at < now()')
+        connection.execute('INSERT INTO sessions(token_hash,user_id,expires_at) VALUES (%s,%s,%s)',
                    (digest(token), user['id'], now() + timedelta(days=7)))
+    if db is None:
+        with connect() as connection:
+            store(connection)
+    else:
+        store(db)
     response = jsonify(user={'uid': user['id'], 'email': user['email']})
     response.set_cookie('mysold_session', token, httponly=True, samesite='Strict',
                         secure=os.getenv('COOKIE_SECURE', 'true').lower() == 'true',
@@ -208,13 +214,143 @@ def login():
     rate_limit('login-email:' + email)
     rate_limit('login-ip:' + request.headers.get('X-Real-IP', request.remote_addr), 100)
     with connect() as db:
-        user = db.execute('SELECT * FROM users WHERE email=%s', (email,)).fetchone()
+        user = db.execute('SELECT * FROM users WHERE email=%s FOR UPDATE', (email,)).fetchone()
         valid = check_password_hash(user['password_hash'] if user else DUMMY_HASH, password)
         if not user or not valid:
             raise Problem('Adresse e-mail ou mot de passe incorrect.', 'invalid-credentials', 401)
+        factor = db.execute('SELECT secret FROM mfa WHERE user_id=%s', (user['id'],)).fetchone()
+        if factor and factor['secret']:
+            challenge = secrets.token_urlsafe(32)
+            db.execute('DELETE FROM mfa_challenges WHERE expires_at < now()')
+            db.execute('INSERT INTO mfa_challenges(token_hash,user_id,expires_at) VALUES (%s,%s,%s)',
+                       (digest(challenge), user['id'], now() + timedelta(minutes=5)))
+            return jsonify(mfa_required=True, challenge=challenge)
         db.execute('''UPDATE documents SET data=jsonb_set(data,'{lastConnection}',%s)
                       WHERE user_id=%s AND path='user' ''', (Jsonb(timestamp()), user['id']))
-    return cookie_response(user)
+        return cookie_response(user, db)
+
+
+def consume_mfa_code(db, uid, factor, code):
+    counter = totp.verify(factor['secret'], code, factor['last_counter'])
+    if counter is not None:
+        db.execute('UPDATE mfa SET last_counter=%s WHERE user_id=%s', (counter, uid))
+        return True
+    hashed = totp.recovery_hash(code)
+    if hashed:
+        return db.execute('DELETE FROM mfa_recovery WHERE user_id=%s AND code_hash=%s RETURNING code_hash',
+                          (uid, hashed)).fetchone() is not None
+    return False
+
+
+@app.post('/api/auth/mfa/verify')
+def mfa_verify():
+    data = body()
+    challenge, code = data.get('challenge'), data.get('code')
+    if not isinstance(challenge, str) or not 32 <= len(challenge) <= 128:
+        raise Problem('Vérification expirée. Recommencez la connexion.', 'mfa-expired', 401)
+    rate_limit('mfa-ip:' + request.headers.get('X-Real-IP', request.remote_addr), 100)
+    rate_limit('mfa-challenge:' + digest(challenge), 10)
+    with connect() as db:
+        user = db.execute('''SELECT u.id,u.email FROM users u JOIN mfa_challenges c ON c.user_id=u.id
+            WHERE c.token_hash=%s AND c.expires_at > now() FOR UPDATE OF u''', (digest(challenge),)).fetchone()
+        if not user:
+            raise Problem('Vérification expirée. Recommencez la connexion.', 'mfa-expired', 401)
+        rate_limit('mfa-user:' + user['id'], 15)
+        pending = db.execute('SELECT token_hash FROM mfa_challenges WHERE token_hash=%s AND expires_at > now() FOR UPDATE',
+                             (digest(challenge),)).fetchone()
+        factor = db.execute('SELECT * FROM mfa WHERE user_id=%s FOR UPDATE', (user['id'],)).fetchone()
+        if not pending or not factor or not factor['secret'] or not consume_mfa_code(db, user['id'], factor, code):
+            raise Problem('Code incorrect ou déjà utilisé.', 'invalid-mfa', 401)
+        db.execute('DELETE FROM mfa_challenges WHERE user_id=%s', (user['id'],))
+        db.execute('''UPDATE documents SET data=jsonb_set(data,'{lastConnection}',%s)
+                      WHERE user_id=%s AND path='user' ''', (Jsonb(timestamp()), user['id']))
+        return cookie_response(user, db)
+
+
+def mfa_password(data):
+    rate_limit('mfa-settings:' + g.user['id'], 15)
+    password = data.get('password')
+    user = g.db.execute('SELECT password_hash FROM users WHERE id=%s FOR UPDATE', (g.user['id'],)).fetchone()
+    if not isinstance(password, str) or len(password) > 256 or not check_password_hash(user['password_hash'], password):
+        raise Problem('Mot de passe incorrect.', 'invalid-credentials', 401)
+    return g.db.execute('SELECT * FROM mfa WHERE user_id=%s FOR UPDATE', (g.user['id'],)).fetchone()
+
+
+def revoke_other_sessions():
+    g.db.execute('DELETE FROM sessions WHERE user_id=%s AND token_hash<>%s',
+                 (g.user['id'], digest(request.cookies['mysold_session'])))
+    g.db.execute('DELETE FROM mfa_challenges WHERE user_id=%s', (g.user['id'],))
+
+
+def replace_recovery_codes():
+    codes = totp.recovery_codes()
+    g.db.execute('DELETE FROM mfa_recovery WHERE user_id=%s', (g.user['id'],))
+    for code in codes:
+        g.db.execute('INSERT INTO mfa_recovery(user_id,code_hash) VALUES (%s,%s)',
+                     (g.user['id'], totp.recovery_hash(code)))
+    return codes
+
+
+@app.get('/api/auth/mfa')
+@authenticated
+def mfa_status():
+    factor = g.db.execute('SELECT secret IS NOT NULL AS enabled FROM mfa WHERE user_id=%s', (g.user['id'],)).fetchone()
+    count = g.db.execute('SELECT count(*) AS count FROM mfa_recovery WHERE user_id=%s', (g.user['id'],)).fetchone()
+    return jsonify(enabled=bool(factor and factor['enabled']), recovery_remaining=count['count'])
+
+
+@app.post('/api/auth/mfa/setup')
+@authenticated
+def mfa_setup():
+    factor = mfa_password(body())
+    if factor and factor['secret']:
+        raise Problem('La double authentification est déjà activée.', status=409)
+    secret = totp.new_secret()
+    g.db.execute('''INSERT INTO mfa(user_id,pending_secret,pending_expires_at) VALUES (%s,%s,%s)
+        ON CONFLICT(user_id) DO UPDATE SET pending_secret=excluded.pending_secret,pending_expires_at=excluded.pending_expires_at''',
+        (g.user['id'], secret, now() + timedelta(minutes=10)))
+    return jsonify(secret=secret, uri=totp.provisioning_uri(secret, g.user['email']))
+
+
+@app.post('/api/auth/mfa/enable')
+@authenticated
+def mfa_enable():
+    data = body()
+    factor = mfa_password(data)
+    if not factor or factor['secret'] or not factor['pending_secret'] or factor['pending_expires_at'] <= now():
+        raise Problem('Configuration expirée. Recommencez l’activation.', status=409)
+    counter = totp.verify(factor['pending_secret'], data.get('code'))
+    if counter is None:
+        raise Problem('Code incorrect. Vérifiez l’heure de votre appareil.', 'invalid-mfa', 401)
+    g.db.execute('''UPDATE mfa SET secret=pending_secret,pending_secret=NULL,pending_expires_at=NULL,last_counter=%s
+        WHERE user_id=%s''', (counter, g.user['id']))
+    codes = replace_recovery_codes()
+    revoke_other_sessions()
+    return jsonify(ok=True, recovery_codes=codes)
+
+
+@app.post('/api/auth/mfa/disable')
+@authenticated
+def mfa_disable():
+    data = body()
+    factor = mfa_password(data)
+    if not factor or not factor['secret'] or not consume_mfa_code(g.db, g.user['id'], factor, data.get('code')):
+        raise Problem('Code incorrect ou déjà utilisé.', 'invalid-mfa', 401)
+    g.db.execute('DELETE FROM mfa WHERE user_id=%s', (g.user['id'],))
+    revoke_other_sessions()
+    return jsonify(ok=True)
+
+
+@app.post('/api/auth/mfa/recovery')
+@authenticated
+def mfa_recovery():
+    data = body()
+    factor = mfa_password(data)
+    if not factor or not factor['secret'] or not consume_mfa_code(g.db, g.user['id'], factor, data.get('code')):
+        raise Problem('Code incorrect ou déjà utilisé.', 'invalid-mfa', 401)
+    codes = replace_recovery_codes()
+    revoke_other_sessions()
+    return jsonify(recovery_codes=codes)
 
 
 @app.post('/api/auth/logout')

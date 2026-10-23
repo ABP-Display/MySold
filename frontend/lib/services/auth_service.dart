@@ -35,6 +35,8 @@ class AuthService {
         'email': email,
         'password': password,
       });
+    } on MfaRequired {
+      rethrow;
     } catch (e) {
       AppLogger.error('Login failed', error: e);
       return null;

@@ -211,6 +211,41 @@ et ne remplace pas la connexion par mot de passe. La suppression du compte
 requiert aussi une confirmation du mot de passe côté serveur ; les données
 actives et les sessions sont supprimées dans la même transaction.
 
+### Double authentification (MFA)
+
+Dans **Profil → Paramètres → Double authentification**, saisir son mot de passe
+actuel, puis scanner le QR code avec une application compatible TOTP, ou saisir
+la clé manuellement. Confirmer un premier code à six chiffres pour activer la
+protection. Le QR code est généré dans le navigateur, sans service externe.
+La configuration en attente expire après dix minutes et ne bloque pas la
+connexion tant qu’elle n’a pas été confirmée.
+
+Enregistrer les dix codes de secours affichés à l’activation dans un endroit sûr,
+distinct de l’appareil utilisé comme authentificateur. Ils ne sont affichés
+qu’une fois et chacun ne peut servir qu’une fois. Ils permettent de se connecter
+si l’authentificateur est perdu. Les paramètres permettent de les renouveler
+(les anciens deviennent invalides), ou de désactiver le MFA, en confirmant le
+mot de passe et un code TOTP ou de secours valide. Ces changements ferment les
+autres sessions du compte.
+
+À la connexion, le mot de passe est suivi du code d’authentificateur ou de
+secours. Aucune session du compte n’est créée avant cette seconde vérification.
+Cette étape expire après cinq minutes et les tentatives sont limitées côté
+serveur. Les codes TOTP changent toutes les trente secondes ; un code déjà
+accepté ne peut pas être réutilisé. Attendre le code suivant si nécessaire.
+Activer la synchronisation automatique de l’heure sur le serveur et les appareils.
+Le PIN reste un verrou d’interface séparé, présenté après la connexion.
+
+Les secrets TOTP sont stockés dans des tables d’authentification distinctes des
+documents utilisateur et ne figurent pas dans les exports CSV. Les codes de
+secours sont conservés uniquement sous forme de condensats. Une sauvegarde
+PostgreSQL contient les secrets TOTP : la protéger comme les autres données
+sensibles de l’instance. Une réinitialisation de mot de passe ne retire pas le
+MFA ; conserver les codes de secours avant de quitter l’écran d’activation.
+
+Les tables MFA sont ajoutées automatiquement au démarrage de l’API après
+`docker compose up -d --build`, y compris sur une instance existante.
+
 Sans service d’e-mail externe, la récupération d’un compte se fait par
 l’administrateur, sur la machine qui héberge MySold :
 
@@ -247,7 +282,7 @@ leur base de test.
 
 ```sh
 docker compose exec db createdb -U mysold mysold_test
-docker compose exec -e POSTGRES_DB=mysold_test api python -m unittest -v test_api
+docker compose exec -e POSTGRES_DB=mysold_test api python -m unittest -v test_api test_mfa test_totp test_origin_policy
 ```
 
 Si la base de test existe déjà, ne répéter que la seconde commande. Les tests

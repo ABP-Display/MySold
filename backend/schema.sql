@@ -33,3 +33,22 @@ CREATE TABLE IF NOT EXISTS rate_limits (
     count integer NOT NULL DEFAULT 1,
     expires_at timestamptz NOT NULL
 );
+-- Authentication secrets are separate from user documents and CSV exports.
+CREATE TABLE IF NOT EXISTS mfa (
+    user_id text PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+    secret text,
+    pending_secret text,
+    pending_expires_at timestamptz,
+    last_counter bigint NOT NULL DEFAULT -1
+);
+CREATE TABLE IF NOT EXISTS mfa_recovery (
+    user_id text NOT NULL REFERENCES mfa(user_id) ON DELETE CASCADE,
+    code_hash text NOT NULL,
+    PRIMARY KEY (user_id, code_hash)
+);
+CREATE TABLE IF NOT EXISTS mfa_challenges (
+    token_hash text PRIMARY KEY,
+    user_id text NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    expires_at timestamptz NOT NULL
+);
+CREATE INDEX IF NOT EXISTS mfa_challenges_user ON mfa_challenges(user_id);

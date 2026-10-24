@@ -15,112 +15,134 @@ séparément sur GitHub Pages, sans déployer l’application Docker.
 
 ## Démarrage
 
-Prérequis : Docker avec Docker Compose v2. Node.js est uniquement nécessaire au
-petit script de configuration ci-dessous ; Flutter et Python sont fournis dans
-les images de construction. La première construction télécharge les images,
-le SDK Flutter et les dépendances. Une fois construite, l’application ne dépend
-pas d’un service tiers pour stocker les données ou authentifier les utilisateurs.
+Prérequis : Git, Docker et Docker Compose v2. Node.js, Python et Flutter ne sont
+pas nécessaires sur l’hôte. Sous Ubuntu/Linux :
 
 ```sh
 git clone https://github.com/ABP-Display/MySold.git
 cd MySold
-node scripts/setup.mjs
-docker compose up -d --build
+sh scripts/setup.sh
+nano .env
 ```
 
-Ouvrir [MySold](http://localhost:28085), puis créer son compte. Aucun compte de
-démonstration, mot de passe par défaut ni solde fictif n’est créé. Chaque compte
-utilisateur possède son espace isolé.
+Le script crée un `.env` privé avec un mot de passe PostgreSQL aléatoire. Il
+conserve un fichier existant et refuse un secret vide ou resté à la valeur
+d’exemple. Sur une instance déjà utilisée, conserver le `.env` et le secret
+PostgreSQL d’origine. Le fichier `.env` ne doit jamais être ajouté à Git.
 
-Sans Node.js, créer `.env` à partir de `.env.example` et remplacer
-`POSTGRES_PASSWORD` par un mot de passe aléatoire fort. Ne jamais publier `.env`.
-Le script conserve toujours un `.env` déjà présent et signale un
-`POSTGRES_PASSWORD` absent, vide ou encore égal à la valeur d’exemple.
+**Avant de démarrer**, renseigner son propre domaine dans `.env`, par exemple :
 
-**Avant un accès par domaine ou adresse réseau**, modifier `APP_ORIGIN` dans
-`.env` pour y mettre votre propre URL (voir Configuration et HTTPS ci-dessous).
-
-Le port HTTP `28085` est publié sur toutes les interfaces du serveur.
-Ouvrir `http://ADRESSE_DU_SERVEUR:28085` depuis un appareil qui peut le joindre.
-Le pare-feu, le DNS et le reverse proxy sont configurés par l’administrateur.
-
-### VPS avec peu de mémoire : frontend précompilé
-
-La préparation du SDK et la compilation Flutter peuvent saturer une petite VM.
-Le mode ci-dessous construit le frontend sur un ordinateur ou en CI ; le VPS
-construit seulement l’image Nginx à partir des fichiers publics déjà compilés.
-Il conserve la même API, le même volume PostgreSQL et le même port `28085`.
-Les sources utilisées sur les deux machines doivent correspondre à la même version.
-
-Sur l’ordinateur de construction, avec Flutter 3.44.0 et Node.js :
-
-```sh
-cd frontend
-flutter pub get
-dart run flutter_iconpicker:generate_packs --packs allMaterial
-flutter build web --release --no-pub --no-tree-shake-icons --no-web-resources-cdn --no-wasm-dry-run
-dart run tool/stamp_web_build.dart
-cd ..
-node scripts/package-web.mjs
+```dotenv
+APP_ORIGIN=https://finances.votre-domaine.fr
+COOKIE_SECURE=true
 ```
 
-L’archive `dist/mysold-web-AAAA.MM.JJ.HHMM.tar.gz` contient les fichiers publics
-`frontend/build/web` et les trois fichiers du mode précompilé (surcharge Compose,
-Dockerfile et son filtre), sans `.env` ni données utilisateur. Le script refuse un
-build PWA non estampillé. Transférer cette archive dans le dossier `MySold` du
-VPS, puis, depuis ce dossier (remplacer le numéro d’exemple) :
+Pour un essai HTTP local, conserver `http://localhost:28085` et
+`COOKIE_SECURE=false`. Plusieurs origines exactes sont séparées par des virgules.
+Le port HTTP `28085` est publié sur toutes les interfaces du serveur ; le DNS,
+le pare-feu et le reverse proxy sont configurés par l’administrateur.
 
-```sh
-tar -xzf mysold-web-2026.10.24.1800.tar.gz
-sudo docker compose --env-file .env -f compose.yaml -f compose.prebuilt.yaml config --quiet
-sudo docker compose --env-file .env -f compose.yaml -f compose.prebuilt.yaml up -d --build
-sudo docker compose --env-file .env -f compose.yaml -f compose.prebuilt.yaml ps
-```
-
-Conserver les deux `-f` lors des prochaines mises à jour dans ce mode ; sinon
-Compose reprendra le Dockerfile qui compile Flutter. Chaque nouvelle version
-nécessite sa nouvelle archive, générée depuis les sources correspondantes.
-
-### Dépannage de la construction et de `.env`
-
-`POSTGRES_PASSWORD is missing a value` signifie que Compose n’a pas reçu de
-secret non vide. Vérifier le dossier courant et la présence du fichier `.env`
-(le fichier est volontairement exclu de Git). Utiliser `--env-file .env` rend
-son emplacement explicite, y compris avec `sudo`. Une variable seulement
-exportée dans le shell peut être retirée de l’environnement par `sudo`.
-
-**Pour une instance déjà utilisée**, restaurer le `.env` de cette instance et
-son mot de passe PostgreSQL existant. Ne pas recréer un nouveau secret au
-hasard : cela ne modifie pas le mot de passe du rôle déjà présent dans le volume.
-Ne pas supprimer le volume pour résoudre ce message. **Pour une première
-installation seulement**, `node scripts/setup.mjs` crée le fichier s’il n’existe
-pas ; compléter ensuite `APP_ORIGIN` et `COOKIE_SECURE` pour son propre domaine.
-Un `.env` existant mais incomplet doit être corrigé manuellement.
-
-Vérifier la configuration sans afficher ses secrets :
+Puis, pour un compte Ubuntu utilisant Docker avec sudo :
 
 ```sh
 sudo docker compose --env-file .env config --quiet
+sudo docker compose --env-file .env up -d --build
+sudo docker compose ps
 ```
 
-Le message `Bake ... buildx isn't installed` est un avertissement distinct de la
-compilation Flutter. Si Bake est utilisé, installer le plugin Buildx correspondant
-à son installation Docker ; voir la [documentation Docker pour Ubuntu](https://docs.docker.com/engine/install/ubuntu/).
+Ouvrir [MySold](http://localhost:28085) ou son domaine, puis créer son compte.
+Aucun compte de démonstration ni solde fictif n’est créé. Chaque utilisateur
+possède son espace isolé. Le script Node.js `node scripts/setup.mjs` reste une
+alternative pour les postes qui disposent déjà de Node.js.
 
-Un log arrêté sur `flutter precache --web` ne prouve pas un crash. Si le
-terminal et la VM se figent, vérifier après redémarrage la mémoire, l’espace
-disque et les messages du noyau avant de relancer une compilation lourde :
+Cloner le dépôt sans `sudo` permet de modifier `.env` avec son compte utilisateur.
+Si le dossier a déjà été cloné avec `sudo`, utiliser `sudo sh scripts/setup.sh`
+et `sudo nano .env` dans ce dossier. Copier seulement `.env.example` en `.env`
+ne suffit pas : le mot de passe d’exemple doit être remplacé par un secret fort.
+
+### Construction automatique et mises à jour
+
+Chaque modification des sources du frontend poussée sur `main` déclenche le
+workflow **Web release** de GitHub Actions. Il compile Flutter depuis les sources
+publiques avec `frontend/Dockerfile.source`, génère le numéro de build PWA daté,
+puis publie les fichiers Web et leur empreinte dans une release publique.
+
+Le Dockerfile utilisé par défaut calcule une empreinte des sources de la copie
+locale, télécharge uniquement la release correspondante et vérifie son intégrité,
+ses métadonnées et la cohérence du build PWA. Le VPS ne compile pas Flutter.
+Il n’y a aucun fichier à envoyer depuis un poste Windows ni de binaire à committer
+dans Git. Une copie de sources différente ne peut pas utiliser silencieusement
+la release d’une autre version. Les fins de ligne Windows/Linux sont normalisées
+pour le calcul de l’empreinte ; les ressources binaires restent inchangées.
+
+Après publication réussie du workflow, la mise à jour est :
 
 ```sh
-free -h
-df -h
-sudo journalctl -k -b -1 --no-pager | grep -Ei 'out of memory|oom|killed process'
+git pull --ff-only
+sudo docker compose --env-file .env up -d --build
+sudo docker compose ps
 ```
 
-L’absence de journal du démarrage précédent ne permet pas d’exclure un manque
-de mémoire. Le Dockerfile standard évite désormais la compilation de diagnostic
-Wasm inutile pour la version JavaScript/CanvasKit distribuée ici. Sur un petit
-VPS, privilégier néanmoins le frontend précompilé.
+Si le dépôt appartient à root à cause d’un précédent `sudo git clone`, la
+commande de récupération doit également être `sudo git pull --ff-only`.
+Ne pas recréer `.env` ni supprimer le volume PostgreSQL lors d’une mise à jour.
+
+Si la release n’est pas encore publiée, Docker indique l’URL du workflow à
+attendre et arrête la construction. Il ne lance pas une compilation Flutter de
+secours sur la VM et n’installe pas une ancienne release au hasard. Corriger
+un éventuel échec du workflow, puis relancer la même commande Docker.
+
+Les téléchargements publics ne nécessitent ni compte GitHub ni jeton sur le VPS.
+Internet est nécessaire pendant la construction. Après installation, les données
+et l’authentification sont gérées par l’API et PostgreSQL de l’instance.
+
+### Développement et forks
+
+La compilation complète depuis les sources reste disponible explicitement :
+
+```sh
+docker compose --env-file .env -f compose.yaml -f compose.source.yaml up -d --build
+```
+
+Ce mode utilise `FLUTTER_VERSION` (3.44.0 par défaut) et nécessite une machine
+capable de compiler Flutter. Une VM de 1 Go sans swap peut saturer dès la
+préparation de l’outil Flutter. Privilégier l’installation automatique par défaut
+sur ces petites machines. `compose.prebuilt.yaml` reste un outil facultatif pour
+les développeurs disposant déjà de `frontend/build/web` ; il n’est pas nécessaire
+au parcours d’installation public.
+
+Pour un fork public, activer GitHub Actions, laisser le workflow publier sa
+release et définir `MYSOLD_REPOSITORY=PROPRIETAIRE/DEPOT` dans `.env`. Les sources
+modifiées nécessitent leur propre release ; elles ne peuvent pas réutiliser le
+build officiel. Un fork privé peut utiliser le mode de compilation depuis les
+sources, sans transmettre de jeton privé à l’image d’installation.
+
+### Dépannage
+
+`POSTGRES_PASSWORD is missing a value` indique une configuration absente ou vide.
+Exécuter `sh scripts/setup.sh` pour une installation neuve, ou restaurer le `.env`
+de l’instance existante. Le script ne remplace jamais un secret déjà configuré.
+Une variable seulement exportée dans le shell peut être retirée par `sudo` ;
+`--env-file .env` rend l’emplacement du fichier explicite.
+
+Le message `Bake ... buildx isn't installed` est un avertissement Docker distinct.
+Si Bake est utilisé, installer le plugin Buildx adapté à son installation ; voir
+la [documentation Docker pour Ubuntu](https://docs.docker.com/engine/install/ubuntu/).
+
+Pour examiner les ressources d’une machine, exécuter les commandes sur des
+lignes séparées, sans virgules :
+
+```sh
+uname -m
+free -h
+df -h /
+sudo journalctl -k -b -1 --no-pager | grep -Ei 'out of memory|oom|killed process|invalid opcode|segfault'
+```
+
+L’absence de journal du démarrage précédent n’exclut pas un manque de mémoire.
+En mode source, le premier démarrage Flutter compile silencieusement
+`flutter_tools.snapshot` après `Got dependencies` : une pause à cet endroit
+ne prouve pas une incompatibilité du code de MySold.
 
 ## Architecture
 
@@ -168,7 +190,8 @@ pas conservées par le service worker.
 | `APP_ORIGIN` | Origines autorisées pour les écritures, séparées par des virgules ; défaut : `http://localhost:28085,https://mysold.ydoxide.fr` |
 | `COOKIE_SECURE` | `true` lorsque l’accès au site utilise HTTPS |
 | `ALLOW_REGISTRATION` | `false` pour fermer les nouvelles inscriptions |
-| `FLUTTER_VERSION` | Version du SDK utilisée lors de la construction web |
+| `MYSOLD_REPOSITORY` | Dépôt GitHub public publiant les releases Web ; défaut `ABP-Display/MySold` |
+| `FLUTTER_VERSION` | SDK du mode `compose.source.yaml` uniquement ; défaut `3.44.0` |
 
 MySold publie le port `28085` sur toutes les interfaces. Toute machine pouvant
 joindre ce port peut charger le site ; les données restent protégées par la
@@ -259,7 +282,7 @@ Le bouton installe la version déjà déployée par l’administrateur, sans met
 jour les conteneurs du serveur. Le contrôle est silencieux si le serveur est
 injoignable ; le bouton des paramètres permet de réessayer.
 
-Chaque construction Docker génère un numéro au format `AAAA.MM.JJ.HHMM`, par
+Chaque compilation du frontend (GitHub Actions ou mode source) génère un numéro au format `AAAA.MM.JJ.HHMM`, par
 exemple `2026.10.23.2145`, à partir de l’heure **Europe/Paris**, même si le serveur
 utilise UTC. Ce numéro est intégré au client et publié dans `version.json`.
 Un condensat du contenu versionne aussi le cache du service worker. Les scripts
@@ -385,6 +408,14 @@ pas ses données des anciennes sauvegardes : définir une durée de rétention.
 Les choix d’interface, les réglages du mode discret et les tests responsive sont
 décrits dans [le guide de design](docs/DESIGN.md).
 
+Le workflow vérifie aussi le téléchargement, l’intégrité et l’extraction des
+releases, la correspondance avec les sources et la conservation de `.env` :
+
+```sh
+python3 -m unittest discover -s frontend/tool -p 'test_web_release.py' -v
+python3 -m unittest discover -s scripts -p 'test_setup_shell.py' -v
+```
+
 Les tests d’intégration exigent une base séparée dont le nom se termine par
 `_test`. Ils refusent la base d’application normale et réinitialisent uniquement
 leur base de test.
@@ -405,7 +436,7 @@ cd frontend
 flutter pub get
 dart run flutter_iconpicker:generate_packs --packs allMaterial
 flutter analyze --no-fatal-infos --no-fatal-warnings
-flutter build web --release --no-tree-shake-icons --no-web-resources-cdn
+flutter build web --release --no-pub --no-tree-shake-icons --no-web-resources-cdn --no-wasm-dry-run
 dart run tool/stamp_web_build.dart
 ```
 

@@ -1,0 +1,69 @@
+name: Web release
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'frontend/**'
+      - 'scripts/setup.sh'
+      - 'scripts/test_setup_shell.py'
+      - '.github/workflows/web-release.yml'
+      - '.gitattributes'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: web-release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - name: Test release verification and Linux setup
+        run: |
+          python3 -m unittest discover -s frontend/tool -p 'test_web_release.py' -v
+          python3 -m unittest discover -s scripts -p 'test_setup_shell.py' -v
+      - name: Identify exact build inputs
+        id: source
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          source=$(python3 frontend/tool/web_release.py source-hash)
+          tag="web-$source"
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          ready=false
+          if gh release view "$tag" --repo "$GITHUB_REPOSITORY" --json isDraft,assets > /tmp/mysold-release.json 2>/dev/null; then
+            ready=$(python3 -c 'import json; r=json.load(open("/tmp/mysold-release.json")); print(str(not r["isDraft"] and {"mysold-web.tar.gz", "mysold-web.tar.gz.sha256"}.issubset({a["name"] for a in r["assets"]})).lower())')
+          fi
+          echo "ready=$ready" >> "$GITHUB_OUTPUT"
+      - name: Compile and stamp Flutter from source
+        if: steps.source.outputs.ready != 'true'
+        run: |
+          docker build --file frontend/Dockerfile.source --target web-artifact --output type=local,dest=dist/release-build frontend
+          python3 frontend/tool/web_release.py pack --web dist/release-build/web --output dist/release --commit "$GITHUB_SHA"
+      - name: Publish matching public assets
+        if: steps.source.outputs.ready != 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ steps.source.outputs.tag }}
+        run: |
+          printf 'Frontend compiled from commit `%s`. The tag identifies the exact Web build inputs. Docker downloads and verifies these public assets automatically.\n' "$GITHUB_SHA" > /tmp/mysold-release-notes.md
+          if gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --json isDraft > /tmp/mysold-existing-release.json 2>/dev/null; then
+            python3 -c 'import json; assert json.load(open("/tmp/mysold-existing-release.json"))["isDraft"], "Refusing to replace an already published release"'
+            gh release upload "$RELEASE_TAG" dist/release/mysold-web.tar.gz dist/release/mysold-web.tar.gz.sha256 --repo "$GITHUB_REPOSITORY" --clobber
+          else
+            gh release create "$RELEASE_TAG" dist/release/mysold-web.tar.gz dist/release/mysold-web.tar.gz.sha256 --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --draft --latest=false --title "Web build ${GITHUB_SHA:0:12}" --notes-file /tmp/mysold-release-notes.md
+          fi
+          gh release edit "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --draft=false --latest=false
+      - name: Verify the default installation from the published release
+        run: |
+          docker build --build-arg MYSOLD_REPOSITORY="$GITHUB_REPOSITORY" --tag mysold-web-install-check frontend
+          docker run --rm --network none --entrypoint nginx mysold-web-install-check -t

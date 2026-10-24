@@ -1,0 +1,8 @@
+# Explicit development/CI build. The default uses public releases.
+services:
+  web:
+    build:
+      dockerfile: Dockerfile.source
+      target: runtime
+      args:
+        FLUTTER_VERSION: ${FLUTTER_VERSION:-3.44.0}

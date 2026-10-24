@@ -1,5 +1,9 @@
 # Démonstration statique MySold
 
+Pour installer l’application complète sur un serveur, suivre le
+[guide d’installation Docker](INSTALLATION.md). Les instructions ci-dessous
+concernent uniquement la vitrine de démonstration.
+
 Ouvrir `index.html` dans un navigateur. Aucun serveur applicatif, compilation
 Flutter, conteneur Docker ou base de données n’est nécessaire pour cette vitrine.
 Les fichiers et ressources sont tous locaux et utilisent des chemins relatifs,

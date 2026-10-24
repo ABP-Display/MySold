@@ -15,50 +15,108 @@ séparément sur GitHub Pages, sans déployer l’application Docker.
 
 ## Démarrage
 
+Le [guide d’installation complet](docs/INSTALLATION.md) détaille les mots de
+passe, le domaine, le reverse proxy, les commandes et les mises à jour.
+Les étapes suivantes concernent une **nouvelle installation Ubuntu/Linux**.
+Pour une instance déjà utilisée, conserver son `.env` et son volume PostgreSQL.
+
 Prérequis : Git, Docker et Docker Compose v2. Node.js, Python et Flutter ne sont
-pas nécessaires sur l’hôte. Sous Ubuntu/Linux :
+pas nécessaires sur l’hôte. Exécuter les commandes ligne par ligne, sans virgules.
+
+### 1. Récupérer le projet
 
 ```sh
+cd ~
 git clone https://github.com/ABP-Display/MySold.git
 cd MySold
+```
+
+Cloner sans `sudo` pour pouvoir modifier ses fichiers avec son compte Ubuntu.
+
+### 2. Créer `.env` et le mot de passe de la base
+
+```sh
 sh scripts/setup.sh
 nano .env
 ```
 
-Le script crée un `.env` privé avec un mot de passe PostgreSQL aléatoire. Il
-conserve un fichier existant et refuse un secret vide ou resté à la valeur
-d’exemple. Sur une instance déjà utilisée, conserver le `.env` et le secret
-PostgreSQL d’origine. Le fichier `.env` ne doit jamais être ajouté à Git.
+Le script crée un `.env` privé et génère automatiquement un secret aléatoire de
+64 caractères pour `POSTGRES_PASSWORD`. **Conserver ce secret généré.** Ne pas
+le remplacer par un mot de passe d’exemple ni publier le fichier `.env`.
+Le script conserve un fichier existant et refuse une valeur vide ou restée à
+`REPLACE_WITH_A_RANDOM_PASSWORD`.
 
-**Avant de démarrer**, renseigner son propre domaine dans `.env`, par exemple :
+| Secret | À quoi sert-il ? |
+| --- | --- |
+| `POSTGRES_PASSWORD` dans `.env` | Connexion technique de l’API à PostgreSQL ; ce n’est pas le mot de passe pour entrer sur le site |
+| Mot de passe du compte MySold | Choisi avec son e-mail lors de la création du compte sur le site |
+| PIN à six chiffres | Choisi dans le parcours de création du compte pour verrouiller l’interface |
+
+Copier seulement `.env.example` en `.env` ne suffit pas : il faut remplacer son
+secret d’exemple **avant le premier démarrage**. Si la base a déjà été créée,
+suivre la [procédure de changement du secret existant](docs/INSTALLATION.md#changer-le-mot-de-passe-dune-base-existante)
+plutôt que de modifier uniquement `.env`.
+
+### 3. Renseigner l’adresse du site
+
+Dans `.env`, remplacer les origines du modèle par **son propre domaine**, par exemple :
 
 ```dotenv
+WEB_PORT=28085
 APP_ORIGIN=https://finances.votre-domaine.fr
 COOKIE_SECURE=true
 ```
 
-Pour un essai HTTP local, conserver `http://localhost:28085` et
-`COOKIE_SECURE=false`. Plusieurs origines exactes sont séparées par des virgules.
-Le port HTTP `28085` est publié sur toutes les interfaces du serveur ; le DNS,
-le pare-feu et le reverse proxy sont configurés par l’administrateur.
+Le domaine doit pointer vers le serveur et le reverse proxy HTTPS vers
+`http://ADRESSE_DU_SERVEUR:28085`. Le [guide](docs/INSTALLATION.md#4-configurer-ladresse-du-site)
+détaille le cas d’un proxy installé dans Docker.
 
-Puis, pour un compte Ubuntu utilisant Docker avec sudo :
+Pour un essai HTTP directement par IP, remplacer l’adresse d’exemple ci-dessous
+par l’IP réelle du serveur et ouvrir cette même adresse dans le navigateur :
 
-```sh
-sudo docker compose --env-file .env config --quiet
-sudo docker compose --env-file .env up -d --build
-sudo docker compose ps
+```dotenv
+APP_ORIGIN=http://192.0.2.10:28085
+COOKIE_SECURE=false
 ```
 
-Ouvrir [MySold](http://localhost:28085) ou son domaine, puis créer son compte.
-Aucun compte de démonstration ni solde fictif n’est créé. Chaque utilisateur
-possède son espace isolé. Le script Node.js `node scripts/setup.mjs` reste une
-alternative pour les postes qui disposent déjà de Node.js.
+`http://localhost:28085` convient uniquement depuis l’ordinateur qui héberge
+Docker. Une origine comporte le protocole, le domaine ou l’IP et le port non
+standard, sans chemin ni barre oblique finale. Plusieurs origines sont séparées
+par des virgules. Un mauvais `APP_ORIGIN` peut bloquer la connexion avec `403`.
+Le port `28085` est publié sur toutes les interfaces ; l’administrateur configure
+le pare-feu, le DNS et le reverse proxy.
 
-Cloner le dépôt sans `sudo` permet de modifier `.env` avec son compte utilisateur.
+Dans Nano : **Ctrl+O**, **Entrée**, puis **Ctrl+X** pour enregistrer et quitter.
+
+### 4. Vérifier et lancer les services
+
+```sh
+sh scripts/setup.sh
+sudo docker compose --env-file .env config --quiet
+sudo docker compose --env-file .env up -d --build
+sudo docker compose --env-file .env ps
+```
+
+Le second appel au script valide le secret sans le modifier. `config --quiet`
+termine sans afficher de texte lorsque Compose est valide. Les trois services
+`db`, `api` et `web` doivent démarrer ; `web` peut rester quelques secondes
+avec un état de santé en cours de démarrage. Pour lire les derniers logs :
+
+```sh
+sudo docker compose --env-file .env logs --tail=100 db api web
+```
+
+### 5. Créer son compte MySold
+
+Ouvrir son domaine HTTPS ou l’IP HTTP configurée, choisir **Créer un compte**,
+puis renseigner son e-mail, son mot de passe personnel et son PIN. Aucun compte
+ni mot de passe de connexion par défaut n’est créé. Chaque utilisateur possède
+son espace isolé. Le secret PostgreSQL de `.env` n’est pas à saisir sur cet écran.
+
 Si le dossier a déjà été cloné avec `sudo`, utiliser `sudo sh scripts/setup.sh`
-et `sudo nano .env` dans ce dossier. Copier seulement `.env.example` en `.env`
-ne suffit pas : le mot de passe d’exemple doit être remplacé par un secret fort.
+et `sudo nano .env` pour les fichiers appartenant à root. Le script Node.js
+`node scripts/setup.mjs` reste une alternative facultative sur les postes qui
+disposent déjà de Node.js.
 
 ### Construction automatique et mises à jour
 

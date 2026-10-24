@@ -4,6 +4,17 @@ set -eu
 project_dir=$(CDPATH='' cd -- "$(dirname -- "$0")/.." && pwd)
 target="$project_dir/.env"
 
+prepare_data() (
+  umask 077
+  mkdir -p "$project_dir/data/backups" "$project_dir/data/config"
+  chmod 700 "$project_dir/data/backups" "$project_dir/data/config"
+  snapshot=$(mktemp "$project_dir/data/config/.instance.env.XXXXXX")
+  trap 'rm -f "$snapshot"' 0
+  cat "$target" > "$snapshot"
+  chmod 600 "$snapshot"
+  mv "$snapshot" "$project_dir/data/config/instance.env"
+)
+
 if [ -e "$target" ]; then
   if awk '
     /^[ \t]*(export[ \t]+)?POSTGRES_PASSWORD[ \t]*=/ {
@@ -25,6 +36,7 @@ if [ -e "$target" ]; then
     }
     END { exit !valid }
   ' "$target"; then
+    prepare_data
     printf '%s\n' '.env déjà présent ; configuration et secret conservés.'
     exit 0
   fi
@@ -41,6 +53,7 @@ fi
 umask 077
 # noclobber also protects against another setup creating .env concurrently.
 if (set -C; sed "s/REPLACE_WITH_A_RANDOM_PASSWORD/$secret/" "$project_dir/.env.example" > "$target"); then
+  prepare_data
   printf '%s\n' '.env créé avec un secret aléatoire. Renseignez APP_ORIGIN et COOKIE_SECURE pour votre domaine.'
 else
   printf '%s\n' 'Création de .env impossible. Vérifiez les droits du dossier ; aucune configuration existante ne sera écrasée.' >&2

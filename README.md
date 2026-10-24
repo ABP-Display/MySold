@@ -18,7 +18,8 @@ séparément sur GitHub Pages, sans déployer l’application Docker.
 Le [guide d’installation complet](docs/INSTALLATION.md) détaille les mots de
 passe, le domaine, le reverse proxy, les commandes et les mises à jour.
 Les étapes suivantes concernent une **nouvelle installation Ubuntu/Linux**.
-Pour une instance déjà utilisée, conserver son `.env` et son volume PostgreSQL.
+Pour une instance déjà utilisée, conserver son `.env` et son stockage PostgreSQL.
+Le [guide des données persistantes](docs/DONNEES.md) explique la migration et les sauvegardes.
 
 Prérequis : Git, Docker et Docker Compose v2. Node.js, Python et Flutter ne sont
 pas nécessaires sur l’hôte. Exécuter les commandes ligne par ligne, sans virgules.
@@ -44,7 +45,9 @@ Le script crée un `.env` privé et génère automatiquement un secret aléatoir
 64 caractères pour `POSTGRES_PASSWORD`. **Conserver ce secret généré.** Ne pas
 le remplacer par un mot de passe d’exemple ni publier le fichier `.env`.
 Le script conserve un fichier existant et refuse une valeur vide ou restée à
-`REPLACE_WITH_A_RANDOM_PASSWORD`.
+`REPLACE_WITH_A_RANDOM_PASSWORD`. Il prépare aussi `data/backups` et `data/config`
+et y garde une copie privée de la configuration. Le démarrage Docker crée
+`data/postgres` pour une nouvelle installation.
 
 | Secret | À quoi sert-il ? |
 | --- | --- |
@@ -211,7 +214,7 @@ web : Nginx + interface Flutter
 api : Flask + Gunicorn
        |
        v
-db : PostgreSQL + volume postgres_data
+db : PostgreSQL + dossier data/postgres (nouvelles installations)
 ```
 
 - `frontend/` : copie indépendante de l’interface, limitée au web.
@@ -241,6 +244,7 @@ pas conservées par le service worker.
 | --- | --- |
 | `POSTGRES_PASSWORD` | Secret de connexion de l’API à PostgreSQL |
 | `POSTGRES_DB`, `POSTGRES_USER` | Nom de base et utilisateur PostgreSQL |
+| `POSTGRES_STORAGE` | Nouvelles installations : `./data/postgres` ; absent sur une ancienne instance : maintien du volume Docker existant |
 | `WEB_PORT` | Port HTTP local, `28085` par défaut |
 | `APP_ORIGIN` | Origines autorisées pour les écritures, séparées par des virgules ; défaut : `http://localhost:28085,https://mysold.ydoxide.fr` |
 | `COOKIE_SECURE` | `true` lorsque l’accès au site utilise HTTPS |
@@ -440,23 +444,47 @@ docker compose exec api python manage.py reset-password utilisateur@example.fr
 Le nouveau mot de passe est demandé sans affichage et toutes les sessions du
 compte sont révoquées. L’administrateur doit vérifier l’identité de la personne.
 
-## Sauvegardes
+## Données persistantes et sauvegardes
 
-Les données persistent dans le volume Docker `postgres_data`. `docker compose
-down` conserve ce volume. **`docker compose down -v` le détruit.** Ne jamais
-utiliser cette dernière commande sur une instance contenant des données à garder.
+Les nouvelles installations rangent leur base dans un dossier privé du projet :
 
-Sauvegarder la base, les secrets de l’instance et la configuration. Exemple de
-dump binaire, en remplaçant les noms si vous les avez modifiés :
-
-```sh
-docker compose exec db pg_dump -U mysold -d mysold -Fc -f /tmp/mysold.dump
-docker compose cp db:/tmp/mysold.dump ./mysold.dump
+```text
+data/
+  postgres/             base PostgreSQL complète
+  backups/              exports .dump
+  config/instance.env   copie privée de la configuration
 ```
 
-Stocker ce fichier chiffré hors du dépôt et tester une restauration sur une
-instance séparée. La suppression d’un utilisateur de la base active ne retire
-pas ses données des anciennes sauvegardes : définir une durée de rétention.
+`data/` et `.env` sont exclus de Git et conservés lors des reconstructions Docker.
+La configuration active reste `.env` à la racine. Le script d’installation prépare
+les dossiers ; PostgreSQL initialise sa base au premier démarrage.
+
+**Ancienne instance :** sans `POSTGRES_STORAGE` dans son `.env`, l’ancien volume
+Docker reste utilisé. Un `git pull` ne déplace aucune donnée. Pour passer une seule
+fois à `data/postgres`, lancer explicitement la migration, puis redémarrer :
+
+```sh
+sudo sh scripts/data.sh migrate
+sudo docker compose --env-file .env up -d --build
+```
+
+L’outil arrête proprement les services, copie et vérifie la base, puis met à jour
+uniquement le choix du stockage. L’ancien volume et le secret sont conservés.
+Il refuse d’écraser une destination déjà remplie. Ne pas supprimer les volumes
+pour effectuer cette opération.
+
+Pour sauvegarder la base sans arrêter le site :
+
+```sh
+sudo sh scripts/data.sh backup
+```
+
+L’export terminé apparaît dans `data/backups/` et la copie de `.env` est actualisée.
+Le [guide des données](docs/DONNEES.md) détaille la copie du dossier complet après
+arrêt de PostgreSQL, le transfert vers un autre serveur et la restauration d’un
+export sur une nouvelle instance. Les sauvegardes contiennent notamment les
+comptes et les secrets MFA : les conserver hors du serveur dans un emplacement
+privé, et tester leur restauration.
 
 ## Vérifications
 
@@ -469,9 +497,18 @@ releases, la correspondance avec les sources et la conservation de `.env` :
 ```sh
 python3 -m unittest discover -s frontend/tool -p 'test_web_release.py' -v
 python3 -m unittest discover -s scripts -p 'test_setup_shell.py' -v
+python3 -m unittest discover -s scripts -p 'test_data_shell.py' -v
 ```
 
-Les tests d’intégration exigent une base séparée dont le nom se termine par
+Les tests de stockage créent uniquement des conteneurs et volumes PostgreSQL
+isolés, portant une étiquette propre à chaque exécution. Sur un hôte Linux avec
+Docker, le parcours Compose complet est vérifié avec :
+
+```sh
+sudo env MYSOLD_STORAGE_INTEGRATION=1 python3 -m unittest discover -s scripts -p 'test_storage_integration.py' -v
+```
+
+Les tests d’intégration de l’API exigent une base séparée dont le nom se termine par
 `_test`. Ils refusent la base d’application normale et réinitialisent uniquement
 leur base de test.
 

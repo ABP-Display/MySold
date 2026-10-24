@@ -135,6 +135,22 @@ Le port `28085` est publié sur toutes les interfaces ; l’administrateur gère
 son pare-feu et son reverse proxy. PostgreSQL et l’API ne publient pas de port
 sur l’hôte. Changer `WEB_PORT` impose d’adapter le proxy et les origines HTTP.
 
+## Stockage persistant
+
+Pour une nouvelle installation, le modèle contient :
+
+```dotenv
+POSTGRES_STORAGE=./data/postgres
+```
+
+Docker initialise la base dans `data/postgres` au premier démarrage. Le script
+prépare `data/backups` pour les exports et `data/config/instance.env` pour une
+copie privée de la configuration. `data/` ne doit jamais être envoyé dans Git.
+
+Sur une instance existante, **ne pas ajouter cette variable à la main** : son
+absence maintient l’ancien volume Docker. La [migration à froid](DONNEES.md#instance-existante-utilisant-lancien-volume-docker)
+copie la base et change le stockage seulement après vérification.
+
 ## 5. Vérifier et démarrer
 
 Depuis le dossier `MySold`, après avoir enregistré `.env` :
@@ -177,7 +193,8 @@ Pour installer la PWA sur un téléphone, ouvrir le site HTTPS puis utiliser
 
 ## Mettre à jour une instance existante
 
-Conserver le fichier `.env`, son secret PostgreSQL et le volume de données.
+Conserver le fichier `.env`, son secret PostgreSQL et le stockage de données.
+Les [instructions de sauvegarde et de migration](DONNEES.md) détaillent le dossier `data/`.
 Ne pas refaire une copie du modèle par-dessus sa configuration et ne pas
 supprimer le volume pour effectuer une mise à jour.
 
@@ -191,6 +208,8 @@ sudo docker compose --env-file .env ps
 Le site récupère le build publié correspondant au code. Si le frontend a changé,
 attendre le succès du workflow Web release avant de lancer la mise à jour.
 La PWA proposera ensuite sa propre mise à jour à l’utilisateur.
+Pour migrer un ancien volume Docker vers `data/postgres`, suivre d’abord la
+[procédure dédiée](DONNEES.md#instance-existante-utilisant-lancien-volume-docker) ; une mise à jour normale ne déplace pas la base.
 
 ## Dossier appartenant à root
 
@@ -279,6 +298,7 @@ Toutes ces commandes sont à exécuter depuis le dossier `MySold`.
 | Vérifier Compose sans afficher les secrets | `sudo docker compose --env-file .env config --quiet` |
 | Installer, mettre à jour ou appliquer une modification de `.env` | `sudo docker compose --env-file .env up -d --build` |
 | Voir l’état des services | `sudo docker compose --env-file .env ps` |
+| Exporter la base et actualiser la copie privée de `.env` | `sudo sh scripts/data.sh backup` |
 | Lire les derniers logs | `sudo docker compose --env-file .env logs --tail=100 db api web` |
 | Arrêter les services en conservant les données | `sudo docker compose --env-file .env stop` |
 | Redémarrer les conteneurs arrêtés sans changer leur configuration | `sudo docker compose --env-file .env start` |

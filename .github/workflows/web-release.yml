@@ -4,8 +4,9 @@ on:
     branches: [main]
     paths:
       - 'frontend/**'
-      - 'scripts/setup.sh'
-      - 'scripts/test_setup_shell.py'
+      - 'scripts/**'
+      - 'compose.yaml'
+      - '.env.example'
       - '.github/workflows/web-release.yml'
       - '.gitattributes'
   workflow_dispatch:
@@ -31,6 +32,9 @@ jobs:
         run: |
           python3 -m unittest discover -s frontend/tool -p 'test_web_release.py' -v
           python3 -m unittest discover -s scripts -p 'test_setup_shell.py' -v
+          python3 -m unittest discover -s scripts -p 'test_data_shell.py' -v
+      - name: Test persistent storage with disposable PostgreSQL instances
+        run: sudo env MYSOLD_STORAGE_INTEGRATION=1 python3 -m unittest discover -s scripts -p 'test_storage_integration.py' -v
       - name: Identify exact build inputs
         id: source
         env:

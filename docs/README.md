@@ -2,7 +2,8 @@
 
 Pour installer l’application complète sur un serveur, suivre le
 [guide d’installation Docker](INSTALLATION.md). Les instructions ci-dessous
-concernent uniquement la vitrine de démonstration.
+concernent uniquement la vitrine de démonstration. Le [guide des données](DONNEES.md)
+décrit les sauvegardes et le déplacement d’une instance.
 
 Ouvrir `index.html` dans un navigateur. Aucun serveur applicatif, compilation
 Flutter, conteneur Docker ou base de données n’est nécessaire pour cette vitrine.

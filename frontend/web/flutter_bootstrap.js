@@ -1,6 +1,11 @@
 {{flutter_js}}
 {{flutter_build_config}}
-_flutter.loader.load({config: {canvasKitBaseUrl: '/canvaskit/'}});
+// Full CanvasKit includes its own text segmentation. The Chromium variant uses
+// the deprecated Intl.v8BreakIterator API.
+_flutter.loader.load({config: {
+  canvasKitBaseUrl: '/canvaskit/',
+  canvasKitVariant: 'full'
+}});
 window.mysoldRequestNotifications = async () => {
   if (!('Notification' in window)) return 'denied';
   return Notification.requestPermission();

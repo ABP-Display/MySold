@@ -3,6 +3,7 @@ abstract final class AppTypography {
   static const family = 'Roboto';
   static const fallback = [
     'Roboto',
+    'NotoSans',
     'NotoSansSymbols',
     'NotoSansJP',
     'NotoEmoji',

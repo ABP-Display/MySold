@@ -9,6 +9,9 @@ La licence MySold ne remplace pas les licences des dépendances et des ressource
   historiques présents dans cette édition. Conserver les avis applicables.
 - Noto Sans JP : SIL Open Font License 1.1, incluse dans
   `frontend/assets/fonts/NotoSansJP-LICENSE.txt`.
+- Noto Sans : SIL Open Font License 1.1, incluse dans
+  `frontend/assets/fonts/NotoSans-LICENSE.txt`. Le fichier WOFF2 de Google Fonts
+  est distribué localement pour les caractères typographiques des montants.
 - Noto Emoji : SIL Open Font License 1.1, incluse dans
   `frontend/assets/fonts/NotoEmoji-LICENSE.txt`.
 - Noto Sans Symbols : SIL Open Font License 1.1, incluse dans

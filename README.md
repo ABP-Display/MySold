@@ -334,6 +334,22 @@ Le catalogue d’icônes utilise des codes dynamiques : conserver
 `--no-tree-shake-icons`. La configuration Nginx sert `/api/` et Flutter sur la
 même origine. Un simple `flutter run` sans proxy vers l’API ne suffit pas.
 
+## Polices et performances web
+
+Les thèmes et l’authentification utilisent des polices embarquées. Noto Sans
+fournit notamment l’espace fine insécable (`U+202F`) utilisé par le formatage
+français des montants. Sa licence est conservée dans `frontend/assets/fonts/`.
+Ne pas retirer cette police de la liste de repli : un caractère manquant peut
+déclencher des téléchargements Google Fonts bloqués par la CSP et des tentatives
+répétées de rendu. La CSP conserve `connect-src 'self'` et `font-src 'self' data:`.
+
+Le bootstrap sélectionne la variante complète de CanvasKit, qui embarque sa
+segmentation de texte et évite l’API dépréciée `Intl.v8BreakIterator` utilisée
+par la variante Chromium. Le moteur est légèrement plus volumineux ; Nginx
+compresse les scripts et fichiers WebAssembly avec gzip lorsque le navigateur
+l’accepte. Après une modification, reconstruire et numéroter la PWA avec les
+commandes ci-dessus (ou reconstruire l’image Docker), puis appliquer sa mise à jour.
+
 ## Licence
 
 MySold est fourni sous une [licence personnelle d’auto-hébergement](LICENSE),

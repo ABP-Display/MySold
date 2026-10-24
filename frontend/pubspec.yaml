@@ -47,6 +47,9 @@ flutter:
     - family: NotoSansJP
       fonts:
         - asset: assets/fonts/NotoSansJP.ttf
+    - family: NotoSans
+      fonts:
+        - asset: assets/fonts/NotoSans-Regular.woff2
     - family: NotoEmoji
       fonts:
         - asset: assets/fonts/NotoEmoji.ttf

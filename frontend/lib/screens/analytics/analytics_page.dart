@@ -1,3 +1,4 @@
+import 'package:mysold/widgets/graphiques/app_charts.dart';
 import 'package:mysold/widgets/app_design.dart';
 import 'package:mysold/data/document_store.dart';
 import 'package:mysold/data/local_auth.dart';
@@ -259,7 +260,7 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
                 const SizedBox(height: 12),
                 SizedBox(
                   height: 240,
-                  child: LineChart(
+                  child: AppLineChart(
                     LineChartData(
                       minX: 0,
                       maxX: maxX,

@@ -1,3 +1,4 @@
+import 'package:mysold/widgets/graphiques/app_charts.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'chart_info_region.dart';
@@ -84,15 +85,13 @@ class ViewportBarChart extends StatelessWidget {
       final chart = SizedBox(
         width: size.width,
         height: size.height,
-        child: BarChart(
+        child: AppBarChart(
           data.copyWith(
             barTouchData: BarTouchData(
               enabled: false,
               handleBuiltInTouches: false,
             ),
           ),
-          swapAnimationDuration: const Duration(milliseconds: 350),
-          swapAnimationCurve: Curves.easeOutCubic,
         ),
       );
       return ChartInfoRegion(

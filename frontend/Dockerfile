@@ -8,7 +8,7 @@ WORKDIR /app
 COPY pubspec.yaml pubspec.lock ./
 RUN flutter pub get
 COPY . .
-RUN dart run flutter_iconpicker:generate_packs --packs allMaterial && flutter build web --release --no-tree-shake-icons --no-web-resources-cdn
+RUN dart run flutter_iconpicker:generate_packs --packs allMaterial && flutter build web --release --no-pub --no-tree-shake-icons --no-web-resources-cdn --no-wasm-dry-run
 RUN dart run tool/stamp_web_build.dart
 
 FROM nginxinc/nginx-unprivileged:stable-alpine

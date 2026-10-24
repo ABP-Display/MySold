@@ -1,3 +1,4 @@
+import 'package:mysold/widgets/graphiques/app_charts.dart';
 import 'package:mysold/widgets/graphiques/chart_info_region.dart';
 import 'package:mysold/widgets/graphiques/viewport_bar_chart.dart';
 import 'package:mysold/widgets/app_design.dart';
@@ -352,7 +353,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             const SizedBox(height: 12),
             SizedBox(
               height: 240,
-              child: LineChart(
+              child: AppLineChart(
                 LineChartData(
                   minX: 0,
                   maxX: maxX,
@@ -1057,7 +1058,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           else ...[
             SizedBox(
               height: 190,
-              child: PieChart(
+              child: AppPieChart(
                 PieChartData(
                   sectionsSpace: 2,
                   centerSpaceRadius: 42,

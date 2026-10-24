@@ -1,3 +1,4 @@
+import 'package:mysold/widgets/graphiques/app_charts.dart';
 import 'dart:math' as math;
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
@@ -94,7 +95,7 @@ class SimulationLineChart extends StatelessWidget {
             },
             child: Padding(
               padding: const EdgeInsets.only(right: 12, top: 8),
-              child: LineChart(
+              child: AppLineChart(
                 LineChartData(
                   minX: 0,
                   maxX: end.toDouble(),
@@ -225,7 +226,7 @@ class SimulationCostChart extends StatelessWidget {
               }
               return null;
             },
-            child: PieChart(
+            child: AppPieChart(
               PieChartData(
                 centerSpaceRadius: 50,
                 sectionsSpace: 1,

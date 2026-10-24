@@ -1,3 +1,4 @@
+import 'package:mysold/widgets/app_page_transitions.dart';
 import 'package:flutter/material.dart';
 import 'package:mysold/widgets/app_typography.dart';
 
@@ -137,6 +138,7 @@ class AppThemes {
         );
 
     final base = ThemeData(
+      pageTransitionsTheme: AppPageTransitions.theme,
       fontFamily: AppTypography.family,
       fontFamilyFallback: AppTypography.fallback,
       useMaterial3: true,

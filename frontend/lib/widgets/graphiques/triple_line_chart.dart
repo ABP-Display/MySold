@@ -1,3 +1,4 @@
+import 'package:mysold/widgets/graphiques/app_charts.dart';
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:provider/provider.dart';
@@ -39,7 +40,7 @@ class TripleLineChart extends StatelessWidget {
       child: Column(
         children: [
           Expanded(
-            child: LineChart(
+            child: AppLineChart(
               LineChartData(
                 minY: minY,
                 maxY: maxY,
@@ -52,28 +53,25 @@ class TripleLineChart extends StatelessWidget {
                       showTitles: true,
                       interval: (maxY - minY) / 4,
                       reservedSize: 42,
-                      getTitlesWidget:
-                          (v, _) => Padding(
-                            padding: const EdgeInsets.only(right: 4),
-                            child: Text(
-                              formatValue(v), //'${formatValue(v)} $currency'
-                              style: const TextStyle(fontSize: 10),
-                            ),
-                          ),
+                      getTitlesWidget: (v, _) => Padding(
+                        padding: const EdgeInsets.only(right: 4),
+                        child: Text(
+                          formatValue(v), //'${formatValue(v)} $currency'
+                          style: const TextStyle(fontSize: 10),
+                        ),
+                      ),
                     ),
                   ),
                   bottomTitles: AxisTitles(
                     sideTitles: SideTitles(
                       showTitles: true,
-                      interval:
-                          (solde.length / 5)
-                              .clamp(1, double.infinity)
-                              .floorToDouble(),
-                      getTitlesWidget:
-                          (v, _) => Text(
-                            '${v.toInt()}',
-                            style: const TextStyle(fontSize: 10),
-                          ),
+                      interval: (solde.length / 5)
+                          .clamp(1, double.infinity)
+                          .floorToDouble(),
+                      getTitlesWidget: (v, _) => Text(
+                        '${v.toInt()}',
+                        style: const TextStyle(fontSize: 10),
+                      ),
                     ),
                   ),
                   rightTitles: AxisTitles(

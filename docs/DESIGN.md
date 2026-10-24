@@ -67,6 +67,12 @@ sont aussi servies localement, via `fontFallbackBaseUrl`. Cela évite les
 tentatives répétées vers Google Fonts sous la CSP stricte, notamment au PIN.
 Les chemins doivent être vérifiés lors d’une mise à jour de Flutter.
 
+Les routes Web s’ouvrent sans zoom ni fondu de la page entière. Les graphiques
+mettent directement à jour leurs valeurs, sans interpolation de toutes les
+courbes/barres/parts à chaque changement d’onglet ou de filtre. Leur peinture
+est isolée par `RepaintBoundary`, notamment sous les infobulles déplaçables.
+Les gestes et les informations affichées restent disponibles.
+
 La simulation comporte trois onglets de largeur égale couvrant toute la barre,
 avec des libellés centrés : Budget, Investissement et Prêt. Seul
 un appui sur leur titre change d’onglet ; les gestes horizontaux dans le contenu
@@ -104,6 +110,7 @@ Depuis `frontend/` :
 flutter test test/workspace_design_test.dart test/privacy_provider_test.dart test/auth_layout_test.dart test/stamp_web_build_test.dart test/operation_controls_test.dart test/mobile_charts_test.dart test/page_headers_test.dart
 flutter test test/simulation_projection_test.dart test/simulation_workspace_test.dart
 flutter test test/lazy_page_stack_test.dart test/settings_overview_test.dart test/web_typography_test.dart
+flutter test test/rendering_cost_test.dart
 node --test test/pwa_updates.test.cjs test/sw.test.cjs tool/privacy_gesture_test.cjs
 ```
 

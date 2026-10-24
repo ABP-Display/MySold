@@ -29,6 +29,7 @@ class _ChartInfoRegionState extends State<ChartInfoRegion> {
   Offset? _position;
   Size _viewport = Size.zero;
   int? _pointer;
+  bool _refreshScheduled = false;
   @override
   void initState() {
     super.initState();
@@ -48,8 +49,10 @@ class _ChartInfoRegionState extends State<ChartInfoRegion> {
   }
 
   void _onScroll() {
-    if (_position == null) return;
+    if (_position == null || _refreshScheduled) return;
+    _refreshScheduled = true;
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      _refreshScheduled = false;
       if (mounted) _refresh();
     });
   }
@@ -111,7 +114,7 @@ class _ChartInfoRegionState extends State<ChartInfoRegion> {
           child: Stack(
             fit: StackFit.expand,
             children: [
-              widget.child,
+              RepaintBoundary(child: widget.child),
               if (_info != null)
                 Positioned(
                   top: 8,

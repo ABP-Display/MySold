@@ -1,3 +1,4 @@
+import 'package:mysold/widgets/graphiques/app_charts.dart';
 import 'dart:math' as math;
 import 'package:mysold/widgets/graphiques/chart_info_region.dart';
 import 'package:mysold/widgets/graphiques/viewport_bar_chart.dart';
@@ -365,7 +366,7 @@ class MonthGraph extends StatelessWidget {
                 }
                 return null;
               },
-              child: PieChart(
+              child: AppPieChart(
                 PieChartData(
                   pieTouchData: PieTouchData(enabled: false),
                   sectionsSpace: 2,

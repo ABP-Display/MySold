@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:mysold/l10n/app_localizations.dart';
 import 'package:mysold/widgets/app_typography.dart';
+import 'package:mysold/widgets/app_page_transitions.dart';
 
 abstract final class AuthPalette {
   static const background = Colors.black;
@@ -14,6 +15,7 @@ abstract final class AuthPalette {
   static const tint = Color(0xFF1C1C1C);
 
   static final theme = ThemeData(
+    pageTransitionsTheme: AppPageTransitions.theme,
     useMaterial3: true,
     brightness: Brightness.dark,
     fontFamily: AppTypography.family,

@@ -34,7 +34,8 @@ utilisateur possède son espace isolé.
 
 Sans Node.js, créer `.env` à partir de `.env.example` et remplacer
 `POSTGRES_PASSWORD` par un mot de passe aléatoire fort. Ne jamais publier `.env`.
-Le script conserve toujours un `.env` déjà présent.
+Le script conserve toujours un `.env` déjà présent et signale un
+`POSTGRES_PASSWORD` absent, vide ou encore égal à la valeur d’exemple.
 
 **Avant un accès par domaine ou adresse réseau**, modifier `APP_ORIGIN` dans
 `.env` pour y mettre votre propre URL (voir Configuration et HTTPS ci-dessous).
@@ -42,6 +43,84 @@ Le script conserve toujours un `.env` déjà présent.
 Le port HTTP `28085` est publié sur toutes les interfaces du serveur.
 Ouvrir `http://ADRESSE_DU_SERVEUR:28085` depuis un appareil qui peut le joindre.
 Le pare-feu, le DNS et le reverse proxy sont configurés par l’administrateur.
+
+### VPS avec peu de mémoire : frontend précompilé
+
+La préparation du SDK et la compilation Flutter peuvent saturer une petite VM.
+Le mode ci-dessous construit le frontend sur un ordinateur ou en CI ; le VPS
+construit seulement l’image Nginx à partir des fichiers publics déjà compilés.
+Il conserve la même API, le même volume PostgreSQL et le même port `28085`.
+Les sources utilisées sur les deux machines doivent correspondre à la même version.
+
+Sur l’ordinateur de construction, avec Flutter 3.44.0 et Node.js :
+
+```sh
+cd frontend
+flutter pub get
+dart run flutter_iconpicker:generate_packs --packs allMaterial
+flutter build web --release --no-pub --no-tree-shake-icons --no-web-resources-cdn --no-wasm-dry-run
+dart run tool/stamp_web_build.dart
+cd ..
+node scripts/package-web.mjs
+```
+
+L’archive `dist/mysold-web-AAAA.MM.JJ.HHMM.tar.gz` contient les fichiers publics
+`frontend/build/web` et les trois fichiers du mode précompilé (surcharge Compose,
+Dockerfile et son filtre), sans `.env` ni données utilisateur. Le script refuse un
+build PWA non estampillé. Transférer cette archive dans le dossier `MySold` du
+VPS, puis, depuis ce dossier (remplacer le numéro d’exemple) :
+
+```sh
+tar -xzf mysold-web-2026.10.24.1800.tar.gz
+sudo docker compose --env-file .env -f compose.yaml -f compose.prebuilt.yaml config --quiet
+sudo docker compose --env-file .env -f compose.yaml -f compose.prebuilt.yaml up -d --build
+sudo docker compose --env-file .env -f compose.yaml -f compose.prebuilt.yaml ps
+```
+
+Conserver les deux `-f` lors des prochaines mises à jour dans ce mode ; sinon
+Compose reprendra le Dockerfile qui compile Flutter. Chaque nouvelle version
+nécessite sa nouvelle archive, générée depuis les sources correspondantes.
+
+### Dépannage de la construction et de `.env`
+
+`POSTGRES_PASSWORD is missing a value` signifie que Compose n’a pas reçu de
+secret non vide. Vérifier le dossier courant et la présence du fichier `.env`
+(le fichier est volontairement exclu de Git). Utiliser `--env-file .env` rend
+son emplacement explicite, y compris avec `sudo`. Une variable seulement
+exportée dans le shell peut être retirée de l’environnement par `sudo`.
+
+**Pour une instance déjà utilisée**, restaurer le `.env` de cette instance et
+son mot de passe PostgreSQL existant. Ne pas recréer un nouveau secret au
+hasard : cela ne modifie pas le mot de passe du rôle déjà présent dans le volume.
+Ne pas supprimer le volume pour résoudre ce message. **Pour une première
+installation seulement**, `node scripts/setup.mjs` crée le fichier s’il n’existe
+pas ; compléter ensuite `APP_ORIGIN` et `COOKIE_SECURE` pour son propre domaine.
+Un `.env` existant mais incomplet doit être corrigé manuellement.
+
+Vérifier la configuration sans afficher ses secrets :
+
+```sh
+sudo docker compose --env-file .env config --quiet
+```
+
+Le message `Bake ... buildx isn't installed` est un avertissement distinct de la
+compilation Flutter. Si Bake est utilisé, installer le plugin Buildx correspondant
+à son installation Docker ; voir la [documentation Docker pour Ubuntu](https://docs.docker.com/engine/install/ubuntu/).
+
+Un log arrêté sur `flutter precache --web` ne prouve pas un crash. Si le
+terminal et la VM se figent, vérifier après redémarrage la mémoire, l’espace
+disque et les messages du noyau avant de relancer une compilation lourde :
+
+```sh
+free -h
+df -h
+sudo journalctl -k -b -1 --no-pager | grep -Ei 'out of memory|oom|killed process'
+```
+
+L’absence de journal du démarrage précédent ne permet pas d’exclure un manque
+de mémoire. Le Dockerfile standard évite désormais la compilation de diagnostic
+Wasm inutile pour la version JavaScript/CanvasKit distribuée ici. Sur un petit
+VPS, privilégier néanmoins le frontend précompilé.
 
 ## Architecture
 
@@ -240,7 +319,7 @@ actives et les sessions sont supprimées dans la même transaction.
 
 ### Double authentification (MFA)
 
-Dans **Profil → Paramètres → Double authentification**, saisir son mot de passe
+Dans **Profil → Paramètres → Sécurité et confidentialité → Double authentification**, saisir son mot de passe
 actuel, puis scanner le QR code avec une application compatible TOTP, ou saisir
 la clé manuellement. Confirmer un premier code à six chiffres pour activer la
 protection. Le QR code est généré dans le navigateur, sans service externe.

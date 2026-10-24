@@ -902,11 +902,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 ((currentMonthIndex + 1) * groupWidth - viewportWidth + 12)
                     .clamp(0.0, position.maxScrollExtent)
                     .toDouble();
-            _monthlyChartScrollController.animateTo(
-              target,
-              duration: const Duration(milliseconds: 500),
-              curve: Curves.easeOutCubic,
-            );
+            _monthlyChartScrollController.jumpTo(target);
           });
         }
 

@@ -29,8 +29,7 @@ class MonthManagerScreen extends StatefulWidget {
   State<MonthManagerScreen> createState() => _MonthManagerState();
 }
 
-class _MonthManagerState extends State<MonthManagerScreen>
-    with SingleTickerProviderStateMixin {
+class _MonthManagerState extends State<MonthManagerScreen> {
   DateTime _currentMonth = DateTime.now();
   List<TransactionModel> _transactions = [];
   bool _isLoadingTransactions = true;
@@ -39,7 +38,6 @@ class _MonthManagerState extends State<MonthManagerScreen>
   BudgetService? _firestoreService;
   final Map<String, Future<List<TransactionModel>>> _monthCache = {};
   Future<void>? _recentMonthsPreloadFuture;
-  late TabController _tabController;
   Map<String, Map<String, dynamic>> _categories = {};
   Map<String, String> _accountIds = {};
   Map<String, String> _investmentIds = {};
@@ -53,11 +51,14 @@ class _MonthManagerState extends State<MonthManagerScreen>
   bool _sortAscending = false;
   int _selectedIndex = 0;
   int? _lastReferenceDataVersion;
+  int? _lastFinancialDataVersion;
+  bool _reloadScheduled = false;
+  bool _wasActive = false;
+  int _transactionLoad = 0;
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 4, vsync: this);
     final currentUser = user;
     if (currentUser == null) {
       _isLoadingTransactions = false;
@@ -65,7 +66,14 @@ class _MonthManagerState extends State<MonthManagerScreen>
     }
     _firestoreService = BudgetService(userId: currentUser.uid);
     _loadTransactionsForSelectedMonth(showLoader: true);
-    _loadReferenceData();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final active = TickerMode.of(context);
+    if (active && !_wasActive) _loadReferenceData();
+    _wasActive = active;
   }
 
   Future<void> _refresh({bool forceRefresh = false}) async {
@@ -82,6 +90,7 @@ class _MonthManagerState extends State<MonthManagerScreen>
     final service = _firestoreService;
     if (service == null) return;
     final month = _monthStart(_currentMonth);
+    final request = ++_transactionLoad;
 
     if (showLoader && mounted) {
       setState(() {
@@ -95,7 +104,7 @@ class _MonthManagerState extends State<MonthManagerScreen>
           ? await _loadFreshTransactionsForMonth(service, month)
           : await _getTransactionsForMonth(month);
 
-      if (!mounted) return;
+      if (!mounted || request != _transactionLoad) return;
       setState(() {
         _transactions = transactions;
         _isLoadingTransactions = false;
@@ -106,7 +115,7 @@ class _MonthManagerState extends State<MonthManagerScreen>
         await _checkBudgetAlerts();
       }
     } catch (e) {
-      if (!mounted) return;
+      if (!mounted || request != _transactionLoad) return;
       setState(() {
         _isLoadingTransactions = false;
         _transactionsError = e;
@@ -900,6 +909,21 @@ class _MonthManagerState extends State<MonthManagerScreen>
   @override
   Widget build(BuildContext context) {
     final references = context.watch<UserDataProvider>();
+    final financialVersion = references.financialDataVersion;
+    if (_lastFinancialDataVersion != null &&
+        _lastFinancialDataVersion != financialVersion &&
+        !_reloadScheduled) {
+      _reloadScheduled = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _reloadScheduled = false;
+        if (!mounted) return;
+        _monthCache.clear();
+        _recentMonthsPreloadFuture = null;
+        _loadTransactionsForSelectedMonth(forceRefresh: true);
+      });
+    }
+    _lastFinancialDataVersion = financialVersion;
+
     if (_lastReferenceDataVersion != references.referenceDataVersion) {
       _lastReferenceDataVersion = references.referenceDataVersion;
       _categories = references.categories;
@@ -932,7 +956,6 @@ class _MonthManagerState extends State<MonthManagerScreen>
   @override
   void dispose() {
     _searchController.dispose();
-    _tabController.dispose();
     super.dispose();
   }
 }

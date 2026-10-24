@@ -4,7 +4,10 @@
 // the deprecated Intl.v8BreakIterator API.
 _flutter.loader.load({config: {
   canvasKitBaseUrl: '/canvaskit/',
-  canvasKitVariant: 'full'
+  canvasKitVariant: 'full',
+  // Engine-generated text (including obscured PIN fields) can bypass the
+  // application's TextTheme fallback list. Keep its fallback fonts local too.
+  fontFallbackBaseUrl: '/font-fallbacks/'
 }});
 window.mysoldRequestNotifications = async () => {
   if (!('Notification' in window)) return 'denied';

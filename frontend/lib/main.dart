@@ -1,3 +1,4 @@
+import 'package:mysold/widgets/lazy_page_stack.dart';
 import 'dart:async';
 
 import 'package:flutter/foundation.dart' show kIsWeb;
@@ -229,9 +230,7 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen>
-    with SingleTickerProviderStateMixin, WidgetsBindingObserver {
-  late final PageController _pageController;
+class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   int _selectedIndex = 0;
   bool _wasInBackground = false;
   bool _isLocking = false;
@@ -251,7 +250,6 @@ class _HomeScreenState extends State<HomeScreen>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    _pageController = PageController(initialPage: _selectedIndex);
   }
 
   @override
@@ -346,16 +344,8 @@ class _HomeScreenState extends State<HomeScreen>
     }
   }
 
-  void _onPageChanged(int index) {
-    setState(() => _selectedIndex = index);
-  }
-
   void _goToPage(int index) {
-    _pageController.animateToPage(
-      index,
-      duration: const Duration(milliseconds: 260),
-      curve: Curves.easeInOut,
-    );
+    if (index != _selectedIndex) setState(() => _selectedIndex = index);
   }
 
   @override
@@ -369,10 +359,8 @@ class _HomeScreenState extends State<HomeScreen>
       onSelected: _goToPage,
       hidden: privacy.hideAmounts,
       onPrivacy: () => privacy.setHideAmounts(!privacy.hideAmounts),
-      child: PageView(
-        controller: _pageController,
-        physics: const NeverScrollableScrollPhysics(),
-        onPageChanged: _onPageChanged,
+      child: LazyPageStack(
+        index: _selectedIndex,
         children: const [
           MonthManagerScreen(),
           AnalyticsPage(),
@@ -388,7 +376,6 @@ class _HomeScreenState extends State<HomeScreen>
     WidgetsBinding.instance.removeObserver(this);
     _privacy?.removeListener(_syncShakePreference);
     _shakeService.stop();
-    _pageController.dispose();
     super.dispose();
   }
 }

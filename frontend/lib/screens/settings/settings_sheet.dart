@@ -1,11 +1,9 @@
-import 'package:provider/provider.dart';
-import 'package:mysold/screens/settings/privacy_provider.dart';
-import 'package:mysold/services/shake_privacy_service.dart';
+import 'package:mysold/screens/settings/advanced_preferences_page.dart';
+import 'package:mysold/widgets/settings/settings_overview.dart';
 import 'package:mysold/widgets/app_design.dart';
 import 'package:mysold/data/document_store.dart';
 import 'package:mysold/data/local_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:mysold/l10n/app_localizations.dart';
 import 'package:mysold/login_page.dart';
@@ -14,10 +12,8 @@ import 'package:mysold/screens/settings/language_selector.dart';
 import 'package:mysold/screens/settings/security_privacy_page.dart';
 import 'package:mysold/screens/settings/theme_selector.dart';
 import 'package:mysold/services/security_gate.dart';
-import 'package:mysold/services/local_notification_service.dart';
 import 'package:mysold/services/pwa_update_service.dart';
 import 'package:mysold/widgets/pwa_update_prompt.dart';
-import 'package:mysold/screens/settings/mfa_settings_page.dart';
 
 class SettingsSheet extends StatefulWidget {
   final bool withBack;
@@ -29,30 +25,7 @@ class SettingsSheet extends StatefulWidget {
 }
 
 class _SettingsSheetState extends State<SettingsSheet> {
-  bool _notificationsEnabled = true;
-  bool _budgetAlertsEnabled = true;
   bool _checkingUpdate = false;
-  bool _requestingMotion = false;
-
-  Future<void> _setShakeEnabled(bool value) async {
-    if (_requestingMotion) return;
-    final privacy = context.read<PrivacyProvider>();
-    if (!value) {
-      await privacy.setShakeEnabled(false);
-      return;
-    }
-    setState(() => _requestingMotion = true);
-    final allowed = await ShakePrivacyService.requestPermission();
-    if (!mounted) return;
-    setState(() => _requestingMotion = false);
-    if (allowed) {
-      await privacy.setShakeEnabled(true);
-    } else {
-      _showUpdateMessage(
-        'Le capteur de mouvement est indisponible ou son accès est refusé. Le bouton de masquage reste disponible.',
-      );
-    }
-  }
 
   Future<void> _checkForUpdate() async {
     if (_checkingUpdate) return;
@@ -90,27 +63,6 @@ class _SettingsSheetState extends State<SettingsSheet> {
     ).showSnackBar(SnackBar(content: Text(context.tr(message))));
   }
 
-  @override
-  void initState() {
-    super.initState();
-    _loadLocalSettings();
-  }
-
-  Future<void> _loadLocalSettings() async {
-    final prefs = await SharedPreferences.getInstance();
-    if (!mounted) return;
-
-    setState(() {
-      _notificationsEnabled = prefs.getBool('notifications_enabled') ?? true;
-      _budgetAlertsEnabled = prefs.getBool('budget_alerts_enabled') ?? true;
-    });
-  }
-
-  Future<void> _setLocalBool(String key, bool value) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool(key, value);
-  }
-
   DocumentReference<Map<String, dynamic>>? get _userRef {
     final uid = LocalAuth.instance.currentUser?.uid;
     if (uid == null) return null;
@@ -127,7 +79,7 @@ class _SettingsSheetState extends State<SettingsSheet> {
   Future<void> _openPersonalDataEditor() async {
     final authorized = await SecurityGate.requestPin(
       context,
-      title: 'Donnees personnelles',
+      title: 'Données personnelles',
       message: 'Confirmez votre PIN avant de modifier vos informations.',
     );
     if (!authorized || !mounted) return;
@@ -160,12 +112,12 @@ class _SettingsSheetState extends State<SettingsSheet> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                _sheetTitle(context, 'Donnees personnelles'),
+                _sheetTitle(context, 'Données personnelles'),
                 const SizedBox(height: 18),
                 TextField(
                   controller: firstNameCtrl,
                   decoration: InputDecoration(
-                    labelText: context.tr('Prenom'),
+                    labelText: context.tr('Prénom'),
                     prefixIcon: const Icon(Icons.badge_outlined),
                   ),
                 ),
@@ -182,7 +134,7 @@ class _SettingsSheetState extends State<SettingsSheet> {
                   controller: phoneCtrl,
                   keyboardType: TextInputType.phone,
                   decoration: InputDecoration(
-                    labelText: context.tr('Telephone'),
+                    labelText: context.tr('Téléphone'),
                     prefixIcon: const Icon(Icons.phone_outlined),
                   ),
                 ),
@@ -227,7 +179,7 @@ class _SettingsSheetState extends State<SettingsSheet> {
   Future<void> _openSecurityPrivacyPage() async {
     final authorized = await SecurityGate.requestPin(
       context,
-      title: 'Securite et confidentialite',
+      title: 'Sécurité et confidentialité',
       message: 'Confirmez votre PIN pour acceder aux parametres sensibles.',
     );
     if (!authorized || !mounted) return;
@@ -235,85 +187,6 @@ class _SettingsSheetState extends State<SettingsSheet> {
     Navigator.push(
       context,
       MaterialPageRoute(builder: (_) => const SecurityPrivacyPage()),
-    );
-  }
-
-  Future<void> _openNotificationSettings() async {
-    await showAppSheet<void>(
-      context: context,
-      builder: (context) {
-        return StatefulBuilder(
-          builder: (context, setModalState) {
-            Future<void> update(String key, bool value) async {
-              if (key == 'notifications_enabled' && value) {
-                value = await LocalNotificationService.requestPermission();
-                if (!mounted) return;
-              }
-              setState(() {
-                if (key == 'notifications_enabled') {
-                  _notificationsEnabled = value;
-                } else if (key == 'budget_alerts_enabled') {
-                  _budgetAlertsEnabled = value;
-                }
-              });
-              setModalState(() {});
-              await _setLocalBool(key, value);
-            }
-
-            return SafeArea(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    _sheetTitle(context, 'Notifications'),
-                    const SizedBox(height: 8),
-                    Material(
-                      color: Colors.transparent,
-                      child: SwitchListTile(
-                        contentPadding: EdgeInsets.zero,
-                        value: _notificationsEnabled,
-                        onChanged: (value) =>
-                            update('notifications_enabled', value),
-                        title: Text(context.tr('Notifications locales')),
-                        subtitle: Text(
-                          context.tr(
-                            'Autoriser MySold a prevenir sur ce telephone',
-                          ),
-                        ),
-                      ),
-                    ),
-                    Material(
-                      color: Colors.transparent,
-                      child: SwitchListTile(
-                        contentPadding: EdgeInsets.zero,
-                        value: _budgetAlertsEnabled,
-                        onChanged: _notificationsEnabled
-                            ? (value) => update('budget_alerts_enabled', value)
-                            : null,
-                        title: Text(context.tr('Alertes budgetaires')),
-                        subtitle: Text(
-                          context.tr('Seuils depenses / revenus du mois'),
-                        ),
-                      ),
-                    ),
-                    ListTile(
-                      contentPadding: EdgeInsets.zero,
-                      leading: const Icon(Icons.event_note_outlined),
-                      title: Text(context.tr('Rappel mensuel')),
-                      subtitle: Text(
-                        context.tr(
-                          'À venir. Aucun rappel automatique n’est programmé actuellement.',
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            );
-          },
-        );
-      },
     );
   }
 
@@ -376,287 +249,66 @@ class _SettingsSheetState extends State<SettingsSheet> {
           ? appPageBar(
               context,
               leading: BackButton(onPressed: () => Navigator.pop(context)),
-              title: Text(context.tr('Parametres')),
+              title: Text(context.tr('Paramètres')),
             )
           : null,
-      body: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 920),
-          child: ListView(
-            padding: const EdgeInsets.fromLTRB(20, 20, 20, 28),
-            children: [
-              PageIntro(
-                eyebrow: context.tr('PERSONNALISATION'),
-                title: context.tr('Paramètres'),
-                subtitle: context.tr(
-                  'Une application à votre image, des données sous votre contrôle.',
-                ),
-              ),
-              _buildPanel(
-                context,
-                title: 'Preferences',
-                icon: Icons.tune_outlined,
-                children: const [
-                  _SelectorBlock(
-                    title: 'Theme',
-                    icon: Icons.palette_outlined,
-                    child: ThemeSelector(),
-                  ),
-                  _PanelDivider(),
-                  _SelectorBlock(
-                    title: 'Langue',
-                    icon: Icons.language_outlined,
-                    child: LanguageSelector(),
-                  ),
-                  _PanelDivider(),
-                  _SelectorBlock(
-                    title: 'Devise',
-                    icon: Icons.payments_outlined,
-                    child: CurrencySelector(),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-              _buildPanel(
-                context,
-                title: 'Compte',
-                icon: Icons.person_outline,
-                children: [
-                  _SettingsRow(
-                    icon: Icons.lock_outline,
-                    title: 'Securite et confidentialite',
-                    subtitle: 'PIN, verrouillage et affichage discret',
-                    onTap: _openSecurityPrivacyPage,
-                  ),
-                  const _PanelDivider(),
-                  _SettingsRow(
-                    icon: Icons.verified_user_outlined,
-                    title: 'Double authentification',
-                    subtitle: 'Authentificateur TOTP et codes de secours',
-                    onTap: () => Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (_) => const MfaSettingsPage(),
-                      ),
-                    ),
-                  ),
-                  const _PanelDivider(),
-                  _SettingsRow(
-                    icon: Icons.person_outline,
-                    title: 'Donnees personnelles',
-                    subtitle: 'Nom, prenom et telephone',
-                    onTap: _openPersonalDataEditor,
-                  ),
-                  const _PanelDivider(),
-                  _SettingsRow(
-                    icon: Icons.notifications_none_outlined,
-                    title: 'Notifications',
-                    subtitle: 'Autorisations et alertes budget',
-                    onTap: _openNotificationSettings,
-                  ),
-                  const _PanelDivider(),
-                  _SettingsRow(
-                    icon: Icons.info_outline,
-                    title: 'A propos',
-                    subtitle: 'Version et informations app',
-                    onTap: _openAboutSheet,
-                  ),
-                  const _PanelDivider(),
-                  _SettingsRow(
-                    icon: Icons.system_update_outlined,
-                    title: _checkingUpdate
-                        ? 'Vérification en cours…'
-                        : 'Mettre à jour l’application',
-                    subtitle: 'Rechercher une nouvelle version de MySold',
-                    onTap: _checkForUpdate,
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-              _buildPanel(
-                context,
-                title: 'Mode discret',
-                icon: Icons.visibility_off_outlined,
-                children: [
-                  SwitchListTile.adaptive(
-                    title: Text(context.tr('Masquer les montants')),
-                    subtitle: Text(
-                      context.tr(
-                        'Également accessible avec le bouton œil dans la navigation.',
-                      ),
-                    ),
-                    value: context.watch<PrivacyProvider>().hideAmounts,
-                    onChanged: (value) =>
-                        context.read<PrivacyProvider>().setHideAmounts(value),
-                  ),
-                  const _PanelDivider(),
-                  SwitchListTile.adaptive(
-                    title: Text(context.tr('Secouer pour cacher')),
-                    subtitle: Text(
-                      context.tr(
-                        _requestingMotion
-                            ? 'Vérification du capteur…'
-                            : 'En option sur mobile compatible. Une secousse masque les montants ; le bouton œil les réaffiche.',
-                      ),
-                    ),
-                    value: context.watch<PrivacyProvider>().shakeEnabled,
-                    onChanged: _requestingMotion ? null : _setShakeEnabled,
-                  ),
-                ],
-              ),
-              const SizedBox(height: 24),
-              SizedBox(
-                height: 52,
-                child: ElevatedButton.icon(
-                  onPressed: _logout,
-                  icon: const Icon(Icons.logout),
-                  label: Text(context.tr('Deconnexion')),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Theme.of(
-                      context,
-                    ).colorScheme.errorContainer,
-                    foregroundColor: Theme.of(
-                      context,
-                    ).colorScheme.onErrorContainer,
-                  ),
-                ),
-              ),
-            ],
+      body: SettingsOverview(
+        showIntro: !widget.withBack,
+        quickPreferences: const [
+          ThemeSelector(),
+          LanguageSelector(),
+          CurrencySelector(),
+        ],
+        actions: [
+          SettingsAction(
+            icon: Icons.lock_outline,
+            title: 'Sécurité et confidentialité',
+            subtitle: 'PIN, verrouillage et double authentification',
+            onTap: _openSecurityPrivacyPage,
           ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildPanel(
-    BuildContext context, {
-    required String title,
-    required IconData icon,
-    required List<Widget> children,
-  }) {
-    return Container(
-      padding: const EdgeInsets.all(8),
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surface,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.30),
-        ),
-      ),
-      child: Column(
-        children: [
-          Material(
-            color: Colors.transparent,
-            child: ListTile(
-              contentPadding: const EdgeInsets.symmetric(horizontal: 10),
-              leading: Icon(icon),
-              title: Text(
-                context.tr(title),
-                style: const TextStyle(fontWeight: FontWeight.w600),
+          SettingsAction(
+            icon: Icons.person_outline,
+            title: 'Données personnelles',
+            subtitle: 'Nom, prénom et téléphone',
+            onTap: _openPersonalDataEditor,
+          ),
+          SettingsAction(
+            icon: Icons.tune_outlined,
+            title: 'Préférences avancées',
+            subtitle: 'Notifications et mode discret',
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (_) => const AdvancedPreferencesPage(),
               ),
             ),
           ),
-          ...children,
-        ],
-      ),
-    );
-  }
-}
-
-class _SelectorBlock extends StatelessWidget {
-  final String title;
-  final IconData icon;
-  final Widget child;
-
-  const _SelectorBlock({
-    required this.title,
-    required this.icon,
-    required this.child,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(10, 4, 10, 14),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(
-                icon,
-                size: 18,
-                color: Theme.of(context).colorScheme.primary,
-              ),
-              const SizedBox(width: 8),
-              Text(
-                context.tr(title),
-                style: const TextStyle(fontWeight: FontWeight.w600),
-              ),
-            ],
+          SettingsAction(
+            icon: Icons.system_update_outlined,
+            title: 'Mettre à jour l’application',
+            subtitle: _checkingUpdate
+                ? 'Vérification en cours…'
+                : 'Rechercher une nouvelle version de MySold',
+            onTap: _checkForUpdate,
+            busy: _checkingUpdate,
           ),
-          const SizedBox(height: 10),
-          child,
-        ],
-      ),
-    );
-  }
-}
-
-class _SettingsRow extends StatelessWidget {
-  final IconData icon;
-  final String title;
-  final String subtitle;
-  final VoidCallback onTap;
-
-  const _SettingsRow({
-    required this.icon,
-    required this.title,
-    required this.subtitle,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-
-    return Material(
-      color: Colors.transparent,
-      borderRadius: BorderRadius.circular(16),
-      child: ListTile(
-        contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-        leading: Container(
-          height: 42,
-          width: 42,
-          decoration: BoxDecoration(
-            color: colorScheme.primary.withOpacity(0.12),
-            borderRadius: BorderRadius.circular(15),
+          SettingsAction(
+            icon: Icons.info_outline,
+            title: 'À propos',
+            subtitle: 'Version et informations de l’application',
+            onTap: _openAboutSheet,
           ),
-          child: Icon(icon, color: colorScheme.primary),
+        ],
+        footer: FilledButton.icon(
+          onPressed: _logout,
+          icon: const Icon(Icons.logout),
+          label: Text(context.tr('Déconnexion')),
+          style: FilledButton.styleFrom(
+            minimumSize: const Size.fromHeight(52),
+            backgroundColor: Theme.of(context).colorScheme.errorContainer,
+            foregroundColor: Theme.of(context).colorScheme.onErrorContainer,
+          ),
         ),
-        title: Text(
-          context.tr(title),
-          style: const TextStyle(fontWeight: FontWeight.w600),
-        ),
-        subtitle: Text(
-          context.tr(subtitle),
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-        ),
-        trailing: const Icon(Icons.chevron_right),
-        onTap: onTap,
       ),
-    );
-  }
-}
-
-class _PanelDivider extends StatelessWidget {
-  const _PanelDivider();
-
-  @override
-  Widget build(BuildContext context) {
-    return Divider(
-      height: 1,
-      color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.30),
     );
   }
 }

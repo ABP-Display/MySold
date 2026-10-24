@@ -24,6 +24,7 @@ class LanguageSelector extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16.0),
       child: DropdownButtonFormField<String>(
+        isExpanded: true,
         value: selectedCode,
         decoration: InputDecoration(
           labelText: context.tr('Langue'),
@@ -32,7 +33,11 @@ class LanguageSelector extends StatelessWidget {
         items: LanguageProvider.languages.map((language) {
           return DropdownMenuItem(
             value: language.code,
-            child: Text(language.name),
+            child: Text(
+              language.name,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
           );
         }).toList(),
         onChanged: (value) async {

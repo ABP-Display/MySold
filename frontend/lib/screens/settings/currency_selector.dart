@@ -24,6 +24,7 @@ class CurrencySelector extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16.0),
       child: DropdownButtonFormField<String>(
+        isExpanded: true,
         value: selectedCode,
         decoration: InputDecoration(
           labelText: context.tr('Devise'),
@@ -32,7 +33,11 @@ class CurrencySelector extends StatelessWidget {
         items: CurrencyProvider.currencies.map((currency) {
           return DropdownMenuItem(
             value: currency.code,
-            child: Text(currency.label),
+            child: Text(
+              currency.label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
           );
         }).toList(),
         onChanged: (value) async {

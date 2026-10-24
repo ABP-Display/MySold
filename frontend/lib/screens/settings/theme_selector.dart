@@ -9,11 +9,7 @@ class ThemeSelector extends StatelessWidget {
   final String? initialTheme;
   final void Function(String themeName)? onThemeChanged;
 
-  const ThemeSelector({
-    super.key,
-    this.initialTheme,
-    this.onThemeChanged,
-  });
+  const ThemeSelector({super.key, this.initialTheme, this.onThemeChanged});
 
   @override
   Widget build(BuildContext context) {
@@ -25,13 +21,17 @@ class ThemeSelector extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16.0),
       child: DropdownButtonFormField<String>(
+        isExpanded: true,
         value: selectedTheme,
         decoration: InputDecoration(
           labelText: context.tr('Theme'),
           border: const OutlineInputBorder(),
         ),
         items: AppThemes.themes.keys.map((name) {
-          return DropdownMenuItem(value: name, child: Text(name));
+          return DropdownMenuItem(
+            value: name,
+            child: Text(name, maxLines: 1, overflow: TextOverflow.ellipsis),
+          );
         }).toList(),
         onChanged: (value) async {
           if (value == null) return;

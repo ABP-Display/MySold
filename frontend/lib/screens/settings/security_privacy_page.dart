@@ -1,3 +1,4 @@
+import 'package:mysold/screens/settings/mfa_settings_page.dart';
 import 'package:mysold/widgets/app_design.dart';
 import 'dart:convert';
 import 'dart:typed_data';
@@ -14,7 +15,6 @@ import 'package:mysold/services/auth_service.dart';
 import 'package:mysold/l10n/app_localizations.dart';
 import 'package:mysold/login_page.dart';
 import 'package:mysold/providers/user_data_provider.dart';
-import 'package:mysold/screens/settings/privacy_provider.dart';
 import 'package:mysold/services/security_gate.dart';
 
 int _compareImportDocuments(_ImportDocument a, _ImportDocument b) {
@@ -292,6 +292,7 @@ class _SecurityPrivacyPageState extends State<SecurityPrivacyPage> {
     );
     if (!mounted) return;
     context.read<UserDataProvider>().invalidateReferences();
+    context.read<UserDataProvider>().markFinancialDataChanged();
   }
 
   List<List<String>> _parseCsv(String source) {
@@ -1178,7 +1179,7 @@ class _SecurityPrivacyPageState extends State<SecurityPrivacyPage> {
       return Scaffold(
         appBar: appPageBar(
           context,
-          title: Text(context.tr('Securite et confidentialite')),
+          title: Text(context.tr('Sécurité et confidentialité')),
         ),
         body: const Center(child: CircularProgressIndicator()),
       );
@@ -1187,14 +1188,14 @@ class _SecurityPrivacyPageState extends State<SecurityPrivacyPage> {
     return Scaffold(
       appBar: appPageBar(
         context,
-        title: Text(context.tr('Securite et confidentialite')),
+        title: Text(context.tr('Sécurité et confidentialité')),
       ),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 12, 16, 28),
         children: [
           _Panel(
             icon: Icons.lock_outline,
-            title: context.tr('Securite de l application'),
+            title: context.tr('Sécurité de l’application'),
             child: Column(
               children: [
                 DropdownButtonFormField<String>(
@@ -1255,28 +1256,6 @@ class _SecurityPrivacyPageState extends State<SecurityPrivacyPage> {
                   ),
                 ],
                 const SizedBox(height: 14),
-                Material(
-                  color: Colors.transparent,
-                  child: SwitchListTile(
-                    contentPadding: EdgeInsets.zero,
-                    value: context
-                        .watch<PrivacyProvider>()
-                        .persistentHideAmounts,
-                    onChanged: (value) async {
-                      await context.read<PrivacyProvider>().setHideAmounts(
-                        value,
-                      );
-                      if (mounted) setState(() {});
-                    },
-                    title: Text(context.tr('Masquer les montants')),
-                    subtitle: Text(
-                      context.tr(
-                        'Remplace les montants visibles par des symboles',
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 14),
                 TextField(
                   controller: _pinCtrl,
                   maxLength: 6,
@@ -1313,6 +1292,21 @@ class _SecurityPrivacyPageState extends State<SecurityPrivacyPage> {
                   label: Text(context.tr('Enregistrer')),
                 ),
               ],
+            ),
+          ),
+          const SizedBox(height: 16),
+          _Panel(
+            icon: Icons.verified_user_outlined,
+            title: context.tr('Double authentification'),
+            child: _ActionRow(
+              icon: Icons.phonelink_lock_outlined,
+              title: context.tr('Authentificateur TOTP'),
+              subtitle: context.tr(
+                'Configurer l’authentificateur et les codes de secours.',
+              ),
+              onTap: () => Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const MfaSettingsPage()),
+              ),
             ),
           ),
           const SizedBox(height: 16),

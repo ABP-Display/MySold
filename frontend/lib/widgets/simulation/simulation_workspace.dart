@@ -18,7 +18,11 @@ class SimulationWorkspace extends StatefulWidget {
 
 class _SimulationWorkspaceState extends State<SimulationWorkspace>
     with SingleTickerProviderStateMixin {
-  late final _tabs = TabController(length: 3, vsync: this);
+  late final _tabs = TabController(
+    length: 3,
+    vsync: this,
+    animationDuration: Duration.zero,
+  );
   final _budgetForm = GlobalKey<FormState>();
   final _investForm = GlobalKey<FormState>();
   final _loanForm = GlobalKey<FormState>();

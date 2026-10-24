@@ -6,6 +6,11 @@ Les six palettes MySold sont conservées, y compris le fond noir du thème Sombr
 
 - Ordinateur : navigation latérale et contenu limité à 1 280 pixels.
 - Mobile et tablette : navigation basse ; les pages et les formulaires défilent.
+- Le changement de destination est direct : aucune page intermédiaire ne défile.
+  Seules les pages visitées sont montées ; leur état et leur position de lecture
+  sont conservés. Les animations et les transitions Hero sont désactivées dans
+  les pages masquées. Les modifications financières continuent à invalider les
+  données affichées, même quand une page reste montée.
 - Les types d’opérations sont des filtres en haut du budget mensuel. Son
   graphique est repliable, fermé par défaut sur mobile.
 - Les volets deviennent des fenêtres de 600 pixels maximum sur ordinateur et
@@ -37,7 +42,7 @@ Le défilement vertical de la page reste possible depuis le graphique.
 ## Mode discret
 
 Le bouton œil de la navigation masque ou réaffiche les montants. Le réglage
-« Secouer pour cacher », dans Profil → Paramètres → Mode discret, est facultatif
+« Secouer pour cacher », dans Profil → Paramètres → Préférences avancées → Mode discret, est facultatif
 et désactivé par défaut. Il est mémorisé sur cet appareil/navigateur.
 
 L’activation vérifie la disponibilité du capteur et demande l’autorisation quand
@@ -47,6 +52,20 @@ la session est fermée. Une secousse masque uniquement : seul un geste
 explicite sur le bouton œil ou le réglage réaffiche les montants.
 
 ## Revue des fonctions
+
+Les paramètres conservent « Préférences rapides » en haut (thème, langue,
+devise), puis présentent les accès dans cet ordre : Sécurité et confidentialité,
+Données personnelles, Préférences avancées, Mettre à jour l’application, À propos.
+La double authentification est accessible depuis Sécurité et confidentialité.
+Les notifications et les deux réglages du mode discret sont regroupés dans
+Préférences avancées. Les préférences locales et leurs clés de stockage sont
+conservées. Les sous-titres reviennent à la ligne et les sélecteurs s’adaptent
+à la largeur et au texte agrandi, avec les polices locales communes.
+
+Les polices de secours internes du moteur Web (Noto Sans et Noto Sans Symbols)
+sont aussi servies localement, via `fontFallbackBaseUrl`. Cela évite les
+tentatives répétées vers Google Fonts sous la CSP stricte, notamment au PIN.
+Les chemins doivent être vérifiés lors d’une mise à jour de Flutter.
 
 La simulation comporte trois onglets de largeur égale couvrant toute la barre,
 avec des libellés centrés : Budget, Investissement et Prêt. Seul
@@ -84,6 +103,7 @@ Depuis `frontend/` :
 ```sh
 flutter test test/workspace_design_test.dart test/privacy_provider_test.dart test/auth_layout_test.dart test/stamp_web_build_test.dart test/operation_controls_test.dart test/mobile_charts_test.dart test/page_headers_test.dart
 flutter test test/simulation_projection_test.dart test/simulation_workspace_test.dart
+flutter test test/lazy_page_stack_test.dart test/settings_overview_test.dart test/web_typography_test.dart
 node --test test/pwa_updates.test.cjs test/sw.test.cjs tool/privacy_gesture_test.cjs
 ```
 

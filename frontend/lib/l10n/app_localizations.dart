@@ -24,10 +24,25 @@ class AppLocalizations {
     final languageCode = locale.languageCode;
     final legal = selfHostedLegal(key, languageCode);
     if (legal != null) return legal;
-    final complement = _translationComplements[languageCode]?[key];
+    final legacyKey =
+        const {
+          'Paramètres': 'Parametres',
+          'Sécurité et confidentialité': 'Securite et confidentialite',
+          'Données personnelles': 'Donnees personnelles',
+          'À propos': 'A propos',
+          'Déconnexion': 'Deconnexion',
+          'Prénom': 'Prenom',
+          'Téléphone': 'Telephone',
+          'Alertes budgétaires': 'Alertes budgetaires',
+        }[key] ??
+        key;
+    final complement =
+        _translationComplements[languageCode]?[key] ??
+        _translationComplements[languageCode]?[legacyKey];
     if (complement != null) return complement;
     if (languageCode == 'fr') return key;
     return _translations[languageCode]?[key] ??
+        _translations[languageCode]?[legacyKey] ??
         _translationComplements['fr']?[key] ??
         key;
   }
@@ -51,8 +66,9 @@ class _AppLocalizationsDelegate
 
   @override
   bool isSupported(Locale locale) {
-    return AppLocalizations.supportedLocales
-        .any((supported) => supported.languageCode == locale.languageCode);
+    return AppLocalizations.supportedLocales.any(
+      (supported) => supported.languageCode == locale.languageCode,
+    );
   }
 
   @override
@@ -174,8 +190,7 @@ Pour toute demande concernant les données personnelles, l’utilisateur peut co
     'Alerte desactivee': 'Alerta desactivada',
     'Alertes du mois': 'Alertas del mes',
     'Annee complete': 'Año completo',
-    'Application en developpement actif.':
-        'Aplicación en desarrollo activo.',
+    'Application en developpement actif.': 'Aplicación en desarrollo activo.',
     'Apres 1 heure': 'Después de 1 hora',
     'Apres 1 minute': 'Después de 1 minuto',
     'Apres 15 minutes': 'Después de 15 minutos',
@@ -226,8 +241,7 @@ Pour toute demande concernant les données personnelles, l’utilisateur peut co
     'Compte inconnu': 'Cuenta desconocida',
     'Compte investissement': 'Cuenta de inversión',
     'Compte investissement auto': 'Cuenta de inversión automática',
-    'Compte gere par les investissements':
-        'Cuenta gestionada por inversiones',
+    'Compte gere par les investissements': 'Cuenta gestionada por inversiones',
     'Compte qui recoit l investissement': 'Cuenta que recibe la inversión',
     'Compte source': 'Cuenta origen',
     'Compte support': 'Cuenta soporte',
@@ -284,8 +298,7 @@ Pour toute demande concernant les données personnelles, l’utilisateur peut co
     'Informations personnelles': 'Información personal',
     'Investissement enregistre': 'Inversión guardada',
     'La categorie Others est protegee': 'La categoría Others está protegida',
-    'Le montant doit etre superieur a 0.':
-        'El importe debe ser superior a 0.',
+    'Le montant doit etre superieur a 0.': 'El importe debe ser superior a 0.',
     'Le PIN doit faire 6 chiffres identiques':
         'El PIN debe tener 6 cifras idénticas',
     'Le rapport sera genere en arriere-plan.':
@@ -293,12 +306,10 @@ Pour toute demande concernant les données personnelles, l’utilisateur peut co
     'Le solde de ce compte sera calcule depuis les actifs.':
         'El saldo de esta cuenta se calculará desde los activos.',
     'Les comptes doivent etre differents': 'Las cuentas deben ser diferentes',
-    'Les mots de passe ne correspondent pas.':
-        'Las contraseñas no coinciden.',
+    'Les mots de passe ne correspondent pas.': 'Las contraseñas no coinciden.',
     'Masquer les montants': 'Ocultar importes',
     'Mettre a jour': 'Actualizar',
-    'Mode discret actif dans les parametres':
-        'Modo discreto activo en ajustes',
+    'Mode discret actif dans les parametres': 'Modo discreto activo en ajustes',
     'Modifier l alerte': 'Modificar la alerta',
     'Modifier l investissement': 'Modificar la inversión',
     'Modifier la categorie': 'Modificar la categoría',
@@ -343,16 +354,14 @@ Pour toute demande concernant les données personnelles, l’utilisateur peut co
     'Se souvenir de moi': 'Recordarme',
     'Securite de l application': 'Seguridad de la aplicación',
     'Selectionner un compte': 'Seleccionar una cuenta',
-    'Selectionnez deux comptes valides.':
-        'Selecciona dos cuentas válidas.',
+    'Selectionnez deux comptes valides.': 'Selecciona dos cuentas válidas.',
     'Selectionnez un compte et une categorie valides.':
         'Selecciona una cuenta y una categoría válidas.',
     'Selectionnez votre devise': 'Selecciona tu moneda',
     'Selectionnez votre langue': 'Selecciona tu idioma',
     'Selectionnez votre theme': 'Selecciona tu tema',
     'Seuil atteint': 'Umbral alcanzado',
-    'Seuils depenses / revenus du mois':
-        'Umbrales gastos / ingresos del mes',
+    'Seuils depenses / revenus du mois': 'Umbrales gastos / ingresos del mes',
     'Solde actuel': 'Saldo actual',
     'Solde initial': 'Saldo inicial',
     'Solde invalide': 'Saldo inválido',
@@ -440,8 +449,7 @@ Pour toute demande concernant les données personnelles, l’utilisateur peut co
     'Informations personnelles': 'Persönliche Informationen',
     'Investissement': 'Investition',
     'Investissements': 'Investitionen',
-    'Le montant doit etre superieur a 0.':
-        'Der Betrag muss größer als 0 sein.',
+    'Le montant doit etre superieur a 0.': 'Der Betrag muss größer als 0 sein.',
     'Les comptes doivent etre differents':
         'Die Konten müssen unterschiedlich sein',
     'Masquer les montants': 'Beträge ausblenden',
@@ -548,8 +556,7 @@ Pour toute demande concernant les données personnelles, l’utilisateur peut co
     'Investissements': 'Investimenti',
     'Le montant doit etre superieur a 0.':
         'L importo deve essere superiore a 0.',
-    'Les comptes doivent etre differents':
-        'I conti devono essere diversi',
+    'Les comptes doivent etre differents': 'I conti devono essere diversi',
     'Masquer les montants': 'Nascondi importi',
     'Mettre a jour': 'Aggiorna',
     'Modifier la transaction': 'Modifica transazione',
@@ -699,6 +706,22 @@ Pour toute demande concernant les données personnelles, l’utilisateur peut co
 
 const Map<String, Map<String, String>> _translations = {
   'en': {
+    'Préférences rapides': 'Quick preferences',
+    'Préférences avancées': 'Advanced preferences',
+    'Notifications et mode discret': 'Notifications and privacy mode',
+    'PIN, verrouillage et double authentification':
+        'PIN, screen lock and two-factor authentication',
+    'Nom, prénom et téléphone': 'First name, last name and phone number',
+    'Sécurité de l’application': 'Application security',
+    'Authentificateur TOTP': 'TOTP authenticator',
+    'Configurer l’authentificateur et les codes de secours.':
+        'Set up the authenticator and recovery codes.',
+    'Version et informations de l’application':
+        'Application version and information',
+    'Autoriser MySold à afficher des notifications sur cet appareil.':
+        'Allow MySold to show notifications on this device.',
+    'Recevoir les alertes de seuils de votre budget mensuel.':
+        'Receive threshold alerts for your monthly budget.',
     'Mois': 'Month',
     'Global': 'Global',
     'Stats': 'Stats',
@@ -741,10 +764,12 @@ const Map<String, Map<String, String>> _translations = {
     'Alertes budgetaires': 'Budget alerts',
     'Seuils depenses / revenus du mois': 'Monthly expense / income thresholds',
     'Rappel mensuel': 'Monthly reminder',
-    'Preparation pour un rappel de suivi': 'Preparation for a tracking reminder',
+    'Preparation pour un rappel de suivi':
+        'Preparation for a tracking reminder',
     'MySold aide a suivre comptes, transactions, categories, investissements et limites budgetaires.':
         'MySold helps track accounts, transactions, categories, investments and budget limits.',
-    'Application en developpement actif.': 'Application under active development.',
+    'Application en developpement actif.':
+        'Application under active development.',
     'PIN, verrouillage et affichage discret':
         'PIN, locking and privacy display',
     'Nom, prenom et telephone': 'Name, first name and phone',
@@ -834,10 +859,8 @@ const Map<String, Map<String, String>> _translations = {
     'Demande de reconnexion tous les...': 'Ask for reconnection every...',
     'Le code PIN doit contenir 6 chiffres.':
         'The PIN code must contain 6 digits.',
-    'Veuillez completer toutes les sections.':
-        'Please complete all sections.',
-    'Erreur lors de la creation du compte':
-        'Error while creating the account',
+    'Veuillez completer toutes les sections.': 'Please complete all sections.',
+    'Erreur lors de la creation du compte': 'Error while creating the account',
     'Creer votre PIN': 'Create your PIN',
     'Choisissez un code a 6 chiffres pour securiser votre espace.':
         'Choose a 6-digit code to secure your space.',
@@ -861,8 +884,7 @@ const Map<String, Map<String, String>> _translations = {
     'Afficher': 'Show',
     'Masquer': 'Hide',
     'ou': 'or',
-    'Connectez-vous a votre espace bancaire.':
-        'Sign in to your banking space.',
+    'Connectez-vous a votre espace bancaire.': 'Sign in to your banking space.',
     'Erreur de connexion': 'Sign-in error',
     'Veuillez entrer un email valide': 'Please enter a valid email',
     'Email de reinitialisation envoye': 'Reset email sent',
@@ -1038,10 +1060,8 @@ const Map<String, Map<String, String>> _translations = {
     'Selectionnez un compte et une categorie valides.':
         'Select a valid account and category.',
     'Selectionnez deux comptes valides.': 'Select two valid accounts.',
-    'Les comptes doivent etre differents':
-        'Accounts must be different',
-    'Le montant doit etre superieur a 0.':
-        'The amount must be greater than 0.',
+    'Les comptes doivent etre differents': 'Accounts must be different',
+    'Le montant doit etre superieur a 0.': 'The amount must be greater than 0.',
     'Modifier la transaction': 'Edit transaction',
     'Nouvelle transaction': 'New transaction',
     'Entrer un montant': 'Enter an amount',
@@ -1066,8 +1086,7 @@ const Map<String, Map<String, String>> _translations = {
         'No account or investment available.',
     'Le compte source et le compte destination doivent etre differents.':
         'The source account and destination account must be different.',
-    'Compte qui recoit l investissement':
-        'Account receiving the investment',
+    'Compte qui recoit l investissement': 'Account receiving the investment',
     'Choisir un compte different': 'Choose a different account',
     'Destination (action, fonds...)': 'Destination (stock, fund...)',
     'Compte support': 'Support account',
@@ -1094,16 +1113,14 @@ const Map<String, Map<String, String>> _translations = {
     'Verifier': 'Check',
     '**% des revenus depenses': '**% of income spent',
     '{percent}% des revenus depenses': '{percent}% of income spent',
-    'Seuil a {percent}% des revenus':
-        'Threshold at {percent}% of income',
+    'Seuil a {percent}% des revenus': 'Threshold at {percent}% of income',
     'Alerte desactivee': 'Alert disabled',
     'Seuil atteint': 'Threshold reached',
     'En surveillance': 'Monitoring',
     'Aucune limite': 'No limit',
     'Creez un seuil pour surveiller vos depenses par rapport aux revenus du mois.':
         'Create a threshold to monitor your expenses against monthly income.',
-    'Actuel: **% - {amount} depenses':
-        'Current: **% - {amount} expenses',
+    'Actuel: **% - {amount} depenses': 'Current: **% - {amount} expenses',
     'Actuel: {percent}% - {amount} depenses':
         'Current: {percent}% - {amount} expenses',
     'Tri': 'Sort',
@@ -1135,8 +1152,7 @@ const Map<String, Map<String, String>> _translations = {
         'Add an asset in this category to find it here.',
     'Documents legaux': 'Legal documents',
     'Conditions generales d utilisation': 'Terms of use',
-    'Consulter les regles d utilisation de MySold':
-        'Read MySold usage rules',
+    'Consulter les regles d utilisation de MySold': 'Read MySold usage rules',
     'Politique de confidentialite': 'Privacy policy',
     'Comprendre comment vos donnees sont utilisees':
         'Understand how your data is used',
@@ -1206,8 +1222,7 @@ const Map<String, Map<String, String>> _translations = {
     'Les donnees ont ete supprimees, mais le compte doit etre supprime apres reconnexion.':
         'The data was deleted, but the account must be deleted after signing in again.',
     'Suppression impossible': 'Deletion failed',
-    'En continuant, vous acceptez les':
-        'By continuing, you accept the',
+    'En continuant, vous acceptez les': 'By continuing, you accept the',
     'CGU': 'Terms',
     'et la': 'and the',
     'legal_terms_full': '''

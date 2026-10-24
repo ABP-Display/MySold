@@ -114,9 +114,7 @@ ni mot de passe de connexion par défaut n’est créé. Chaque utilisateur poss
 son espace isolé. Le secret PostgreSQL de `.env` n’est pas à saisir sur cet écran.
 
 Si le dossier a déjà été cloné avec `sudo`, utiliser `sudo sh scripts/setup.sh`
-et `sudo nano .env` pour les fichiers appartenant à root. Le script Node.js
-`node scripts/setup.mjs` reste une alternative facultative sur les postes qui
-disposent déjà de Node.js.
+et `sudo nano .env` pour les fichiers appartenant à root.
 
 ### Construction automatique et mises à jour
 
@@ -165,9 +163,8 @@ docker compose --env-file .env -f compose.yaml -f compose.source.yaml up -d --bu
 Ce mode utilise `FLUTTER_VERSION` (3.44.0 par défaut) et nécessite une machine
 capable de compiler Flutter. Une VM de 1 Go sans swap peut saturer dès la
 préparation de l’outil Flutter. Privilégier l’installation automatique par défaut
-sur ces petites machines. `compose.prebuilt.yaml` reste un outil facultatif pour
-les développeurs disposant déjà de `frontend/build/web` ; il n’est pas nécessaire
-au parcours d’installation public.
+sur ces petites machines. La release correspondante est récupérée automatiquement
+par Docker ; aucun envoi manuel de fichiers compilés n’est nécessaire.
 
 Pour un fork public, activer GitHub Actions, laisser le workflow publier sa
 release et définir `MYSOLD_REPOSITORY=PROPRIETAIRE/DEPOT` dans `.env`. Les sources

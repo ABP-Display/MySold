@@ -162,7 +162,7 @@ Le workflow [Web release](https://github.com/ABP-Display/MySold/actions/workflow
 doit avoir publié le build correspondant avant l’installation. Si le build
 n’est pas encore disponible, attendre sa publication réussie puis relancer
 la même commande `up -d --build`. La commande standard utilise uniquement
-`compose.yaml` ; aucun `compose.prebuilt.yaml` n’est requis.
+`compose.yaml` et récupère automatiquement la release publiée.
 
 ## 6. Créer son compte sur le site
 

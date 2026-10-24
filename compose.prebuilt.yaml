@@ -1,5 +1,0 @@
-# Apply after compose.yaml: no Flutter SDK/compiler runs on this machine.
-services:
-  web:
-    build:
-      dockerfile: Dockerfile.prebuilt

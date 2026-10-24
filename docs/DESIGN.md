@@ -48,6 +48,27 @@ explicite sur le bouton œil ou le réglage réaffiche les montants.
 
 ## Revue des fonctions
 
+La simulation comporte trois onglets de largeur égale couvrant toute la barre,
+avec des libellés centrés : Budget, Investissement et Prêt. Seul
+un appui sur leur titre change d’onglet ; les gestes horizontaux dans le contenu
+ne déclenchent plus de changement de page. Les formulaires gardent leurs valeurs
+et chaque onglet affiche une projection initiale, actualisable avec le bouton
+« Calculer la simulation ». Un texte indique lorsque les paramètres ont changé.
+
+Les projections Budget et Investissement partagent des courbes avec grille,
+légendes, unités monétaires et infobulles contenues dans le graphique. Le budget
+utilise les mois et les flux cumulés ; l’investissement utilise les années,
+avec capitalisation et versements en fin de chaque période choisie.
+
+Le prêt est à taux fixe nominal avec mensualités constantes. Le capital emprunté
+est le montant total du projet moins l’apport. Les frais saisis sont payés au
+départ et ne sont pas financés. L’assurance facultative est calculée sur le capital
+initial. Le graphique en anneau détaille l’apport, le capital, les intérêts,
+l’assurance et les frais. Le coût du crédit exclut l’apport et le capital ;
+le total versé comprend le projet et le coût du crédit. Aucun frais implicite
+n’est ajouté. Les calculs utilisent leur précision complète et l’affichage
+arrondit au centime (hors arrondis contractuels des échéances bancaires).
+
 Les comptes, catégories, investissements, budgets, simulations, exports, PIN,
 MFA et mises à jour PWA restent disponibles. Aucun calcul financier n’est modifié.
 
@@ -62,6 +83,7 @@ Depuis `frontend/` :
 
 ```sh
 flutter test test/workspace_design_test.dart test/privacy_provider_test.dart test/auth_layout_test.dart test/stamp_web_build_test.dart test/operation_controls_test.dart test/mobile_charts_test.dart test/page_headers_test.dart
+flutter test test/simulation_projection_test.dart test/simulation_workspace_test.dart
 node --test test/pwa_updates.test.cjs test/sw.test.cjs tool/privacy_gesture_test.cjs
 ```
 

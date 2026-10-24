@@ -271,7 +271,7 @@ class _ProfilePageState extends State<ProfilePage> {
           _ToolTile(
             icon: Icons.calculate_outlined,
             title: 'Simulation',
-            subtitle: 'Projection budget et investissement',
+            subtitle: 'Budget, investissement et prêt',
             onTap: () => _openSimulation(context),
           ),
           Divider(

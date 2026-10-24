@@ -945,6 +945,7 @@ const Map<String, Map<String, String>> _translations = {
     'Limites': 'Limits',
     'Alertes budget': 'Budget alerts',
     'Projection budget et investissement': 'Budget and investment projection',
+    'Budget, investissement et prêt': 'Budget, investment and loan',
     'Theme, langue, devise et securite':
         'Theme, language, currency and security',
     'Espace personnel MySold': 'MySold personal space',

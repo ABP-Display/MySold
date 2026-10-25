@@ -16,6 +16,7 @@ import 'package:mysold/screens/settings/theme_settings.dart';
 import 'package:mysold/services/auth_service.dart';
 import 'package:mysold/widgets/auth_layout.dart';
 import 'package:mysold/widgets/mfa_enrollment.dart';
+import 'package:mysold/widgets/account_autofill_group.dart';
 
 class Register extends StatefulWidget {
   final MfaRequest? mfaRequest;
@@ -36,6 +37,7 @@ class _RegisterFlowState extends State<Register> {
   final _confirmation = TextEditingController();
   final _pin = TextEditingController();
   int _step = 0;
+  final _visitedSteps = <int>{0};
   bool _busy = false;
   bool _hidePassword = true;
   bool _hideConfirmation = true;
@@ -73,6 +75,7 @@ class _RegisterFlowState extends State<Register> {
     FocusManager.instance.primaryFocus?.unfocus();
     setState(() {
       _step = step;
+      if (step < 3) _visitedSteps.add(step);
       _error = null;
     });
     if (_scrollController.hasClients) _scrollController.jumpTo(0);
@@ -181,6 +184,7 @@ class _RegisterFlowState extends State<Register> {
     return Padding(
       padding: EdgeInsets.all(compact ? 22 : 40),
       child: AutofillGroup(
+        onDisposeAction: AutofillContextAction.cancel,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           mainAxisSize: MainAxisSize.min,
@@ -239,18 +243,31 @@ class _RegisterFlowState extends State<Register> {
                 onFinished: _finishRegistration,
               )
             else ...[
-              Form(
-                key: _forms[_step],
-                autovalidateMode: AutovalidateMode.onUserInteraction,
-                child: AbsorbPointer(
-                  absorbing: _busy,
-                  child: switch (_step) {
-                    0 => _profileFields(),
-                    1 => _securityFields(),
-                    _ => _preferences(),
-                  },
-                ),
-              ),
+              // Keep credentials mounted together until registration succeeds.
+              // Flutter can then expose a stable native form with its username
+              // on every step, including while the preferences are displayed.
+              for (var index = 0; index < 3; index++)
+                if (_visitedSteps.contains(index))
+                  Offstage(
+                    offstage: _step != index,
+                    child: TickerMode(
+                      enabled: _step == index,
+                      child: Form(
+                        key: _forms[index],
+                        autovalidateMode: AutovalidateMode.onUserInteraction,
+                        child: AbsorbPointer(
+                          absorbing: _busy,
+                          child: switch (index) {
+                            0 => _profileFields(),
+                            1 => _securityFields(),
+                            _ => _preferences(),
+                          },
+                        ),
+                      ),
+                    ),
+                  )
+                else
+                  const SizedBox.shrink(),
               if (_error != null) ...[
                 const SizedBox(height: 16),
                 Semantics(
@@ -486,6 +503,7 @@ class _RegisterFlowState extends State<Register> {
 
   Widget _securityFields() => Column(
     children: [
+      AutofillIdentifier(controller: _email),
       _field(
         _password,
         'Mot de passe',
@@ -525,6 +543,7 @@ class _RegisterFlowState extends State<Register> {
         'PIN (6 chiffres)',
         Icons.dialpad_outlined,
         keyboard: TextInputType.number,
+        autofill: AccountAutofillGroup.pinHints,
         obscure: _hidePin,
         toggle: () => setState(() => _hidePin = !_hidePin),
         formatters: [FilteringTextInputFormatter.digitsOnly],

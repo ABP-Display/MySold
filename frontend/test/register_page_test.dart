@@ -102,6 +102,61 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets(
+    'The username and new passwords remain in one autofill scope through preferences',
+    (tester) async {
+      await open(tester, const Size(1440, 900));
+      await profile(tester);
+      await tester.enterText(
+        find.byType(TextFormField).at(0),
+        'MySold-Test-123!',
+      );
+      await tester.enterText(
+        find.byType(TextFormField).at(1),
+        'MySold-Test-123!',
+      );
+      await tester.enterText(find.byType(TextFormField).at(2), '123456');
+      final scope = tester.state<AutofillGroupState>(
+        find.byType(AutofillGroup),
+      );
+      final before = scope.autofillClients
+          .map((client) => client.autofillId)
+          .toSet();
+      final identifier = scope.autofillClients.singleWhere(
+        (client) => client
+            .textInputConfiguration
+            .autofillConfiguration
+            .autofillHints
+            .contains(AutofillHints.username),
+      );
+      expect(
+        identifier
+            .textInputConfiguration
+            .autofillConfiguration
+            .currentEditingValue
+            .text,
+        'alice@example.test',
+      );
+      expect(
+        scope.autofillClients.where(
+          (client) => client
+              .textInputConfiguration
+              .autofillConfiguration
+              .autofillHints
+              .contains(AutofillHints.newPassword),
+        ),
+        hasLength(2),
+      );
+      await tap(tester, 'Continuer');
+      expect(find.text('À votre image'), findsOneWidget);
+      expect(
+        scope.autofillClients.map((client) => client.autofillId).toSet(),
+        before,
+      );
+      expect(tester.takeException(), isNull);
+    },
+  );
+
   for (final size in [const Size(320, 640), const Size(1440, 900)]) {
     testWidgets(
       'Account creation reaches the optional fourth MFA step at $size',

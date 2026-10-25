@@ -176,6 +176,7 @@ class _LoginPageState extends State<LoginPage> {
           ),
           const SizedBox(height: 28),
           AutofillGroup(
+            onDisposeAction: AutofillContextAction.cancel,
             child: Form(
               key: _form,
               autovalidateMode: AutovalidateMode.onUserInteraction,

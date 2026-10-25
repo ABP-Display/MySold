@@ -451,6 +451,24 @@ compresse les scripts et fichiers WebAssembly avec gzip lorsque le navigateur
 l’accepte. Après une modification, reconstruire et numéroter la PWA avec les
 commandes ci-dessus (ou reconstruire l’image Docker), puis appliquer sa mise à jour.
 
+## Formulaires et extensions du navigateur
+
+Les étapes d’inscription conservent les identifiants déjà saisis dans le même
+groupe d’autofill jusqu’à la création du compte. Les formulaires de confirmation
+contiennent aussi l’identifiant du compte, y compris lorsque l’accessibilité est
+activée. Les confirmations PIN ne demandent pas d’enregistrement du mot de passe.
+
+Une exception citant `bootstrap-autofill-overlay.js` et
+`AutofillInlineMenuContentService` correspond au script d’une extension de
+gestion de mots de passe. Cette erreur est notamment
+[signalée dans Bitwarden](https://github.com/bitwarden/clients/issues/13940).
+Mettre l’extension à jour et comparer le même parcours sans son menu de
+remplissage permet d’isoler son effet sur les blocages ou ralentissements.
+
+Les avertissements `requestAnimationFrame handler took …ms` mesurent des images
+lentes côté navigateur. Pour les diagnostiquer, comparer la même action et les
+mêmes données dans le panneau Performance, avec et sans extensions.
+
 ## Licence
 
 MySold est fourni sous une [licence personnelle d’auto-hébergement](LICENSE),

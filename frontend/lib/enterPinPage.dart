@@ -6,6 +6,7 @@ import 'package:mysold/data/local_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:mysold/widgets/auth_layout.dart';
+import 'package:mysold/widgets/account_autofill_group.dart';
 import 'package:pin_code_fields/pin_code_fields.dart';
 import 'package:mysold/l10n/app_localizations.dart';
 import 'package:mysold/login_page.dart';
@@ -146,46 +147,54 @@ class _EnterPinPageState extends State<EnterPinPage> {
                         if (loadingPinStatus)
                           const Center(child: CircularProgressIndicator())
                         else ...[
-                          LayoutBuilder(
-                            builder: (context, constraints) => PinCodeTextField(
-                              appContext: context,
-                              length: 6,
-                              obscureText: true,
-                              enabled: !loading,
-                              keyboardType: TextInputType.number,
-                              inputFormatters: [
-                                FilteringTextInputFormatter.digitsOnly,
-                              ],
-                              animationType: AnimationType.fade,
-                              enableActiveFill: true,
-                              cursorColor: AuthPalette.accent,
-                              textStyle: const TextStyle(
-                                color: AuthPalette.text,
-                                fontSize: 20,
-                              ),
-                              pinTheme: PinTheme(
-                                shape: PinCodeFieldShape.box,
-                                borderRadius: BorderRadius.circular(10),
-                                fieldHeight: 54,
-                                fieldWidth: ((constraints.maxWidth - 30) / 6)
-                                    .clamp(24.0, 48.0),
-                                borderWidth: 1.5,
-                                selectedBorderWidth: 2,
-                                activeColor: AuthPalette.accent,
-                                selectedColor: AuthPalette.accent,
-                                inactiveColor: AuthPalette.border,
-                                activeFillColor: AuthPalette.tint,
-                                selectedFillColor: AuthPalette.tint,
-                                inactiveFillColor: AuthPalette.field,
-                                errorBorderColor: Theme.of(
-                                  context,
-                                ).colorScheme.error,
-                              ),
-                              onChanged: (value) => setState(() {
-                                _pin = value;
-                                errorText = null;
-                              }),
-                              onCompleted: (_) => _checkPin(),
+                          AccountAutofillGroup(
+                            username:
+                                LocalAuth.instance.currentUser?.email ?? '',
+                            child: LayoutBuilder(
+                              builder: (context, constraints) =>
+                                  PinCodeTextField(
+                                    appContext: context,
+                                    length: 6,
+                                    obscureText: true,
+                                    useExternalAutoFillGroup: true,
+                                    enabled: !loading,
+                                    keyboardType: TextInputType.number,
+                                    inputFormatters: [
+                                      FilteringTextInputFormatter.digitsOnly,
+                                    ],
+                                    animationType: AnimationType.none,
+                                    animationDuration: Duration.zero,
+                                    enableActiveFill: true,
+                                    cursorColor: AuthPalette.accent,
+                                    textStyle: const TextStyle(
+                                      color: AuthPalette.text,
+                                      fontSize: 20,
+                                    ),
+                                    pinTheme: PinTheme(
+                                      shape: PinCodeFieldShape.box,
+                                      borderRadius: BorderRadius.circular(10),
+                                      fieldHeight: 54,
+                                      fieldWidth:
+                                          ((constraints.maxWidth - 30) / 6)
+                                              .clamp(24.0, 48.0),
+                                      borderWidth: 1.5,
+                                      selectedBorderWidth: 2,
+                                      activeColor: AuthPalette.accent,
+                                      selectedColor: AuthPalette.accent,
+                                      inactiveColor: AuthPalette.border,
+                                      activeFillColor: AuthPalette.tint,
+                                      selectedFillColor: AuthPalette.tint,
+                                      inactiveFillColor: AuthPalette.field,
+                                      errorBorderColor: Theme.of(
+                                        context,
+                                      ).colorScheme.error,
+                                    ),
+                                    onChanged: (value) => setState(() {
+                                      _pin = value;
+                                      errorText = null;
+                                    }),
+                                    onCompleted: (_) => _checkPin(),
+                                  ),
                             ),
                           ),
                           if (errorText != null) ...[

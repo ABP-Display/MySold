@@ -4,6 +4,8 @@ import 'package:flutter/services.dart';
 import 'package:mysold/widgets/totp_qr_code.dart';
 import 'package:mysold/data/api_client.dart';
 import 'package:mysold/l10n/app_localizations.dart';
+import 'package:mysold/data/local_auth.dart';
+import 'package:mysold/widgets/account_autofill_group.dart';
 
 class MfaSettingsPage extends StatefulWidget {
   const MfaSettingsPage({super.key});
@@ -171,183 +173,194 @@ class _MfaSettingsPageState extends State<MfaSettingsPage> {
       child: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 520),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Icon(
-                _enabled ? Icons.verified_user_outlined : Icons.shield_outlined,
-                size: 42,
-                color: Theme.of(context).colorScheme.primary,
-              ),
-              const SizedBox(height: 16),
-              Text(
-                context.tr(
+          child: AccountAutofillGroup(
+            username: LocalAuth.instance.currentUser?.email ?? '',
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Icon(
                   _enabled
-                      ? 'Protection activée'
-                      : 'Un code en plus, un compte mieux protégé',
+                      ? Icons.verified_user_outlined
+                      : Icons.shield_outlined,
+                  size: 42,
+                  color: Theme.of(context).colorScheme.primary,
                 ),
-                textAlign: TextAlign.center,
-                style: Theme.of(context).textTheme.headlineSmall,
-              ),
-              const SizedBox(height: 12),
-              Text(
-                context.tr(
-                  'Utilisez une application d’authentification compatible TOTP. Le code change toutes les 30 secondes. Activez l’heure automatique sur vos appareils.',
-                ),
-                style: const TextStyle(height: 1.6),
-              ),
-              if (_enabled) ...[
-                const SizedBox(height: 12),
-                Text(
-                  '${context.tr('Codes de secours restants')} : $_remaining',
-                ),
-              ],
-              const SizedBox(height: 24),
-              if (_busy) const LinearProgressIndicator(),
-              if (_error != null) ...[
-                const SizedBox(height: 12),
-                Semantics(
-                  liveRegion: true,
-                  child: Text(
-                    _error!,
-                    style: TextStyle(
-                      color: Theme.of(context).colorScheme.error,
-                    ),
-                  ),
-                ),
-              ],
-              if (!_loaded && !_busy)
-                TextButton(
-                  onPressed: _load,
-                  child: Text(context.tr('Réessayer')),
-                ),
-              if (_codes != null) ...[
-                const SizedBox(height: 20),
+                const SizedBox(height: 16),
                 Text(
                   context.tr(
-                    'Conservez ces codes dans un endroit sûr. Ils ne seront affichés qu’une fois. Chaque code permet une seule connexion si vous perdez votre authentificateur.',
+                    _enabled
+                        ? 'Protection activée'
+                        : 'Un code en plus, un compte mieux protégé',
+                  ),
+                  textAlign: TextAlign.center,
+                  style: Theme.of(context).textTheme.headlineSmall,
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  context.tr(
+                    'Utilisez une application d’authentification compatible TOTP. Le code change toutes les 30 secondes. Activez l’heure automatique sur vos appareils.',
                   ),
                   style: const TextStyle(height: 1.6),
                 ),
-                const SizedBox(height: 18),
-                SelectableText(
-                  _codes!.join('\n'),
-                  style: const TextStyle(fontFamily: 'monospace', height: 1.8),
-                ),
-                const SizedBox(height: 16),
-                OutlinedButton.icon(
-                  onPressed: () => Clipboard.setData(
-                    ClipboardData(text: _codes!.join('\n')),
+                if (_enabled) ...[
+                  const SizedBox(height: 12),
+                  Text(
+                    '${context.tr('Codes de secours restants')} : $_remaining',
                   ),
-                  icon: const Icon(Icons.copy),
-                  label: Text(context.tr('Copier les codes')),
-                ),
-                FilledButton(
-                  onPressed: () => setState(() => _codes = null),
-                  child: Text(context.tr('J’ai sauvegardé mes codes')),
-                ),
-              ] else if (_loaded) ...[
-                const SizedBox(height: 16),
-                if (_secret != null) ...[
+                ],
+                const SizedBox(height: 24),
+                if (_busy) const LinearProgressIndicator(),
+                if (_error != null) ...[
+                  const SizedBox(height: 12),
+                  Semantics(
+                    liveRegion: true,
+                    child: Text(
+                      _error!,
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.error,
+                      ),
+                    ),
+                  ),
+                ],
+                if (!_loaded && !_busy)
+                  TextButton(
+                    onPressed: _load,
+                    child: Text(context.tr('Réessayer')),
+                  ),
+                if (_codes != null) ...[
+                  const SizedBox(height: 20),
                   Text(
                     context.tr(
-                      '1. Scannez ce QR code dans votre authentificateur, ou saisissez la clé manuellement. Cette configuration expire après 10 minutes.',
+                      'Conservez ces codes dans un endroit sûr. Ils ne seront affichés qu’une fois. Chaque code permet une seule connexion si vous perdez votre authentificateur.',
                     ),
                     style: const TextStyle(height: 1.6),
                   ),
                   const SizedBox(height: 18),
-                  TotpQrCode(uri: _uri!),
-                  const SizedBox(height: 18),
                   SelectableText(
-                    _secret!,
-                    textAlign: TextAlign.center,
+                    _codes!.join('\n'),
                     style: const TextStyle(
                       fontFamily: 'monospace',
-                      height: 1.6,
+                      height: 1.8,
                     ),
                   ),
                   const SizedBox(height: 16),
-                  Text(
-                    context.tr(
-                      '2. Confirmez le code à 6 chiffres pour activer la protection. La clé et le QR code sont confidentiels.',
+                  OutlinedButton.icon(
+                    onPressed: () => Clipboard.setData(
+                      ClipboardData(text: _codes!.join('\n')),
                     ),
-                    style: const TextStyle(height: 1.6),
+                    icon: const Icon(Icons.copy),
+                    label: Text(context.tr('Copier les codes')),
                   ),
-                  const SizedBox(height: 18),
-                ],
-                TextField(
-                  controller: _password,
-                  enabled: !_busy,
-                  obscureText: true,
-                  autocorrect: false,
-                  enableSuggestions: false,
-                  decoration: InputDecoration(
-                    labelText: context.tr('Mot de passe actuel'),
-                    border: const OutlineInputBorder(),
+                  FilledButton(
+                    onPressed: () => setState(() => _codes = null),
+                    child: Text(context.tr('J’ai sauvegardé mes codes')),
                   ),
-                ),
-                if (_enabled || _secret != null) ...[
-                  const SizedBox(height: 18),
+                ] else if (_loaded) ...[
+                  const SizedBox(height: 16),
+                  if (_secret != null) ...[
+                    Text(
+                      context.tr(
+                        '1. Scannez ce QR code dans votre authentificateur, ou saisissez la clé manuellement. Cette configuration expire après 10 minutes.',
+                      ),
+                      style: const TextStyle(height: 1.6),
+                    ),
+                    const SizedBox(height: 18),
+                    TotpQrCode(uri: _uri!),
+                    const SizedBox(height: 18),
+                    SelectableText(
+                      _secret!,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        fontFamily: 'monospace',
+                        height: 1.6,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      context.tr(
+                        '2. Confirmez le code à 6 chiffres pour activer la protection. La clé et le QR code sont confidentiels.',
+                      ),
+                      style: const TextStyle(height: 1.6),
+                    ),
+                    const SizedBox(height: 18),
+                  ],
                   TextField(
-                    controller: _code,
+                    controller: _password,
                     enabled: !_busy,
+                    obscureText: true,
+                    autofillHints: const [AutofillHints.password],
                     autocorrect: false,
                     enableSuggestions: false,
-                    keyboardType: _enabled
-                        ? TextInputType.text
-                        : TextInputType.number,
                     decoration: InputDecoration(
-                      labelText: context.tr(
-                        _enabled
-                            ? 'Code TOTP ou code de secours'
-                            : 'Code à 6 chiffres',
-                      ),
+                      labelText: context.tr('Mot de passe actuel'),
                       border: const OutlineInputBorder(),
                     ),
                   ),
-                ],
-                const SizedBox(height: 20),
-                if (!_enabled)
-                  FilledButton(
-                    onPressed: _busy
-                        ? null
-                        : _secret == null
-                        ? _setup
-                        : _enable,
-                    child: Text(
-                      context.tr(
-                        _secret == null
-                            ? 'Configurer l’authentificateur'
-                            : 'Activer la double authentification',
+                  if (_enabled || _secret != null) ...[
+                    const SizedBox(height: 18),
+                    TextField(
+                      controller: _code,
+                      enabled: !_busy,
+                      autocorrect: false,
+                      enableSuggestions: false,
+                      keyboardType: _enabled
+                          ? TextInputType.text
+                          : TextInputType.number,
+                      decoration: InputDecoration(
+                        labelText: context.tr(
+                          _enabled
+                              ? 'Code TOTP ou code de secours'
+                              : 'Code à 6 chiffres',
+                        ),
+                        border: const OutlineInputBorder(),
                       ),
                     ),
-                  ),
-                if (_secret != null)
-                  TextButton(
-                    onPressed: _busy
-                        ? null
-                        : () => setState(() {
-                            _secret = null;
-                            _uri = null;
-                            _code.clear();
-                          }),
-                    child: Text(context.tr('Recommencer la configuration')),
-                  ),
-                if (_enabled) ...[
-                  OutlinedButton(
-                    onPressed: _busy ? null : _regenerate,
-                    child: Text(context.tr('Renouveler les codes de secours')),
-                  ),
-                  const SizedBox(height: 12),
-                  TextButton(
-                    onPressed: _busy ? null : _disable,
-                    child: Text(
-                      context.tr('Désactiver la double authentification'),
+                  ],
+                  const SizedBox(height: 20),
+                  if (!_enabled)
+                    FilledButton(
+                      onPressed: _busy
+                          ? null
+                          : _secret == null
+                          ? _setup
+                          : _enable,
+                      child: Text(
+                        context.tr(
+                          _secret == null
+                              ? 'Configurer l’authentificateur'
+                              : 'Activer la double authentification',
+                        ),
+                      ),
                     ),
-                  ),
+                  if (_secret != null)
+                    TextButton(
+                      onPressed: _busy
+                          ? null
+                          : () => setState(() {
+                              _secret = null;
+                              _uri = null;
+                              _code.clear();
+                            }),
+                      child: Text(context.tr('Recommencer la configuration')),
+                    ),
+                  if (_enabled) ...[
+                    OutlinedButton(
+                      onPressed: _busy ? null : _regenerate,
+                      child: Text(
+                        context.tr('Renouveler les codes de secours'),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    TextButton(
+                      onPressed: _busy ? null : _disable,
+                      child: Text(
+                        context.tr('Désactiver la double authentification'),
+                      ),
+                    ),
+                  ],
                 ],
               ],
-            ],
+            ),
           ),
         ),
       ),

@@ -16,6 +16,7 @@ import 'package:mysold/l10n/app_localizations.dart';
 import 'package:mysold/login_page.dart';
 import 'package:mysold/providers/user_data_provider.dart';
 import 'package:mysold/services/security_gate.dart';
+import 'package:mysold/widgets/account_autofill_group.dart';
 
 int _compareImportDocuments(_ImportDocument a, _ImportDocument b) {
   const collections = [
@@ -995,17 +996,23 @@ class _SecurityPrivacyPageState extends State<SecurityPrivacyPage> {
       builder: (dialogContext) {
         return AlertDialog(
           title: Text(dialogContext.tr('Verification du compte')),
-          content: TextField(
-            controller: passwordCtrl,
-            autofocus: true,
-            obscureText: true,
-            decoration: InputDecoration(
-              labelText: dialogContext.tr('Mot de passe'),
-              prefixIcon: const Icon(Icons.lock_outline),
+          content: AccountAutofillGroup(
+            username: LocalAuth.instance.currentUser?.email ?? '',
+            child: TextField(
+              controller: passwordCtrl,
+              autofocus: true,
+              obscureText: true,
+              autofillHints: const [AutofillHints.password],
+              autocorrect: false,
+              enableSuggestions: false,
+              decoration: InputDecoration(
+                labelText: dialogContext.tr('Mot de passe'),
+                prefixIcon: const Icon(Icons.lock_outline),
+              ),
+              onSubmitted: (_) {
+                Navigator.pop(dialogContext, passwordCtrl.text);
+              },
             ),
-            onSubmitted: (_) {
-              Navigator.pop(dialogContext, passwordCtrl.text);
-            },
           ),
           actions: [
             TextButton(
@@ -1196,102 +1203,111 @@ class _SecurityPrivacyPageState extends State<SecurityPrivacyPage> {
           _Panel(
             icon: Icons.lock_outline,
             title: context.tr('Sécurité de l’application'),
-            child: Column(
-              children: [
-                DropdownButtonFormField<String>(
-                  value: _frequency,
-                  decoration: InputDecoration(
-                    labelText: context.tr('Demande du PIN'),
-                    prefixIcon: const Icon(Icons.lock_clock_outlined),
-                  ),
-                  items: [
-                    DropdownMenuItem(
-                      value: 'never',
-                      child: Text(context.tr('Jamais')),
-                    ),
-                    DropdownMenuItem(
-                      value: 'always',
-                      child: Text(context.tr('Toujours')),
-                    ),
-                  ],
-                  onChanged: (value) {
-                    if (value != null) setState(() => _frequency = value);
-                  },
-                ),
-                if (_frequency == 'always') ...[
-                  const SizedBox(height: 14),
-                  DropdownButtonFormField<int>(
-                    value: _lockDelayMinutes,
+            child: AccountAutofillGroup(
+              username: LocalAuth.instance.currentUser?.email ?? '',
+              child: Column(
+                children: [
+                  DropdownButtonFormField<String>(
+                    value: _frequency,
                     decoration: InputDecoration(
-                      labelText: context.tr('Delai avant verrouillage'),
-                      prefixIcon: const Icon(Icons.timer_outlined),
+                      labelText: context.tr('Demande du PIN'),
+                      prefixIcon: const Icon(Icons.lock_clock_outlined),
                     ),
                     items: [
                       DropdownMenuItem(
-                        value: 0,
-                        child: Text(context.tr('Immediat')),
+                        value: 'never',
+                        child: Text(context.tr('Jamais')),
                       ),
                       DropdownMenuItem(
-                        value: 1,
-                        child: Text(context.tr('Apres 1 minute')),
-                      ),
-                      DropdownMenuItem(
-                        value: 5,
-                        child: Text(context.tr('Apres 5 minutes')),
-                      ),
-                      DropdownMenuItem(
-                        value: 15,
-                        child: Text(context.tr('Apres 15 minutes')),
-                      ),
-                      DropdownMenuItem(
-                        value: 60,
-                        child: Text(context.tr('Apres 1 heure')),
+                        value: 'always',
+                        child: Text(context.tr('Toujours')),
                       ),
                     ],
                     onChanged: (value) {
-                      if (value != null) {
-                        setState(() => _lockDelayMinutes = value);
-                      }
+                      if (value != null) setState(() => _frequency = value);
                     },
                   ),
+                  if (_frequency == 'always') ...[
+                    const SizedBox(height: 14),
+                    DropdownButtonFormField<int>(
+                      value: _lockDelayMinutes,
+                      decoration: InputDecoration(
+                        labelText: context.tr('Delai avant verrouillage'),
+                        prefixIcon: const Icon(Icons.timer_outlined),
+                      ),
+                      items: [
+                        DropdownMenuItem(
+                          value: 0,
+                          child: Text(context.tr('Immediat')),
+                        ),
+                        DropdownMenuItem(
+                          value: 1,
+                          child: Text(context.tr('Apres 1 minute')),
+                        ),
+                        DropdownMenuItem(
+                          value: 5,
+                          child: Text(context.tr('Apres 5 minutes')),
+                        ),
+                        DropdownMenuItem(
+                          value: 15,
+                          child: Text(context.tr('Apres 15 minutes')),
+                        ),
+                        DropdownMenuItem(
+                          value: 60,
+                          child: Text(context.tr('Apres 1 heure')),
+                        ),
+                      ],
+                      onChanged: (value) {
+                        if (value != null) {
+                          setState(() => _lockDelayMinutes = value);
+                        }
+                      },
+                    ),
+                  ],
+                  const SizedBox(height: 14),
+                  TextField(
+                    controller: _pinCtrl,
+                    autofillHints: AccountAutofillGroup.pinHints,
+                    autocorrect: false,
+                    enableSuggestions: false,
+                    maxLength: 6,
+                    obscureText: true,
+                    keyboardType: TextInputType.number,
+                    decoration: InputDecoration(
+                      labelText: context.tr('Nouveau PIN'),
+                      prefixIcon: const Icon(Icons.pin_outlined),
+                      counterText: '',
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                  TextField(
+                    controller: _confirmPinCtrl,
+                    autofillHints: AccountAutofillGroup.pinHints,
+                    autocorrect: false,
+                    enableSuggestions: false,
+                    maxLength: 6,
+                    obscureText: true,
+                    keyboardType: TextInputType.number,
+                    decoration: InputDecoration(
+                      labelText: context.tr('Confirmer le PIN'),
+                      prefixIcon: const Icon(Icons.verified_user_outlined),
+                      counterText: '',
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  FilledButton.icon(
+                    onPressed: _isSaving ? null : _saveSecurity,
+                    icon: _isSaving
+                        ? const SizedBox(
+                            height: 18,
+                            width: 18,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Icon(Icons.check),
+                    label: Text(context.tr('Enregistrer')),
+                  ),
                 ],
-                const SizedBox(height: 14),
-                TextField(
-                  controller: _pinCtrl,
-                  maxLength: 6,
-                  obscureText: true,
-                  keyboardType: TextInputType.number,
-                  decoration: InputDecoration(
-                    labelText: context.tr('Nouveau PIN'),
-                    prefixIcon: const Icon(Icons.pin_outlined),
-                    counterText: '',
-                  ),
-                ),
-                const SizedBox(height: 14),
-                TextField(
-                  controller: _confirmPinCtrl,
-                  maxLength: 6,
-                  obscureText: true,
-                  keyboardType: TextInputType.number,
-                  decoration: InputDecoration(
-                    labelText: context.tr('Confirmer le PIN'),
-                    prefixIcon: const Icon(Icons.verified_user_outlined),
-                    counterText: '',
-                  ),
-                ),
-                const SizedBox(height: 16),
-                FilledButton.icon(
-                  onPressed: _isSaving ? null : _saveSecurity,
-                  icon: _isSaving
-                      ? const SizedBox(
-                          height: 18,
-                          width: 18,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Icon(Icons.check),
-                  label: Text(context.tr('Enregistrer')),
-                ),
-              ],
+              ),
             ),
           ),
           const SizedBox(height: 16),

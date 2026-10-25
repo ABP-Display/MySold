@@ -5,6 +5,7 @@ import 'package:crypto/crypto.dart';
 import 'package:mysold/data/local_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:mysold/l10n/app_localizations.dart';
+import 'package:mysold/widgets/account_autofill_group.dart';
 
 class SecurityGate {
   static String _hashPin(String pin) {
@@ -35,34 +36,40 @@ class SecurityGate {
           builder: (context, setModalState) {
             return AlertDialog(
               title: Text(context.tr(title)),
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(context.tr(message)),
-                  const SizedBox(height: 14),
-                  TextField(
-                    controller: controller,
-                    autofocus: true,
-                    maxLength: 6,
-                    obscureText: true,
-                    keyboardType: TextInputType.number,
-                    decoration: InputDecoration(
-                      labelText: context.tr('Code PIN'),
-                      counterText: '',
-                      errorText: errorText,
-                      prefixIcon: const Icon(Icons.pin_outlined),
+              content: AccountAutofillGroup(
+                username: LocalAuth.instance.currentUser?.email ?? '',
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(context.tr(message)),
+                    const SizedBox(height: 14),
+                    TextField(
+                      controller: controller,
+                      autofocus: true,
+                      maxLength: 6,
+                      obscureText: true,
+                      autofillHints: AccountAutofillGroup.pinHints,
+                      autocorrect: false,
+                      enableSuggestions: false,
+                      keyboardType: TextInputType.number,
+                      decoration: InputDecoration(
+                        labelText: context.tr('Code PIN'),
+                        counterText: '',
+                        errorText: errorText,
+                        prefixIcon: const Icon(Icons.pin_outlined),
+                      ),
+                      onSubmitted: (_) {
+                        _validatePin(
+                          dialogContext,
+                          controller.text,
+                          storedPin,
+                          (value) => setModalState(() => errorText = value),
+                        );
+                      },
                     ),
-                    onSubmitted: (_) {
-                      _validatePin(
-                        dialogContext,
-                        controller.text,
-                        storedPin,
-                        (value) => setModalState(() => errorText = value),
-                      );
-                    },
-                  ),
-                ],
+                  ],
+                ),
               ),
               actions: [
                 TextButton(

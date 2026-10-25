@@ -195,18 +195,7 @@ class AuthScaffold extends StatelessWidget {
                         ),
                       ),
                       child: wide
-                          ? IntrinsicHeight(
-                              child: Row(
-                                crossAxisAlignment: CrossAxisAlignment.stretch,
-                                children: [
-                                  const Expanded(flex: 4, child: _AuthStory()),
-                                  Expanded(
-                                    flex: 6,
-                                    child: formBuilder(context, false),
-                                  ),
-                                ],
-                              ),
-                            )
+                          ? _AuthColumns(form: formBuilder(context, false))
                           : formBuilder(context, true),
                     ),
                   ),
@@ -217,6 +206,46 @@ class AuthScaffold extends StatelessWidget {
         ),
       ),
     ),
+  );
+}
+
+/// Let each column determine its natural height in a single layout pass. The
+/// positioned decoration spans the resulting card without an intrinsic-size pass
+/// through every text field and validation message on each edit.
+class _AuthColumns extends StatelessWidget {
+  final Widget form;
+  const _AuthColumns({required this.form});
+
+  @override
+  Widget build(BuildContext context) => Stack(
+    children: [
+      Positioned.fill(
+        child: Row(
+          children: [
+            const Expanded(
+              flex: 4,
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  color: AuthPalette.story,
+                  border: Border(
+                    right: BorderSide(color: AuthPalette.border, width: 1.25),
+                  ),
+                ),
+                child: SizedBox.expand(),
+              ),
+            ),
+            const Expanded(flex: 6, child: SizedBox()),
+          ],
+        ),
+      ),
+      Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Expanded(flex: 4, child: RepaintBoundary(child: _AuthStory())),
+          Expanded(flex: 6, child: form),
+        ],
+      ),
+    ],
   );
 }
 
@@ -241,10 +270,6 @@ class _AuthStory extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-    decoration: const BoxDecoration(
-      color: AuthPalette.story,
-      border: Border(right: BorderSide(color: AuthPalette.border, width: 1.25)),
-    ),
     padding: const EdgeInsets.all(32),
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -294,7 +319,6 @@ class _AuthStory extends StatelessWidget {
           'Votre budget, plus lisible',
         ),
         benefit(context, Icons.trending_up, 'Vos projets, en perspective'),
-        const Spacer(),
         const SizedBox(height: 40),
         Text(
           context.tr('Vos données restent sur votre instance.'),

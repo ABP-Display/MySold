@@ -15,9 +15,11 @@ import 'package:mysold/screens/settings/language_provider.dart';
 import 'package:mysold/screens/settings/theme_settings.dart';
 import 'package:mysold/services/auth_service.dart';
 import 'package:mysold/widgets/auth_layout.dart';
+import 'package:mysold/widgets/mfa_enrollment.dart';
 
 class Register extends StatefulWidget {
-  const Register({super.key});
+  final MfaRequest? mfaRequest;
+  const Register({super.key, this.mfaRequest});
 
   @override
   State<Register> createState() => _RegisterFlowState();
@@ -122,13 +124,7 @@ class _RegisterFlowState extends State<Register> {
       }
       accountCreated = true;
       TextInput.finishAutofillContext();
-      final references = context.read<UserDataProvider>();
-      references.setUser(user.uid);
-      await references.ensureReferences();
-      if (!mounted) return;
-      Navigator.of(
-        context,
-      ).pushReplacement(MaterialPageRoute(builder: (_) => HomeScreen()));
+      _changeStep(3);
     } catch (_) {
       if (!mounted) return;
       if (accountCreated) {
@@ -146,6 +142,23 @@ class _RegisterFlowState extends State<Register> {
     }
   }
 
+  Future<void> _finishRegistration() async {
+    _password.clear();
+    _confirmation.clear();
+    final user = context.read<AuthService>().currentUser;
+    if (user == null) {
+      _goToLogin();
+      return;
+    }
+    final references = context.read<UserDataProvider>();
+    references.setUser(user.uid);
+    await references.ensureReferences();
+    if (!mounted) return;
+    Navigator.of(
+      context,
+    ).pushReplacement(MaterialPageRoute(builder: (_) => const HomeScreen()));
+  }
+
   @override
   Widget build(BuildContext context) => AuthScaffold(
     scrollController: _scrollController,
@@ -157,11 +170,13 @@ class _RegisterFlowState extends State<Register> {
       'Faisons connaissance',
       'Protégez votre espace',
       'À votre image',
+      'Double authentification',
     ];
     final descriptions = [
       'Quelques informations pour créer votre profil.',
       'Choisissez vos identifiants et votre code de verrouillage.',
       'Ces préférences pourront être modifiées dans les paramètres.',
+      'Votre compte est créé. Ajoutez une protection supplémentaire.',
     ];
     return Padding(
       padding: EdgeInsets.all(compact ? 22 : 40),
@@ -182,7 +197,12 @@ class _RegisterFlowState extends State<Register> {
                   borderRadius: BorderRadius.circular(14),
                 ),
                 child: Icon(
-                  [Icons.person_outline, Icons.lock_outline, Icons.tune][_step],
+                  [
+                    Icons.person_outline,
+                    Icons.lock_outline,
+                    Icons.tune,
+                    Icons.verified_user_outlined,
+                  ][_step],
                   color: AuthPalette.accent,
                   size: 24,
                 ),
@@ -208,101 +228,113 @@ class _RegisterFlowState extends State<Register> {
               ),
             ),
             const SizedBox(height: 26),
-            Form(
-              key: _forms[_step],
-              autovalidateMode: AutovalidateMode.onUserInteraction,
-              child: AbsorbPointer(
-                absorbing: _busy,
-                child: switch (_step) {
-                  0 => _profileFields(),
-                  1 => _securityFields(),
-                  _ => _preferences(),
+            if (_step == 3)
+              MfaEnrollment(
+                request: widget.mfaRequest,
+                password: _password.text,
+                onEnabled: () {
+                  _password.clear();
+                  _confirmation.clear();
                 },
-              ),
-            ),
-            if (_error != null) ...[
-              const SizedBox(height: 16),
-              Semantics(
-                liveRegion: true,
-                child: Text(
-                  _error!,
-                  style: TextStyle(
-                    color: Theme.of(context).colorScheme.error,
-                    height: 1.5,
-                  ),
+                onFinished: _finishRegistration,
+              )
+            else ...[
+              Form(
+                key: _forms[_step],
+                autovalidateMode: AutovalidateMode.onUserInteraction,
+                child: AbsorbPointer(
+                  absorbing: _busy,
+                  child: switch (_step) {
+                    0 => _profileFields(),
+                    1 => _securityFields(),
+                    _ => _preferences(),
+                  },
                 ),
               ),
-            ],
-            const SizedBox(height: 28),
-            FilledButton(
-              onPressed: _busy ? null : _continue,
-              style: FilledButton.styleFrom(
-                backgroundColor: AuthPalette.accent,
-                foregroundColor: AuthPalette.background,
-                minimumSize: const Size.fromHeight(48),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10),
-                ),
-              ),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 12),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    if (_busy) ...[
-                      const SizedBox(
-                        width: 18,
-                        height: 18,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: AuthPalette.background,
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                    ],
-                    Flexible(
-                      child: Text(
-                        context.tr(
-                          _busy
-                              ? 'Création en cours…'
-                              : _step == 2
-                              ? 'Créer mon compte'
-                              : 'Continuer',
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
+              if (_error != null) ...[
+                const SizedBox(height: 16),
+                Semantics(
+                  liveRegion: true,
+                  child: Text(
+                    _error!,
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.error,
+                      height: 1.5,
                     ),
-                    if (!_busy) ...[
-                      const SizedBox(width: 10),
-                      const Icon(Icons.arrow_forward, size: 18),
-                    ],
-                  ],
-                ),
-              ),
-            ),
-            if (_step > 0)
-              TextButton(
-                onPressed: _busy ? null : () => _changeStep(_step - 1),
-                child: Text(context.tr('Retour')),
-              ),
-            const SizedBox(height: 18),
-            Wrap(
-              alignment: WrapAlignment.center,
-              crossAxisAlignment: WrapCrossAlignment.center,
-              children: [
-                Text(
-                  context.tr('Déjà un compte ?'),
-                  style: const TextStyle(
-                    color: AuthPalette.muted,
-                    fontSize: 13,
                   ),
-                ),
-                TextButton(
-                  onPressed: _busy ? null : _goToLogin,
-                  child: Text(context.tr('Se connecter')),
                 ),
               ],
-            ),
+              const SizedBox(height: 28),
+              FilledButton(
+                onPressed: _busy ? null : _continue,
+                style: FilledButton.styleFrom(
+                  backgroundColor: AuthPalette.accent,
+                  foregroundColor: AuthPalette.background,
+                  minimumSize: const Size.fromHeight(48),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      if (_busy) ...[
+                        const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: AuthPalette.background,
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                      ],
+                      Flexible(
+                        child: Text(
+                          context.tr(
+                            _busy
+                                ? 'Création en cours…'
+                                : _step == 2
+                                ? 'Créer mon compte'
+                                : 'Continuer',
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                      if (!_busy) ...[
+                        const SizedBox(width: 10),
+                        const Icon(Icons.arrow_forward, size: 18),
+                      ],
+                    ],
+                  ),
+                ),
+              ),
+              if (_step > 0)
+                TextButton(
+                  onPressed: _busy ? null : () => _changeStep(_step - 1),
+                  child: Text(context.tr('Retour')),
+                ),
+              const SizedBox(height: 18),
+              Wrap(
+                alignment: WrapAlignment.center,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                children: [
+                  Text(
+                    context.tr('Déjà un compte ?'),
+                    style: const TextStyle(
+                      color: AuthPalette.muted,
+                      fontSize: 13,
+                    ),
+                  ),
+                  TextButton(
+                    onPressed: _busy ? null : _goToLogin,
+                    child: Text(context.tr('Se connecter')),
+                  ),
+                ],
+              ),
+            ],
           ],
         ),
       ),
@@ -310,13 +342,14 @@ class _RegisterFlowState extends State<Register> {
   }
 
   Widget _progress() => Semantics(
-    label: context.tr('Étape ${_step + 1} sur 3'),
+    label: context.tr('Étape ${_step + 1} sur 4'),
     child: Row(
-      children: List.generate(3, (index) {
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: List.generate(4, (index) {
         final active = index <= _step;
         return Expanded(
           child: Padding(
-            padding: EdgeInsets.only(right: index == 2 ? 0 : 12),
+            padding: EdgeInsets.only(right: index == 3 ? 0 : 10),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -329,7 +362,7 @@ class _RegisterFlowState extends State<Register> {
                 ),
                 const SizedBox(height: 9),
                 Text(
-                  '${index + 1}. ${context.tr(['Profil', 'Sécurité', 'Préférences'][index])}',
+                  '${index + 1}. ${context.tr(['Profil', 'Sécurité', 'Préférences', '2FA'][index])}',
                   style: TextStyle(
                     fontSize: 11,
                     color: active ? AuthPalette.accent : AuthPalette.muted,

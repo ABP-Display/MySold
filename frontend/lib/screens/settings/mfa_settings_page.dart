@@ -1,7 +1,7 @@
 import 'package:mysold/widgets/app_design.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:qr/qr.dart';
+import 'package:mysold/widgets/totp_qr_code.dart';
 import 'package:mysold/data/api_client.dart';
 import 'package:mysold/l10n/app_localizations.dart';
 
@@ -256,15 +256,7 @@ class _MfaSettingsPageState extends State<MfaSettingsPage> {
                     style: const TextStyle(height: 1.6),
                   ),
                   const SizedBox(height: 18),
-                  Align(
-                    child: ConstrainedBox(
-                      constraints: const BoxConstraints(maxWidth: 260),
-                      child: AspectRatio(
-                        aspectRatio: 1,
-                        child: CustomPaint(painter: _TotpQrPainter(_uri!)),
-                      ),
-                    ),
-                  ),
+                  TotpQrCode(uri: _uri!),
                   const SizedBox(height: 18),
                   SelectableText(
                     _secret!,
@@ -361,34 +353,4 @@ class _MfaSettingsPageState extends State<MfaSettingsPage> {
       ),
     ),
   );
-}
-
-class _TotpQrPainter extends CustomPainter {
-  final String data;
-  final QrImage image;
-  _TotpQrPainter(this.data)
-    : image = QrImage(
-        QrCode.fromData(data: data, errorCorrectLevel: QrErrorCorrectLevel.M),
-      );
-  @override
-  void paint(Canvas canvas, Size size) {
-    canvas.drawRect(Offset.zero & size, Paint()..color = Colors.white);
-    final module = size.width / (image.moduleCount + 8);
-    final paint = Paint()
-      ..color = Colors.black
-      ..isAntiAlias = false;
-    for (var y = 0; y < image.moduleCount; y++) {
-      for (var x = 0; x < image.moduleCount; x++) {
-        if (image.isDark(y, x))
-          canvas.drawRect(
-            Rect.fromLTWH((x + 4) * module, (y + 4) * module, module, module),
-            paint,
-          );
-      }
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant _TotpQrPainter oldDelegate) =>
-      oldDelegate.data != data;
 }

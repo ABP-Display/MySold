@@ -313,6 +313,13 @@ actives et les sessions sont supprimées dans la même transaction.
 
 ### Double authentification (MFA)
 
+La création de compte propose une **quatrième étape facultative** : scanner le
+QR code ou copier la clé dans son application d’authentification, puis confirmer
+un code à six chiffres. La protection devient active uniquement après validation
+par le serveur. Le bouton **Passer pour le moment** termine l’inscription sans
+activer la 2FA. Après activation, sauvegarder les codes de secours affichés avant
+d’accéder à son espace.
+
 Dans **Profil → Paramètres → Sécurité et confidentialité → Double authentification**, saisir son mot de passe
 actuel, puis scanner le QR code avec une application compatible TOTP, ou saisir
 la clé manuellement. Confirmer un premier code à six chiffres pour activer la

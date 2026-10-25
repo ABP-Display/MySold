@@ -61,10 +61,10 @@ class _LoginPageState extends State<LoginPage> {
     });
     try {
       final user = _challenge != null
-          ? await LocalAuth.instance.authenticate('mfa/verify', {
-              'challenge': _challenge,
-              'code': _mfaCode.text.trim(),
-            })
+          ? await context.read<AuthService>().verifySecondFactor(
+              challenge: _challenge!,
+              code: _mfaCode.text.trim(),
+            )
           : await context.read<AuthService>().signIn(
               email: emailController.text.trim(),
               password: passwordController.text,
@@ -86,13 +86,19 @@ class _LoginPageState extends State<LoginPage> {
       if (mounted)
         setState(() {
           _challenge = factor.challenge;
+          _mfaCode.clear();
+          _recoveryMode = false;
           passwordController.clear();
         });
     } on ApiException catch (error) {
       if (mounted)
         setState(() {
           _error = error.message;
-          if (error.code == 'mfa-expired') _challenge = null;
+          if (error.code == 'mfa-expired') {
+            _challenge = null;
+            _mfaCode.clear();
+            _recoveryMode = false;
+          }
         });
     } catch (_) {
       if (mounted)
@@ -181,6 +187,7 @@ class _LoginPageState extends State<LoginPage> {
                       key: const ValueKey('mfa-code'),
                       controller: _mfaCode,
                       enabled: !loading,
+                      autofocus: true,
                       keyboardType: _recoveryMode
                           ? TextInputType.text
                           : TextInputType.number,
@@ -189,12 +196,29 @@ class _LoginPageState extends State<LoginPage> {
                           : const [AutofillHints.oneTimeCode],
                       autocorrect: false,
                       enableSuggestions: false,
+                      inputFormatters: _recoveryMode
+                          ? null
+                          : [
+                              FilteringTextInputFormatter.digitsOnly,
+                              LengthLimitingTextInputFormatter(6),
+                            ],
                       textInputAction: TextInputAction.done,
                       onFieldSubmitted: (_) => _signIn(),
-                      validator: (value) =>
-                          value == null || value.trim().isEmpty
-                          ? context.tr('Ce champ est requis.')
-                          : null,
+                      validator: (value) {
+                        final code = value?.trim() ?? '';
+                        if (_recoveryMode) {
+                          return RegExp(
+                                r'^[0-9a-fA-F]{20}$',
+                              ).hasMatch(code.replaceAll(RegExp(r'[- ]'), ''))
+                              ? null
+                              : context.tr(
+                                  'Saisissez un code de secours valide.',
+                                );
+                        }
+                        return RegExp(r'^[0-9]{6}$').hasMatch(code)
+                            ? null
+                            : context.tr('Saisissez un code à 6 chiffres.');
+                      },
                       decoration: InputDecoration(
                         labelText: context.tr(
                           _recoveryMode
@@ -224,6 +248,7 @@ class _LoginPageState extends State<LoginPage> {
                           ? null
                           : () => setState(() {
                               _challenge = null;
+                              _recoveryMode = false;
                               _mfaCode.clear();
                               _error = null;
                             }),

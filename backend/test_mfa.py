@@ -78,6 +78,18 @@ class MfaTests(unittest.TestCase):
         other, again = self.challenge()
         self.assertEqual(self.post('mfa/verify', {'challenge': again, 'code': self.codes[0]}, other).status_code, 401)
 
+    def test_skipping_registration_enrollment_does_not_enable_mfa(self):
+        setup = self.post('mfa/setup', {'password': PASSWORD})
+        self.assertEqual(setup.status_code, 200)
+        self.assertIn(setup.json['secret'], setup.json['uri'])
+        self.assertFalse(self.client.get('/api/auth/mfa').json['enabled'])
+        # Displaying the QR code alone never protects the account or blocks login.
+        client = app.test_client()
+        result = self.post('login', {'email': 'mfa@example.test', 'password': PASSWORD}, client)
+        self.assertIn('user', result.json)
+        self.assertNotIn('mfa_required', result.json)
+        self.assertEqual(client.get('/api/auth/session').json['user']['uid'], self.uid)
+
     def test_totp_code_cannot_be_replayed_in_another_challenge(self):
         self.enroll()
         client, challenge = self.challenge()

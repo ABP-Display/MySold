@@ -43,6 +43,12 @@ class AuthService {
     }
   }
 
+  Future<User> verifySecondFactor({
+    required String challenge,
+    required String code,
+  }) =>
+      _auth.authenticate('mfa/verify', {'challenge': challenge, 'code': code});
+
   Future<bool> reauthenticateForAccountDeletion({String? password}) async {
     try {
       await ApiClient.instance.request('auth/reauthenticate', {

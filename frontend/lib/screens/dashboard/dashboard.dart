@@ -1,9 +1,7 @@
 import 'package:mysold/widgets/lazy_section_list.dart';
 import 'package:mysold/widgets/graphiques/app_charts.dart';
-import 'package:mysold/widgets/graphiques/chart_info_region.dart';
-import 'package:mysold/widgets/graphiques/viewport_bar_chart.dart';
+import 'package:mysold/widgets/graphiques/annual_flow_chart.dart';
 import 'package:mysold/widgets/app_design.dart';
-import 'dart:math' as math;
 
 import 'package:mysold/data/document_store.dart';
 import 'package:mysold/data/local_auth.dart';
@@ -37,15 +35,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
   final Set<_MonthlyChartSeries> _monthlyChartSeries = {
     ..._MonthlyChartSeries.values,
   };
-  final ScrollController _monthlyChartScrollController = ScrollController();
-  int? _monthlyChartAutoScrolledYear;
-
-  @override
-  void dispose() {
-    _monthlyChartScrollController.dispose();
-    super.dispose();
-  }
-
   Future<_AnnualDashboardData> _loadYearData(int year) {
     return _yearCache.putIfAbsent(year, () => _fetchYearData(year));
   }
@@ -696,7 +685,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         values: data.monthlyIncome,
       ),
       _MonthlyChartSeries.expense: _ChartSeriesStyle(
-        label: 'Depenses',
+        label: 'Dépenses',
         icon: Icons.arrow_upward,
         color: Colors.redAccent,
         values: data.monthlyExpense,
@@ -715,16 +704,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
       ),
     };
 
-    // Only the series selected via the filter toggles are rendered — 12
-    // months x up to 4 series = up to 48 bars, driven entirely by the
-    // current selection (all 4 selected by default).
     final activeSeries = _MonthlyChartSeries.values
         .where((series) => _monthlyChartSeries.contains(series))
         .toList(growable: false);
-
-    final zeroLineColor = Theme.of(context).colorScheme.onSurface.withOpacity(
-      Theme.of(context).brightness == Brightness.dark ? 0.24 : 0.18,
-    );
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -797,236 +779,22 @@ class _DashboardScreenState extends State<DashboardScreen> {
               ),
             )
           else
-            _buildMonthlyChartBody(
-              data: data,
+            AnnualFlowChart(
+              year: data.year,
               currency: currency,
-              privacy: privacy,
-              activeSeries: activeSeries,
-              seriesStyles: seriesStyles,
-              zeroLineColor: zeroLineColor,
-            ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildFixedYAxis({
-    required double minY,
-    required double maxY,
-    required double plotHeight,
-    required double bottomAxisHeight,
-    required String currency,
-    required PrivacyProvider privacy,
-  }) {
-    final ticks = List.generate(5, (i) => maxY - i * (maxY - minY) / 4);
-    return SizedBox(
-      width: 46,
-      child: Column(
-        children: [
-          SizedBox(
-            height: plotHeight,
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: ticks.map((value) {
-                return Text(
-                  _compactMoney(value, currency, privacy),
-                  style: const TextStyle(fontSize: 10),
-                );
-              }).toList(),
-            ),
-          ),
-          SizedBox(height: bottomAxisHeight),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildMonthlyChartBody({
-    required _AnnualDashboardData data,
-    required String currency,
-    required PrivacyProvider privacy,
-    required List<_MonthlyChartSeries> activeSeries,
-    required Map<_MonthlyChartSeries, _ChartSeriesStyle> seriesStyles,
-    required Color zeroLineColor,
-  }) {
-    final visibleValues = activeSeries.expand(
-      (series) => seriesStyles[series]!.values,
-    );
-    final minValue = [...visibleValues, 0.0].reduce((a, b) => a < b ? a : b);
-    final maxValue = [...visibleValues, 1.0].reduce((a, b) => a > b ? a : b);
-    final range = (maxValue - minValue).abs();
-    final axisPadding = range <= 1 ? 1.0 : range * 0.16;
-    final minY = minValue < 0 ? minValue - axisPadding : 0.0;
-    final maxY = maxValue + axisPadding;
-
-    // Bar width and group width scale with how many series are active, so
-    // a single selected category gets nice, wide, readable bars while all
-    // four together stay compact but still legible (up to 48 bars total).
-    final barCount = activeSeries.length;
-    final barWidth = switch (barCount) {
-      1 => 26.0,
-      2 => 18.0,
-      3 => 13.0,
-      _ => 10.0,
-    };
-    final barsSpace = barCount > 1 ? 5.0 : 0.0;
-    const groupPadding = 20.0;
-    final groupWidth =
-        (barWidth * barCount) + (barsSpace * (barCount - 1)) + groupPadding;
-    const bottomAxisHeight = 28.0;
-    final chartHeight = minY < 0 ? 280.0 : 250.0;
-    final plotHeight = chartHeight - bottomAxisHeight;
-
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final viewportWidth = (constraints.maxWidth - 50)
-            .clamp(0.0, double.infinity)
-            .toDouble();
-        final chartWidth = math.max(groupWidth * 12, viewportWidth);
-
-        // Land directly on the current month for the current year, so the
-        // person never has to scroll to see e.g. September in September.
-        if (data.year == DateTime.now().year &&
-            _monthlyChartAutoScrolledYear != data.year) {
-          _monthlyChartAutoScrolledYear = data.year;
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            if (!mounted || !_monthlyChartScrollController.hasClients) return;
-            final currentMonthIndex = DateTime.now().month - 1;
-            final position = _monthlyChartScrollController.position;
-            final target =
-                ((currentMonthIndex + 1) * groupWidth - viewportWidth + 12)
-                    .clamp(0.0, position.maxScrollExtent)
-                    .toDouble();
-            _monthlyChartScrollController.jumpTo(target);
-          });
-        }
-
-        return SizedBox(
-          height: chartHeight,
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // The Y axis stays fixed outside the horizontal scroll area.
-              _buildFixedYAxis(
-                minY: minY,
-                maxY: maxY,
-                plotHeight: plotHeight,
-                bottomAxisHeight: bottomAxisHeight,
-                currency: currency,
-                privacy: privacy,
-              ),
-              const SizedBox(width: 4),
-              Expanded(
-                child: ViewportBarChart(
-                  controller: _monthlyChartScrollController,
-                  contentWidth: chartWidth,
-                  info: (groupIndex, rodIndex) {
-                    final series = activeSeries[rodIndex];
-                    final style = seriesStyles[series]!;
-                    return ChartInfo(
-                      _monthLabels[groupIndex],
-                      '${context.tr(style.label)} : ${_money(style.values[groupIndex], currency, privacy)}',
-                      color: style.color,
-                    );
-                  },
-                  data: BarChartData(
-                    minY: minY,
-                    maxY: maxY,
-                    groupsSpace: 12,
-                    alignment: BarChartAlignment.spaceEvenly,
-                    gridData: FlGridData(
-                      show: minY < 0,
-                      drawVerticalLine: false,
-                      horizontalInterval: maxY == minY
-                          ? 1.0
-                          : ((maxY - minY) / 4)
-                                .abs()
-                                .clamp(1, double.infinity)
-                                .toDouble(),
-                      getDrawingHorizontalLine: (value) {
-                        final isZero = value.abs() < 0.001;
-                        return FlLine(
-                          color: isZero ? zeroLineColor : Colors.transparent,
-                          strokeWidth: isZero ? 1 : 0,
-                        );
-                      },
-                    ),
-                    borderData: FlBorderData(show: false),
-                    titlesData: FlTitlesData(
-                      topTitles: const AxisTitles(
-                        sideTitles: SideTitles(showTitles: false),
-                      ),
-                      rightTitles: const AxisTitles(
-                        sideTitles: SideTitles(showTitles: false),
-                      ),
-                      leftTitles: const AxisTitles(
-                        sideTitles: SideTitles(showTitles: false),
-                      ),
-                      bottomTitles: AxisTitles(
-                        sideTitles: SideTitles(
-                          showTitles: true,
-                          reservedSize: 28,
-                          getTitlesWidget: (value, meta) {
-                            final index = value.toInt();
-                            if (index < 0 || index > 11) {
-                              return const SizedBox.shrink();
-                            }
-                            final isCurrentMonth =
-                                data.year == DateTime.now().year &&
-                                index == DateTime.now().month - 1;
-                            return Padding(
-                              padding: const EdgeInsets.only(top: 8),
-                              child: Text(
-                                _monthLabels[index],
-                                style: TextStyle(
-                                  fontSize: 10,
-                                  fontWeight: isCurrentMonth
-                                      ? FontWeight.w600
-                                      : FontWeight.w700,
-                                  color: isCurrentMonth
-                                      ? Theme.of(context).colorScheme.primary
-                                      : null,
-                                ),
-                              ),
-                            );
-                          },
-                        ),
-                      ),
-                    ),
-                    barGroups: List.generate(12, (monthIndex) {
-                      return BarChartGroupData(
-                        x: monthIndex,
-                        barsSpace: barsSpace,
-                        barRods: activeSeries.map((series) {
-                          final style = seriesStyles[series]!;
-                          final toY = style.values[monthIndex];
-                          return BarChartRodData(
-                            toY: toY,
-                            width: barWidth,
-                            color: style.color,
-                            borderRadius: BorderRadius.only(
-                              topLeft: const Radius.circular(5),
-                              topRight: const Radius.circular(5),
-                              bottomLeft: Radius.circular(toY < 0 ? 5 : 0),
-                              bottomRight: Radius.circular(toY < 0 ? 5 : 0),
-                            ),
-                            backDrawRodData: BackgroundBarChartRodData(
-                              show: true,
-                              toY: maxY,
-                              color: style.color.withOpacity(0.06),
-                            ),
-                          );
-                        }).toList(),
-                      );
-                    }),
+              locale: Localizations.localeOf(context).toString(),
+              series: [
+                for (final series in activeSeries)
+                  AnnualFlowSeries(
+                    label: context.tr(seriesStyles[series]!.label),
+                    color: seriesStyles[series]!.color,
+                    values: seriesStyles[series]!.values,
+                    dashed: series == _MonthlyChartSeries.remaining,
                   ),
-                ),
-              ),
-            ],
-          ),
-        );
-      },
+              ],
+            ),
+        ],
+      ),
     );
   }
 

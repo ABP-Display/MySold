@@ -27,6 +27,7 @@ class AppLocalizations {
     final legacyKey =
         const {
           'Paramètres': 'Parametres',
+          'Dépenses': 'Depenses',
           'Sécurité et confidentialité': 'Securite et confidentialite',
           'Données personnelles': 'Donnees personnelles',
           'À propos': 'A propos',
@@ -177,6 +178,9 @@ Pour toute demande concernant les données personnelles, l’utilisateur peut co
 ''',
   },
   'es': {
+    'Évolution mensuelle': 'Evolución mensual',
+    'Touchez ou survolez un mois pour voir les montants.':
+        'Toca un mes o pasa el cursor para ver los importes.',
     'Actif': 'Activo',
     'Adresse email invalide.': 'Dirección de email inválida.',
     'Afficher': 'Mostrar',
@@ -389,6 +393,9 @@ Pour toute demande concernant les données personnelles, l’utilisateur peut co
         '¿Seguro que quieres eliminar esta transacción?',
   },
   'de': {
+    'Évolution mensuelle': 'Monatliche Entwicklung',
+    'Touchez ou survolez un mois pour voir les montants.':
+        'Tippe auf einen Monat oder bewege den Zeiger darüber, um die Beträge zu sehen.',
     'Actif': 'Anlage',
     'Ajouter': 'Hinzufügen',
     'Ajouter un actif': 'Anlage hinzufügen',
@@ -494,6 +501,9 @@ Pour toute demande concernant les données personnelles, l’utilisateur peut co
     'Verification...': 'Prüfung...',
   },
   'it': {
+    'Évolution mensuelle': 'Andamento mensile',
+    'Touchez ou survolez un mois pour voir les montants.':
+        'Tocca un mese o passa il puntatore per vedere gli importi.',
     'Actif': 'Asset',
     'Ajouter': 'Aggiungi',
     'Ajouter un actif': 'Aggiungi asset',
@@ -599,6 +609,9 @@ Pour toute demande concernant les données personnelles, l’utilisateur peut co
     'Verification...': 'Verifica...',
   },
   'ja': {
+    'Évolution mensuelle': '月ごとの推移',
+    'Touchez ou survolez un mois pour voir les montants.':
+        '月をタップするか、カーソルを合わせると金額を確認できます。',
     'Actif': '資産',
     'Ajouter': '追加',
     'Ajouter un actif': '資産を追加',
@@ -706,6 +719,9 @@ Pour toute demande concernant les données personnelles, l’utilisateur peut co
 
 const Map<String, Map<String, String>> _translations = {
   'en': {
+    'Évolution mensuelle': 'Monthly trends',
+    'Touchez ou survolez un mois pour voir les montants.':
+        'Tap or hover over a month to see the amounts.',
     'Préférences rapides': 'Quick preferences',
     'Préférences avancées': 'Advanced preferences',
     'Notifications et mode discret': 'Notifications and privacy mode',

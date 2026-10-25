@@ -38,10 +38,13 @@ class Problem(Exception):
 
 
 def connect():
+    password_file = os.getenv('POSTGRES_PASSWORD_FILE')
+    password = (Path(password_file).read_text().rstrip('\n') if password_file
+                else os.environ['POSTGRES_PASSWORD'])
     return psycopg.connect(host=os.getenv('DB_HOST', 'db'),
                           dbname=os.getenv('POSTGRES_DB', 'mysold'),
                           user=os.getenv('POSTGRES_USER', 'mysold'),
-                          password=os.environ['POSTGRES_PASSWORD'],
+                          password=password,
                           port=os.getenv('DB_PORT', '5432'), row_factory=dict_row,
                           options='-c statement_timeout=15000')
 

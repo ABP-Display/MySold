@@ -4,7 +4,7 @@ on:
     branches: [main]
     paths:
       - 'frontend/**'
-      - 'scripts/**'
+      - 'backend/**'
       - 'compose.yaml'
       - '.env.example'
       - '.github/workflows/web-release.yml'
@@ -28,13 +28,9 @@ jobs:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
           persist-credentials: false
-      - name: Test release verification and Linux setup
+      - name: Test release verification
         run: |
           python3 -m unittest discover -s frontend/tool -p 'test_web_release.py' -v
-          python3 -m unittest discover -s scripts -p 'test_setup_shell.py' -v
-          python3 -m unittest discover -s scripts -p 'test_data_shell.py' -v
-      - name: Test persistent storage with disposable PostgreSQL instances
-        run: sudo env MYSOLD_STORAGE_INTEGRATION=1 python3 -m unittest discover -s scripts -p 'test_storage_integration.py' -v
       - name: Identify exact build inputs
         id: source
         env:
@@ -71,3 +67,5 @@ jobs:
         run: |
           docker build --build-arg MYSOLD_REPOSITORY="$GITHUB_REPOSITORY" --tag mysold-web-install-check frontend
           docker run --rm --network none --entrypoint nginx mysold-web-install-check -t
+      - name: Verify a fresh installation and persistent data without configuration
+        run: sudo env MYSOLD_INSTALLATION_TEST=1 MYSOLD_TEST_WEB_IMAGE=mysold-web-install-check python3 -m unittest discover -s backend -p 'test_installation.py' -v

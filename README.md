@@ -15,192 +15,104 @@ séparément sur GitHub Pages, sans déployer l’application Docker.
 
 ## Démarrage
 
-Le [guide d’installation complet](docs/INSTALLATION.md) détaille les mots de
-passe, le domaine, le reverse proxy, les commandes et les mises à jour.
-Les étapes suivantes concernent une **nouvelle installation Ubuntu/Linux**.
-Pour une instance déjà utilisée, conserver son `.env` et son stockage PostgreSQL.
-Le [guide des données persistantes](docs/DONNEES.md) explique la migration et les sauvegardes.
-
-Prérequis : Git, Docker et Docker Compose v2. Node.js, Python et Flutter ne sont
-pas nécessaires sur l’hôte. Exécuter les commandes ligne par ligne, sans virgules.
-
-### 1. Récupérer le projet
+Prérequis : Git, Docker et Docker Compose v2. Aucun script d’installation,
+Node.js, Python ou Flutter n’est nécessaire sur la machine hôte.
 
 ```sh
-cd ~
 git clone https://github.com/ABP-Display/MySold.git
 cd MySold
+docker compose up -d --build
 ```
 
-Cloner sans `sudo` pour pouvoir modifier ses fichiers avec son compte Ubuntu.
+Ouvrir **http://localhost:28085**, puis choisir **Créer un compte**. Le mot de
+passe du compte et le PIN sont choisis sur le site ; aucun compte par défaut
+n’est créé. Si Docker exige les droits administrateur, préfixer les commandes
+Docker par `sudo`.
 
-### 2. Créer `.env` et le mot de passe de la base
+Compose crée automatiquement `data/postgres`, `data/config` et `data/backups`.
+Au premier démarrage, un secret PostgreSQL aléatoire est généré et conservé dans
+`data/config/postgres_password`. L’API utilise ce fichier en lecture seule.
+Les démarrages suivants réutilisent le même secret et la même base.
+
+### Domaine personnel ou accès distant
+
+Le fichier `.env` est **facultatif pour un essai local**. Pour utiliser son propre
+domaine, copier le modèle avant de démarrer :
 
 ```sh
-sh scripts/setup.sh
-nano .env
+cp .env.example .env
 ```
 
-Le script crée un `.env` privé et génère automatiquement un secret aléatoire de
-64 caractères pour `POSTGRES_PASSWORD`. **Conserver ce secret généré.** Ne pas
-le remplacer par un mot de passe d’exemple ni publier le fichier `.env`.
-Le script conserve un fichier existant et refuse une valeur vide ou restée à
-`REPLACE_WITH_A_RANDOM_PASSWORD`. Il prépare aussi `data/backups` et `data/config`
-et y garde une copie privée de la configuration. Le démarrage Docker crée
-`data/postgres` pour une nouvelle installation.
-
-| Secret | À quoi sert-il ? |
-| --- | --- |
-| `POSTGRES_PASSWORD` dans `.env` | Connexion technique de l’API à PostgreSQL ; ce n’est pas le mot de passe pour entrer sur le site |
-| Mot de passe du compte MySold | Choisi avec son e-mail lors de la création du compte sur le site |
-| PIN à six chiffres | Choisi dans le parcours de création du compte pour verrouiller l’interface |
-
-Copier seulement `.env.example` en `.env` ne suffit pas : il faut remplacer son
-secret d’exemple **avant le premier démarrage**. Si la base a déjà été créée,
-suivre la [procédure de changement du secret existant](docs/INSTALLATION.md#changer-le-mot-de-passe-dune-base-existante)
-plutôt que de modifier uniquement `.env`.
-
-### 3. Renseigner l’adresse du site
-
-Dans `.env`, remplacer les origines du modèle par **son propre domaine**, par exemple :
+Modifier `.env` avec son éditeur, par exemple :
 
 ```dotenv
-WEB_PORT=28085
 APP_ORIGIN=https://finances.votre-domaine.fr
 COOKIE_SECURE=true
 ```
 
-Le domaine doit pointer vers le serveur et le reverse proxy HTTPS vers
-`http://ADRESSE_DU_SERVEUR:28085`. Le [guide](docs/INSTALLATION.md#4-configurer-ladresse-du-site)
-détaille le cas d’un proxy installé dans Docker.
+Le DNS et le reverse proxy HTTPS doivent pointer vers le serveur, sur le port
+`28085`. Remplacer les domaines du modèle par celui de sa propre instance.
+Pour un accès HTTP par IP, renseigner plutôt
+`APP_ORIGIN=http://ADRESSE_DU_SERVEUR:28085` et `COOKIE_SECURE=false`.
+`localhost` désigne l’ordinateur sur lequel le navigateur est ouvert.
 
-Pour un essai HTTP directement par IP, remplacer l’adresse d’exemple ci-dessous
-par l’IP réelle du serveur et ouvrir cette même adresse dans le navigateur :
-
-```dotenv
-APP_ORIGIN=http://192.0.2.10:28085
-COOKIE_SECURE=false
-```
-
-`http://localhost:28085` convient uniquement depuis l’ordinateur qui héberge
-Docker. Une origine comporte le protocole, le domaine ou l’IP et le port non
-standard, sans chemin ni barre oblique finale. Plusieurs origines sont séparées
-par des virgules. Un mauvais `APP_ORIGIN` peut bloquer la connexion avec `403`.
-Le port `28085` est publié sur toutes les interfaces ; l’administrateur configure
-le pare-feu, le DNS et le reverse proxy.
-
-Dans Nano : **Ctrl+O**, **Entrée**, puis **Ctrl+X** pour enregistrer et quitter.
-
-### 4. Vérifier et lancer les services
+Laisser `POSTGRES_PASSWORD` vide : Docker génère le secret automatiquement.
+Le port `28085` est publié sur toutes les interfaces ; l’administrateur gère
+le pare-feu, le DNS et le proxy. Après une modification de `.env`, relancer :
 
 ```sh
-sh scripts/setup.sh
-sudo docker compose --env-file .env config --quiet
-sudo docker compose --env-file .env up -d --build
-sudo docker compose --env-file .env ps
+docker compose up -d --build
 ```
 
-Le second appel au script valide le secret sans le modifier. `config --quiet`
-termine sans afficher de texte lorsque Compose est valide. Les trois services
-`db`, `api` et `web` doivent démarrer ; `web` peut rester quelques secondes
-avec un état de santé en cours de démarrage. Pour lire les derniers logs :
+Le [guide d’installation](docs/INSTALLATION.md) détaille la configuration et le
+[guide des données](docs/DONNEES.md) décrit les sauvegardes et les transferts.
 
-```sh
-sudo docker compose --env-file .env logs --tail=100 db api web
-```
-
-### 5. Créer son compte MySold
-
-Ouvrir son domaine HTTPS ou l’IP HTTP configurée, choisir **Créer un compte**,
-puis renseigner son e-mail, son mot de passe personnel et son PIN. Aucun compte
-ni mot de passe de connexion par défaut n’est créé. Chaque utilisateur possède
-son espace isolé. Le secret PostgreSQL de `.env` n’est pas à saisir sur cet écran.
-
-Si le dossier a déjà été cloné avec `sudo`, utiliser `sudo sh scripts/setup.sh`
-et `sudo nano .env` pour les fichiers appartenant à root.
-
-### Construction automatique et mises à jour
-
-Chaque modification des sources du frontend poussée sur `main` déclenche le
-workflow **Web release** de GitHub Actions. Il compile Flutter depuis les sources
-publiques avec `frontend/Dockerfile.source`, génère le numéro de build PWA daté,
-puis publie les fichiers Web et leur empreinte dans une release publique.
-
-Le Dockerfile utilisé par défaut calcule une empreinte des sources de la copie
-locale, télécharge uniquement la release correspondante et vérifie son intégrité,
-ses métadonnées et la cohérence du build PWA. Le VPS ne compile pas Flutter.
-Il n’y a aucun fichier à envoyer depuis un poste Windows ni de binaire à committer
-dans Git. Une copie de sources différente ne peut pas utiliser silencieusement
-la release d’une autre version. Les fins de ligne Windows/Linux sont normalisées
-pour le calcul de l’empreinte ; les ressources binaires restent inchangées.
-
-Après publication réussie du workflow, la mise à jour est :
+### Mises à jour
 
 ```sh
 git pull --ff-only
-sudo docker compose --env-file .env up -d --build
-sudo docker compose ps
+docker compose up -d --build
 ```
 
-Si le dépôt appartient à root à cause d’un précédent `sudo git clone`, la
-commande de récupération doit également être `sudo git pull --ff-only`.
-Ne pas recréer `.env` ni supprimer le volume PostgreSQL lors d’une mise à jour.
+Conserver `data/` et son éventuel `.env`. Les reconstructions des images ne
+suppriment ni la base ni le secret. La mise à jour de la PWA est ensuite proposée
+aux utilisateurs quand une nouvelle version du frontend est disponible.
 
-Si la release n’est pas encore publiée, Docker indique l’URL du workflow à
-attendre et arrête la construction. Il ne lance pas une compilation Flutter de
-secours sur la VM et n’installe pas une ancienne release au hasard. Corriger
-un éventuel échec du workflow, puis relancer la même commande Docker.
+### Construction automatique, développement et forks
 
-Les téléchargements publics ne nécessitent ni compte GitHub ni jeton sur le VPS.
-Internet est nécessaire pendant la construction. Après installation, les données
-et l’authentification sont gérées par l’API et PostgreSQL de l’instance.
+GitHub Actions compile les sources Flutter modifiées et publie leur release Web
+avec un numéro de build daté. Le Dockerfile par défaut télécharge la release
+correspondant exactement aux sources et vérifie son intégrité. Une petite machine
+peut ainsi installer MySold sans compiler Flutter localement. Internet est
+nécessaire pendant la construction ; les données restent sur l’instance.
 
-### Développement et forks
+Si la release n’est pas encore publiée, attendre la réussite du workflow
+**Web release**, puis relancer la commande Docker. Aucune compilation Flutter
+de secours n’est lancée automatiquement sur le serveur.
 
-La compilation complète depuis les sources reste disponible explicitement :
+La compilation complète depuis les sources reste disponible pour le développement :
 
 ```sh
-docker compose --env-file .env -f compose.yaml -f compose.source.yaml up -d --build
+docker compose -f compose.yaml -f compose.source.yaml up -d --build
 ```
 
-Ce mode utilise `FLUTTER_VERSION` (3.44.0 par défaut) et nécessite une machine
-capable de compiler Flutter. Une VM de 1 Go sans swap peut saturer dès la
-préparation de l’outil Flutter. Privilégier l’installation automatique par défaut
-sur ces petites machines. La release correspondante est récupérée automatiquement
-par Docker ; aucun envoi manuel de fichiers compilés n’est nécessaire.
+Ce mode exige davantage de mémoire et utilise `FLUTTER_VERSION` (3.44.0 par
+défaut). `compose.source.yaml` est conservé pour ce besoin précis.
 
-Pour un fork public, activer GitHub Actions, laisser le workflow publier sa
-release et définir `MYSOLD_REPOSITORY=PROPRIETAIRE/DEPOT` dans `.env`. Les sources
-modifiées nécessitent leur propre release ; elles ne peuvent pas réutiliser le
-build officiel. Un fork privé peut utiliser le mode de compilation depuis les
-sources, sans transmettre de jeton privé à l’image d’installation.
+Pour un fork public, activer GitHub Actions et définir
+`MYSOLD_REPOSITORY=PROPRIETAIRE/DEPOT` dans `.env`. Les sources modifiées
+nécessitent leur propre release. Un fork privé peut utiliser la compilation
+locale depuis les sources.
 
-### Dépannage
-
-`POSTGRES_PASSWORD is missing a value` indique une configuration absente ou vide.
-Exécuter `sh scripts/setup.sh` pour une installation neuve, ou restaurer le `.env`
-de l’instance existante. Le script ne remplace jamais un secret déjà configuré.
-Une variable seulement exportée dans le shell peut être retirée par `sudo` ;
-`--env-file .env` rend l’emplacement du fichier explicite.
-
-Le message `Bake ... buildx isn't installed` est un avertissement Docker distinct.
-Si Bake est utilisé, installer le plugin Buildx adapté à son installation ; voir
-la [documentation Docker pour Ubuntu](https://docs.docker.com/engine/install/ubuntu/).
-
-Pour examiner les ressources d’une machine, exécuter les commandes sur des
-lignes séparées, sans virgules :
+### Vérifier le démarrage
 
 ```sh
-uname -m
-free -h
-df -h /
-sudo journalctl -k -b -1 --no-pager | grep -Ei 'out of memory|oom|killed process|invalid opcode|segfault'
+docker compose ps
+docker compose logs --tail=100 db api web
 ```
 
-L’absence de journal du démarrage précédent n’exclut pas un manque de mémoire.
-En mode source, le premier démarrage Flutter compile silencieusement
-`flutter_tools.snapshot` après `Got dependencies` : une pause à cet endroit
-ne prouve pas une incompatibilité du code de MySold.
+Les trois services `db`, `api` et `web` doivent être sains. Le premier démarrage
+peut demander quelques minutes, le temps de télécharger et construire les images.
 
 ## Architecture
 
@@ -214,7 +126,7 @@ web : Nginx + interface Flutter
 api : Flask + Gunicorn
        |
        v
-db : PostgreSQL + dossier data/postgres (nouvelles installations)
+db : PostgreSQL + dossier data/postgres
 ```
 
 - `frontend/` : copie indépendante de l’interface, limitée au web.
@@ -242,9 +154,8 @@ pas conservées par le service worker.
 
 | Variable | Rôle |
 | --- | --- |
-| `POSTGRES_PASSWORD` | Secret de connexion de l’API à PostgreSQL |
+| `POSTGRES_PASSWORD` | Facultatif : secret personnalisé à la première initialisation ; vide par défaut pour une génération automatique |
 | `POSTGRES_DB`, `POSTGRES_USER` | Nom de base et utilisateur PostgreSQL |
-| `POSTGRES_STORAGE` | Nouvelles installations : `./data/postgres` ; absent sur une ancienne instance : maintien du volume Docker existant |
 | `WEB_PORT` | Port HTTP local, `28085` par défaut |
 | `APP_ORIGIN` | Origines autorisées pour les écritures, séparées par des virgules ; défaut : `http://localhost:28085,https://mysold.ydoxide.fr` |
 | `COOKIE_SECURE` | `true` lorsque l’accès au site utilise HTTPS |
@@ -282,9 +193,8 @@ Une origine absente ou non autorisée entraîne une réponse `403 Origine refus�
 sur les requêtes POST, PUT, PATCH et DELETE, notamment la connexion et
 l’inscription. Les scripts qui écrivent doivent aussi envoyer l’en-tête `Origin`.
 Ce contrôle ne remplace pas le pare-feu et ne configure ni le DNS ni le proxy.
-Le script de configuration conserve les `.env` existants : y ajouter manuellement
-`APP_ORIGIN` lors d’une mise à jour, puis recréer les conteneurs avec la commande
-ci-dessous.
+Docker Compose lit automatiquement le fichier `.env` s’il existe. Après une
+modification de `APP_ORIGIN`, recréer les conteneurs avec la commande ci-dessous.
 
 Pour HTTPS, diriger le proxy vers `http://ADRESSE_DU_SERVEUR:28085` et définir
 `COOKIE_SECURE=true` dans `.env`. Un proxy installé directement sur le même
@@ -294,8 +204,9 @@ ou un réseau Docker partagé avec `web` et la destination `http://web:8080`.
 Le port interne reste `8080`, même si `WEB_PORT` est modifié.
 
 La base et l’API ne publient aucun port sur l’hôte. Ne pas exposer
-PostgreSQL sur Internet. Changer le mot de passe dans `.env` après initialisation
-ne change pas automatiquement le mot de passe du rôle PostgreSQL existant.
+PostgreSQL sur Internet. Le secret persistant est dans
+`data/config/postgres_password`. Changer `POSTGRES_PASSWORD` après initialisation
+ne change pas le rôle PostgreSQL ; une valeur différente du fichier est refusée.
 
 Après modification de la configuration :
 
@@ -446,67 +357,47 @@ compte sont révoquées. L’administrateur doit vérifier l’identité de la p
 
 ## Données persistantes et sauvegardes
 
-Les nouvelles installations rangent leur base dans un dossier privé du projet :
+Les volumes sont déclarés directement dans `compose.yaml` :
 
 ```text
 data/
-  postgres/             base PostgreSQL complète
-  backups/              exports .dump
-  config/instance.env   copie privée de la configuration
+  postgres/                  base PostgreSQL complète
+  config/postgres_password   secret technique généré au premier démarrage
+  backups/                   emplacement des exports de la base
 ```
 
-`data/` et `.env` sont exclus de Git et conservés lors des reconstructions Docker.
-La configuration active reste `.env` à la racine. Le script d’installation prépare
-les dossiers ; PostgreSQL initialise sa base au premier démarrage.
+Docker crée ces dossiers au démarrage. `data/` et `.env` sont exclus de Git.
+Conserver l’ensemble de `data/` pour transférer une instance : le secret doit
+accompagner la base. Copier les fichiers PostgreSQL uniquement après un arrêt
+propre des services, en conservant les permissions.
 
-**Ancienne instance :** sans `POSTGRES_STORAGE` dans son `.env`, l’ancien volume
-Docker reste utilisé. Un `git pull` ne déplace aucune donnée. Pour passer une seule
-fois à `data/postgres`, lancer explicitement la migration, puis redémarrer :
+Pour exporter la base sans arrêter le site :
 
 ```sh
-sudo sh scripts/data.sh migrate
-sudo docker compose --env-file .env up -d --build
+docker compose exec db sh -ec 'umask 077; pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB" -Fc -f "/backups/mysold-$(date -u +%Y%m%dT%H%M%SZ).dump"'
 ```
 
-L’outil arrête proprement les services, copie et vérifie la base, puis met à jour
-uniquement le choix du stockage. L’ancien volume et le secret sont conservés.
-Il refuse d’écraser une destination déjà remplie. Ne pas supprimer les volumes
-pour effectuer cette opération.
-
-Pour sauvegarder la base sans arrêter le site :
-
-```sh
-sudo sh scripts/data.sh backup
-```
-
-L’export terminé apparaît dans `data/backups/` et la copie de `.env` est actualisée.
-Le [guide des données](docs/DONNEES.md) détaille la copie du dossier complet après
-arrêt de PostgreSQL, le transfert vers un autre serveur et la restauration d’un
-export sur une nouvelle instance. Les sauvegardes contiennent notamment les
-comptes et les secrets MFA : les conserver hors du serveur dans un emplacement
-privé, et tester leur restauration.
+Le [guide des données](docs/DONNEES.md) décrit la restauration, la copie vers un
+autre serveur et les permissions. Les exports contiennent les comptes et les
+secrets MFA : conserver une copie privée hors du serveur.
 
 ## Vérifications
 
 Les choix d’interface, les réglages du mode discret et les tests responsive sont
 décrits dans [le guide de design](docs/DESIGN.md).
 
-Le workflow vérifie aussi le téléchargement, l’intégrité et l’extraction des
-releases, la correspondance avec les sources et la conservation de `.env` :
+Le workflow vérifie les releases et une installation complète sans `.env`,
+avec création de compte et conservation des données après reconstruction :
 
 ```sh
 python3 -m unittest discover -s frontend/tool -p 'test_web_release.py' -v
-python3 -m unittest discover -s scripts -p 'test_setup_shell.py' -v
-python3 -m unittest discover -s scripts -p 'test_data_shell.py' -v
+sudo env MYSOLD_INSTALLATION_TEST=1 python3 -m unittest discover -s backend -p 'test_installation.py' -v
 ```
 
-Les tests de stockage créent uniquement des conteneurs et volumes PostgreSQL
-isolés, portant une étiquette propre à chaque exécution. Sur un hôte Linux avec
-Docker, le parcours Compose complet est vérifié avec :
-
-```sh
-sudo env MYSOLD_STORAGE_INTEGRATION=1 python3 -m unittest discover -s scripts -p 'test_storage_integration.py' -v
-```
+Le test d’installation utilise un projet Compose temporaire, un port aléatoire
+sur localhost et son propre stockage. Sur Linux, les droits root permettent de
+nettoyer les fichiers PostgreSQL appartenant au conteneur après le test.
+Il ne démarre pas le projet de l’utilisateur.
 
 Les tests d’intégration de l’API exigent une base séparée dont le nom se termine par
 `_test`. Ils refusent la base d’application normale et réinitialisent uniquement

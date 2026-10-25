@@ -67,5 +67,5 @@ jobs:
         run: |
           docker build --build-arg MYSOLD_REPOSITORY="$GITHUB_REPOSITORY" --tag mysold-web-install-check frontend
           docker run --rm --network none --entrypoint nginx mysold-web-install-check -t
-      - name: Verify a fresh installation and persistent data without configuration
+      - name: Verify installation from the example configuration and persistent data
         run: sudo env MYSOLD_INSTALLATION_TEST=1 MYSOLD_TEST_WEB_IMAGE=mysold-web-install-check python3 -m unittest discover -s backend -p 'test_installation.py' -v

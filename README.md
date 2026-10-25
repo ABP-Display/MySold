@@ -21,6 +21,8 @@ Node.js, Python ou Flutter n’est nécessaire sur la machine hôte.
 ```sh
 git clone https://github.com/ABP-Display/MySold.git
 cd MySold
+cp .env.example .env
+# Modifier .env : choisir le mot de passe, les noms et l’adresse du site.
 docker compose up -d --build
 ```
 
@@ -29,23 +31,22 @@ passe du compte et le PIN sont choisis sur le site ; aucun compte par défaut
 n’est créé. Si Docker exige les droits administrateur, préfixer les commandes
 Docker par `sudo`.
 
-Compose crée automatiquement `data/postgres`, `data/config` et `data/backups`.
-Au premier démarrage, un secret PostgreSQL aléatoire est généré et conservé dans
-`data/config/postgres_password`. L’API utilise ce fichier en lecture seule.
-Les démarrages suivants réutilisent le même secret et la même base.
+Le modèle `.env.example` contient des valeurs génériques et des commentaires.
+Après la copie, renseigner **`POSTGRES_PASSWORD`** dans `.env` avant le lancement ;
+le nom de base (`POSTGRES_DB`), l’utilisateur (`POSTGRES_USER`) et l’adresse du
+site sont personnalisables. Une valeur de mot de passe vide bloque le lancement.
+Compose crée directement `data/postgres` et `data/backups`. Aucun mot de passe
+n’est généré ni aucun fichier de configuration modifié automatiquement.
 
 ### Domaine personnel ou accès distant
 
-Le fichier `.env` est **facultatif pour un essai local**. Pour utiliser son propre
-domaine, copier le modèle avant de démarrer :
-
-```sh
-cp .env.example .env
-```
-
-Modifier `.env` avec son éditeur, par exemple :
+Dans le `.env` copié depuis le modèle, choisir ses valeurs avant le premier
+démarrage. Exemple générique à remplacer par ses propres informations :
 
 ```dotenv
+POSTGRES_DB=mon_budget
+POSTGRES_USER=mon_utilisateur
+POSTGRES_PASSWORD='REMPLACER_PAR_UN_MOT_DE_PASSE_LONG_ET_UNIQUE'
 APP_ORIGIN=https://finances.votre-domaine.fr
 COOKIE_SECURE=true
 ```
@@ -56,7 +57,8 @@ Pour un accès HTTP par IP, renseigner plutôt
 `APP_ORIGIN=http://ADRESSE_DU_SERVEUR:28085` et `COOKIE_SECURE=false`.
 `localhost` désigne l’ordinateur sur lequel le navigateur est ouvert.
 
-Laisser `POSTGRES_PASSWORD` vide : Docker génère le secret automatiquement.
+Conserver `.env` privé et utiliser un mot de passe long et unique. Les mots de
+passe des comptes MySold sont choisis séparément sur le site.
 Le port `28085` est publié sur toutes les interfaces ; l’administrateur gère
 le pare-feu, le DNS et le proxy. Après une modification de `.env`, relancer :
 
@@ -74,7 +76,7 @@ git pull --ff-only
 docker compose up -d --build
 ```
 
-Conserver `data/` et son éventuel `.env`. Les reconstructions des images ne
+Conserver `data/` et `.env`. Les reconstructions des images ne
 suppriment ni la base ni le secret. La mise à jour de la PWA est ensuite proposée
 aux utilisateurs quand une nouvelle version du frontend est disponible.
 
@@ -154,10 +156,10 @@ pas conservées par le service worker.
 
 | Variable | Rôle |
 | --- | --- |
-| `POSTGRES_PASSWORD` | Facultatif : secret personnalisé à la première initialisation ; vide par défaut pour une génération automatique |
+| `POSTGRES_PASSWORD` | Obligatoire : mot de passe technique choisi dans `.env` pour PostgreSQL et l’API |
 | `POSTGRES_DB`, `POSTGRES_USER` | Nom de base et utilisateur PostgreSQL |
 | `WEB_PORT` | Port HTTP local, `28085` par défaut |
-| `APP_ORIGIN` | Origines autorisées pour les écritures, séparées par des virgules ; défaut : `http://localhost:28085,https://mysold.ydoxide.fr` |
+| `APP_ORIGIN` | Origines autorisées pour les écritures, séparées par des virgules ; modèle local : `http://localhost:28085` |
 | `COOKIE_SECURE` | `true` lorsque l’accès au site utilise HTTPS |
 | `ALLOW_REGISTRATION` | `false` pour fermer les nouvelles inscriptions |
 | `MYSOLD_REPOSITORY` | Dépôt GitHub public publiant les releases Web ; défaut `ABP-Display/MySold` |
@@ -169,8 +171,7 @@ connexion utilisateur. Les écritures exigent une origine autorisée.
 L’administrateur gère son pare-feu, son DNS et son reverse proxy.
 
 **Chaque administrateur doit remplacer `APP_ORIGIN` par le domaine personnel de
-son instance.** `mysold.ydoxide.fr` est une valeur par défaut, à remplacer si vous
-hébergez MySold sur un autre domaine. Exemple pour votre propre site HTTPS :
+son instance.** Le modèle utilise `localhost` pour les essais locaux. Exemple pour votre propre site HTTPS :
 
 ```dotenv
 APP_ORIGIN=https://finances.votre-domaine.fr
@@ -193,7 +194,7 @@ Une origine absente ou non autorisée entraîne une réponse `403 Origine refus�
 sur les requêtes POST, PUT, PATCH et DELETE, notamment la connexion et
 l’inscription. Les scripts qui écrivent doivent aussi envoyer l’en-tête `Origin`.
 Ce contrôle ne remplace pas le pare-feu et ne configure ni le DNS ni le proxy.
-Docker Compose lit automatiquement le fichier `.env` s’il existe. Après une
+Docker Compose lit automatiquement le fichier `.env` du projet. Après une
 modification de `APP_ORIGIN`, recréer les conteneurs avec la commande ci-dessous.
 
 Pour HTTPS, diriger le proxy vers `http://ADRESSE_DU_SERVEUR:28085` et définir
@@ -204,9 +205,9 @@ ou un réseau Docker partagé avec `web` et la destination `http://web:8080`.
 Le port interne reste `8080`, même si `WEB_PORT` est modifié.
 
 La base et l’API ne publient aucun port sur l’hôte. Ne pas exposer
-PostgreSQL sur Internet. Le secret persistant est dans
-`data/config/postgres_password`. Changer `POSTGRES_PASSWORD` après initialisation
-ne change pas le rôle PostgreSQL ; une valeur différente du fichier est refusée.
+PostgreSQL sur Internet. Conserver le mot de passe dans `.env`. Modifier
+`POSTGRES_PASSWORD`, `POSTGRES_USER` ou `POSTGRES_DB` après initialisation ne
+modifie pas les identifiants ni le nom d’une base déjà créée.
 
 Après modification de la configuration :
 
@@ -362,14 +363,13 @@ Les volumes sont déclarés directement dans `compose.yaml` :
 ```text
 data/
   postgres/                  base PostgreSQL complète
-  config/postgres_password   secret technique généré au premier démarrage
   backups/                   emplacement des exports de la base
 ```
 
 Docker crée ces dossiers au démarrage. `data/` et `.env` sont exclus de Git.
-Conserver l’ensemble de `data/` pour transférer une instance : le secret doit
-accompagner la base. Copier les fichiers PostgreSQL uniquement après un arrêt
-propre des services, en conservant les permissions.
+Conserver l’ensemble de `data/` et le fichier `.env` pour transférer une instance.
+Copier les fichiers PostgreSQL uniquement après un arrêt propre des services,
+en conservant les permissions.
 
 Pour exporter la base sans arrêter le site :
 
@@ -386,8 +386,9 @@ secrets MFA : conserver une copie privée hors du serveur.
 Les choix d’interface, les réglages du mode discret et les tests responsive sont
 décrits dans [le guide de design](docs/DESIGN.md).
 
-Le workflow vérifie les releases et une installation complète sans `.env`,
-avec création de compte et conservation des données après reconstruction :
+Le workflow vérifie les releases, le refus d’un mot de passe manquant et une
+installation depuis le modèle `.env.example` personnalisé, avec création de
+compte et conservation des données après reconstruction :
 
 ```sh
 python3 -m unittest discover -s frontend/tool -p 'test_web_release.py' -v
@@ -404,7 +405,7 @@ Les tests d’intégration de l’API exigent une base séparée dont le nom se 
 leur base de test.
 
 ```sh
-docker compose exec db createdb -U mysold mysold_test
+docker compose exec db sh -ec 'createdb -U "$POSTGRES_USER" mysold_test'
 docker compose exec -e POSTGRES_DB=mysold_test api python -m unittest -v test_api test_mfa test_totp test_origin_policy
 ```
 

@@ -34,7 +34,7 @@ class InstallationTests(unittest.TestCase):
         config = json.loads(self.compose('config', '--no-interpolate', '--format', 'json').stdout)
         db_mounts = config['services']['db']['volumes']
         self.assertEqual({Path(v['source']).name for v in db_mounts},
-                         {'postgres', 'config', 'backups'})
+                         {'postgres', 'backups'})
         self.assertTrue(all(v['type'] == 'bind' for v in db_mounts))
         config['name'] = self.project
         services = config['services']
@@ -52,7 +52,7 @@ class InstallationTests(unittest.TestCase):
         # volumes there; the root Linux CI exercises the actual host data folders.
         if os.name == 'nt':
             config['volumes'] = {n: {'labels': {'mysold.installation-test': self.project}}
-                                 for n in ('postgres', 'config', 'backups')}
+                                 for n in ('postgres', 'backups')}
             for service in services.values():
                 for mount in service.get('volumes', []):
                     mount['source'] = Path(mount['source']).name
@@ -86,10 +86,8 @@ class InstallationTests(unittest.TestCase):
 
     def secret_fingerprint(self):
         result = self.compose('exec', '-T', 'api', 'python', '-c',
-                              'import hashlib,os,pathlib; '
-                              'p=pathlib.Path(os.environ["POSTGRES_PASSWORD_FILE"]); '
-                              'assert p.stat().st_mode & 0o777 == 0o600; '
-                              'print(hashlib.sha256(p.read_bytes()).hexdigest())')
+                              'import hashlib,os; '
+                              'print(hashlib.sha256(os.environ["POSTGRES_PASSWORD"].encode()).hexdigest())')
         return result.stdout.strip()
 
     def start(self, *extra):
@@ -99,9 +97,23 @@ class InstallationTests(unittest.TestCase):
 
     def test_fresh_installation_rebuild_and_example_configuration(self):
         self.assertFalse((self.directory / '.env').exists())
+        missing = self.compose('config', '--quiet', check=False)
+        self.assertNotEqual(missing.returncode, 0)
+        self.assertIn(b'POSTGRES_PASSWORD', missing.stderr)
+        shutil.copyfile(ROOT / '.env.example', self.directory / '.env')
+        empty = self.compose('config', '--quiet', check=False)
+        self.assertNotEqual(empty.returncode, 0)
+        # Simulate the operator setting their own database, user and password.
+        secret = uuid.uuid4().hex + uuid.uuid4().hex
+        configured = (self.directory / '.env').read_text(encoding='utf-8')
+        configured = configured.replace('POSTGRES_DB=mysold', 'POSTGRES_DB=personal_budget')
+        configured = configured.replace('POSTGRES_USER=mysold', 'POSTGRES_USER=budget_owner')
+        configured = configured.replace('POSTGRES_PASSWORD=\n', 'POSTGRES_PASSWORD=' + secret + '\n')
+        (self.directory / '.env').write_text(configured, encoding='utf-8')
         self.start()
         self.assertEqual(self.request('/api/health'), {'status': 'ok'})
         first_secret = self.secret_fingerprint()
+        self.assertEqual(first_secret.decode(), hashlib.sha256(secret.encode()).hexdigest())
         cookies = http.cookiejar.CookieJar()
         client = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(cookies))
         password = 'Installation-test-password-123!'
@@ -119,26 +131,12 @@ class InstallationTests(unittest.TestCase):
         logged_in = self.request('/api/auth/login', {
             'email': 'installation@example.test', 'password': password}, client)
         self.assertEqual(user['uid'], logged_in['user']['uid'])
-        # Merely copying the example must remain sufficient: the empty optional
-        # password never replaces the generated secret or existing account.
-        shutil.copyfile(ROOT / '.env.example', self.directory / '.env')
-        self.start('--force-recreate')
-        self.assertEqual(first_secret, self.secret_fingerprint())
-        self.assertEqual(user['uid'], self.request('/api/auth/login', {
-            'email': 'installation@example.test', 'password': password}, client)['user']['uid'])
+        self.assertEqual(configured, (self.directory / '.env').read_text(encoding='utf-8'))
         # The normal API suites run against an explicitly separate test database.
-        self.compose('exec', '-T', 'db', 'createdb', '-U', 'mysold', 'mysold_test')
+        self.compose('exec', '-T', 'db', 'createdb', '-U', 'budget_owner', 'mysold_test')
         self.compose('exec', '-T', '-e', 'POSTGRES_DB=mysold_test', 'api',
                      'python', '-m', 'unittest', '-v',
                      'test_api', 'test_mfa', 'test_totp', 'test_origin_policy')
-        self.env['POSTGRES_PASSWORD'] = 'a-different-secret'
-        self.compose('stop', 'api', 'web')
-        self.compose('up', '-d', '--force-recreate', 'db')
-        failure = self.compose('up', '-d', '--wait', '--wait-timeout', '15', 'db', check=False)
-        self.assertNotEqual(failure.returncode, 0)
-        self.env.pop('POSTGRES_PASSWORD')
-        self.start('--force-recreate')
-        self.assertEqual(first_secret, self.secret_fingerprint())
 
 
 if __name__ == '__main__':

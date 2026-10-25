@@ -8,6 +8,8 @@ script de préparation ni installation de Node.js, Python ou Flutter n’est req
 ```sh
 git clone https://github.com/ABP-Display/MySold.git
 cd MySold
+cp .env.example .env
+# Modifier .env avec ses propres informations avant le lancement.
 docker compose up -d --build
 ```
 
@@ -16,14 +18,16 @@ les droits administrateur sur la machine, utiliser `sudo docker compose`.
 Les services `db`, `api` et `web` démarrent dans l’ordre de leurs contrôles de
 santé. Le premier lancement télécharge les images et construit l’application.
 
-Sans `.env`, Compose applique les valeurs par défaut. Il crée les dossiers
-persistants `data/postgres`, `data/config` et `data/backups`, génère un secret
-PostgreSQL aléatoire et initialise les tables de l’application. Il ne crée aucun
-compte utilisateur prédéfini.
+Le fichier `.env.example` fournit les champs commentés à renseigner. Choisir
+son mot de passe `POSTGRES_PASSWORD` avant de lancer Compose : une valeur vide
+est refusée. Les noms `POSTGRES_DB` et `POSTGRES_USER` sont personnalisables
+avant la première initialisation. Compose crée les dossiers persistants
+`data/postgres` et `data/backups` et initialise les tables. Il ne génère aucun
+secret ni compte utilisateur prédéfini.
 
-## Configurer son domaine personnel
+## Personnaliser le fichier `.env`
 
-Pour personnaliser l’installation, copier le modèle :
+La configuration se fait uniquement dans `.env`, copié depuis le modèle :
 
 ```sh
 cp .env.example .env
@@ -31,7 +35,18 @@ cp .env.example .env
 
 Modifier `.env` avec son éditeur. Docker Compose le lit automatiquement ; il
 n’est pas nécessaire de le copier depuis un Dockerfile ni de passer `--env-file`.
-Le fichier doit rester privé et ne doit pas être committé dans Git.
+Le fichier doit rester privé et ne doit pas être committé dans Git. Exemple
+de champs à personnaliser avant le premier démarrage :
+
+```dotenv
+POSTGRES_DB=mon_budget
+POSTGRES_USER=mon_utilisateur
+POSTGRES_PASSWORD='REMPLACER_PAR_UN_MOT_DE_PASSE_LONG_ET_UNIQUE'
+```
+
+Remplacer le mot de passe d’illustration par un secret personnel long et unique.
+Le modèle ne fournit aucun mot de passe commun aux installations. Les quotes
+simples permettent notamment de conserver littéralement les caractères `$` et `#`.
 
 ### Site public en HTTPS
 
@@ -84,19 +99,17 @@ docker compose up -d --build
 
 | Secret | Rôle |
 | --- | --- |
-| `data/config/postgres_password` | Secret technique aléatoire créé automatiquement pour la connexion API → PostgreSQL |
+| `POSTGRES_PASSWORD` dans `.env` | Mot de passe technique choisi par l’administrateur pour PostgreSQL et l’API |
 | Mot de passe MySold | Choisi par chaque utilisateur lors de la création du compte sur le site |
 | PIN | Choisi par l’utilisateur pour verrouiller son interface |
 
-Laisser `POSTGRES_PASSWORD` vide dans `.env` pour utiliser la génération
-automatique. Une valeur personnalisée est possible avant la première
-initialisation ; elle sera conservée dans le même fichier privé.
+`POSTGRES_PASSWORD` est obligatoire et n’est jamais généré automatiquement.
+Les valeurs `POSTGRES_DB`, `POSTGRES_USER` et `POSTGRES_PASSWORD` sont utilisées
+par PostgreSQL lors de la première initialisation et par l’API pour se connecter.
 
-Conserver ce fichier avec la base : il est réutilisé au redémarrage. Modifier
-`POSTGRES_PASSWORD` ensuite ne change pas le mot de passe du rôle PostgreSQL.
-Une valeur différente du secret conservé est refusée au démarrage. Si le fichier
-manque sur une base existante, rétablir le secret d’origine ; le démarrage refuse
-d’en générer un nouveau au hasard.
+Conserver les valeurs avec la base. Modifier seulement `.env` après cette
+initialisation ne renomme pas la base ni son utilisateur et ne change pas son
+mot de passe PostgreSQL. Lors d’une mise à jour, conserver ces valeurs.
 
 Les volumes sont définis directement dans `compose.yaml`. `data/` et `.env`
 sont ignorés par Git et ne sont pas remplacés par un `git pull` ou une
@@ -112,7 +125,7 @@ git pull --ff-only
 docker compose up -d --build
 ```
 
-Conserver `data/` et son éventuel `.env`. Aucun script de migration n’est à lancer.
+Conserver `data/` et `.env`. Aucun script de migration n’est à lancer.
 La mise à jour du schéma est effectuée automatiquement au démarrage de l’API.
 La PWA propose ensuite sa mise à jour lorsqu’un nouveau build Web est installé.
 

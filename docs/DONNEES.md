@@ -6,24 +6,24 @@ Les volumes sont déclarés directement dans `compose.yaml` :
 
 ```text
 MySold/
-  .env                       configuration facultative de son instance
+  .env                       configuration privée de son instance
   data/
     postgres/                base PostgreSQL 17 complète
-    config/postgres_password secret technique persistant
     backups/                 exports de la base
 ```
 
 `docker compose up -d --build` crée les dossiers et initialise une nouvelle
-instance. Aucun script d’installation, sauvegarde ou migration n’est requis.
-Le secret est généré une seule fois, puis réutilisé. L’API monte `data/config`
-en lecture seule et s’exécute avec l’utilisateur technique UID 10001.
+instance à partir du `.env` préparé par l’administrateur. Aucun script
+d’installation, sauvegarde ou migration n’est requis. Le mot de passe technique
+est choisi dans `.env`, avec le nom de base et l’utilisateur. Il n’est pas généré
+automatiquement.
 
-Le secret et les exports sont privés ; PostgreSQL gère les droits de son propre
-dossier. Sur Linux, utiliser `sudo` pour copier ces fichiers en conservant leurs
+Le fichier `.env` et les exports doivent rester privés ; PostgreSQL gère les
+droits de son propre dossier. Sur Linux, utiliser `sudo` pour copier ces fichiers en conservant leurs
 propriétaires et permissions. `data/` et `.env` sont ignorés par Git, restent
 hors des images et ne sont pas servis par Nginx.
 
-Conserver le dossier **entier**, y compris `data/config`, lors d’un transfert.
+Conserver le dossier **entier** et le fichier `.env` lors d’un transfert.
 Une reconstruction Docker ne supprime pas ces dossiers. Les anciens volumes
 Docker nommés ne sont ni importés ni supprimés automatiquement : cette
 configuration utilise uniquement `data/postgres`.
@@ -60,12 +60,12 @@ Sur le serveur source, depuis MySold :
 
 ```sh
 docker compose stop --timeout 120
-sudo tar --numeric-owner -czf ../mysold-data.tar.gz data
+sudo tar --numeric-owner -czf ../mysold-data.tar.gz data .env
 sudo chmod 600 ../mysold-data.tar.gz
 ```
 
-Transférer l’archive par un canal privé. Si un `.env` a été personnalisé, le
-transférer également en le conservant privé. La copie physique doit être faite
+Transférer l’archive par un canal privé : elle contient aussi le `.env` avec
+le mot de passe PostgreSQL. La copie physique doit être faite
 pendant que les services sont arrêtés, jamais pendant leurs écritures.
 
 Sur une nouvelle copie du dépôt **sans données existantes**, extraire l’archive :
@@ -74,7 +74,7 @@ Sur une nouvelle copie du dépôt **sans données existantes**, extraire l’arc
 sudo tar --numeric-owner -xzf ../mysold-data.tar.gz
 ```
 
-Rétablir aussi son éventuel `.env`, puis adapter le domaine et `COOKIE_SECURE`
+Conserver les identifiants PostgreSQL du `.env` extrait et adapter le domaine et `COOKIE_SECURE`
 si l’adresse du site change. Démarrer normalement :
 
 ```sh
@@ -87,7 +87,8 @@ comptes et montants sur la destination avant de retirer l’instance source.
 ## Restaurer un export sur une nouvelle instance
 
 L’export logique évite de recopier le format physique du cluster. Sur une
-nouvelle copie du dépôt, préparer son éventuel `.env` puis démarrer uniquement
+nouvelle copie du dépôt, copier `.env.example` en `.env`, renseigner ses valeurs,
+puis démarrer uniquement
 la base, avant que l’API ne crée les tables :
 
 ```sh
@@ -110,7 +111,7 @@ docker compose up -d --build
 ```
 
 La restauration est transactionnelle et ne contient aucune commande `--clean`
-supprimant les données existantes. Le secret technique de la nouvelle instance
+supprimant les données existantes. Le mot de passe technique de la nouvelle instance
 peut être différent ; les mots de passe des comptes et les paramètres MFA sont
 restaurés avec les tables.
 

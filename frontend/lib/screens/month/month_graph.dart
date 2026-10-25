@@ -101,16 +101,6 @@ class MonthGraph extends StatelessWidget {
     return entries.map((entry) => entry.key).toList();
   }
 
-  Color _categoryColorForName(String catName, List<TransactionModel> txs) {
-    for (final tx in txs) {
-      final category = categories[tx.categoryId];
-      if (category?['name'] == catName) {
-        return Color(category?['color'] ?? Colors.grey.value);
-      }
-    }
-    return Colors.grey;
-  }
-
   /// === TRANSFERTS ===
   Widget buildTransferChart(BuildContext context, List<TransactionModel> txs) {
     final currency = Provider.of<CurrencyProvider>(context).currency;
@@ -250,9 +240,17 @@ class MonthGraph extends StatelessWidget {
     }
 
     final data = <String, double>{};
+    final categoryColors = <String, Color>{};
     for (var tx in filtered) {
-      final catName = categories[tx.categoryId]?['name'] ?? 'Autre';
+      final category = categories[tx.categoryId];
+      final catName = category?['name'] ?? 'Autre';
       data[catName] = (data[catName] ?? 0) + tx.amount.abs();
+      if (category?['name'] == catName) {
+        categoryColors.putIfAbsent(
+          catName,
+          () => Color(category?['color'] ?? Colors.grey.toARGB32()),
+        );
+      }
     }
 
     final sortedKeys = _sortedKeysByAmount(data);
@@ -265,7 +263,7 @@ class MonthGraph extends StatelessWidget {
         () {
           final key = sortedKeys[i];
           final value = data[key]!;
-          final color = _categoryColorForName(key, filtered);
+          final color = categoryColors[key] ?? Colors.grey;
 
           return BarChartGroupData(
             x: i,
@@ -305,9 +303,17 @@ class MonthGraph extends StatelessWidget {
     }
 
     final data = <String, double>{};
+    final categoryColors = <String, Color>{};
     for (var tx in filtered) {
-      final catName = categories[tx.categoryId]?['name'] ?? 'Autre';
+      final category = categories[tx.categoryId];
+      final catName = category?['name'] ?? 'Autre';
       data[catName] = (data[catName] ?? 0) + tx.amount;
+      if (category?['name'] == catName) {
+        categoryColors.putIfAbsent(
+          catName,
+          () => Color(category?['color'] ?? Colors.grey.toARGB32()),
+        );
+      }
     }
 
     final total = data.values.fold(0.0, (a, b) => a + b);
@@ -325,7 +331,7 @@ class MonthGraph extends StatelessWidget {
         (entry) => _IncomeSlice(
           label: entry.key,
           amount: entry.value,
-          color: _categoryColorForName(entry.key, filtered),
+          color: categoryColors[entry.key] ?? Colors.grey,
         ),
       ),
       if (hiddenTotal > 0)

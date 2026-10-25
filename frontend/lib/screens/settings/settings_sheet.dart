@@ -298,15 +298,31 @@ class _SettingsSheetState extends State<SettingsSheet> {
             onTap: _openAboutSheet,
           ),
         ],
-        footer: FilledButton.icon(
-          onPressed: _logout,
-          icon: const Icon(Icons.logout),
-          label: Text(context.tr('Déconnexion')),
-          style: FilledButton.styleFrom(
-            minimumSize: const Size.fromHeight(52),
-            backgroundColor: Theme.of(context).colorScheme.errorContainer,
-            foregroundColor: Theme.of(context).colorScheme.onErrorContainer,
-          ),
+        footer: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            FilledButton.icon(
+              onPressed: _logout,
+              icon: const Icon(Icons.logout),
+              label: Text(context.tr('Déconnexion')),
+              style: FilledButton.styleFrom(
+                minimumSize: const Size.fromHeight(52),
+                backgroundColor: Theme.of(context).colorScheme.errorContainer,
+                foregroundColor: Theme.of(context).colorScheme.onErrorContainer,
+              ),
+            ),
+            const SizedBox(height: 18),
+            Text(
+              PwaUpdateService.currentBuild.isEmpty
+                  ? 'MySold · ${context.tr('Version de développement')}'
+                  : 'MySold · ${context.tr('Version')} ${PwaUpdateService.currentBuild}',
+              key: const ValueKey('settings-current-version'),
+              textAlign: TextAlign.center,
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ],
         ),
       ),
     );

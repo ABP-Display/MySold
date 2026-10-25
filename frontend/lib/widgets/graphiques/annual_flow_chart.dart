@@ -19,8 +19,8 @@ class AnnualFlowSeries {
   }) : assert(values.length == 12);
 }
 
-/// Show the whole year without horizontal scrolling. Narrow layouts use two
-/// semesters with a shared Y scale; exact values stay outside the plot.
+/// Show all twelve months on one plot, without horizontal scrolling.
+/// Exact values stay outside the plot; narrow layouts rotate month labels.
 class AnnualFlowChart extends StatefulWidget {
   final int year;
   final String currency, locale;
@@ -79,12 +79,6 @@ class _AnnualFlowChartState extends State<AnnualFlowChart> {
     final maxY = high + range * .12;
     return LayoutBuilder(
       builder: (context, constraints) {
-        final largeText = MediaQuery.textScalerOf(context).scale(10) > 15;
-        final monthsPerPlot = largeText && constraints.maxWidth < 520
-            ? 3
-            : constraints.maxWidth < 640 || largeText
-            ? 6
-            : 12;
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -147,20 +141,7 @@ class _AnnualFlowChartState extends State<AnnualFlowChart> {
                       color: _focused ? colors.primary : Colors.transparent,
                     ),
                   ),
-                  child: Column(
-                    children: [
-                      for (
-                        var first = 0;
-                        first < 12;
-                        first += monthsPerPlot
-                      ) ...[
-                        if (first > 0) const SizedBox(height: 16),
-                        if (monthsPerPlot < 12)
-                          _periodTitle(first, first + monthsPerPlot - 1),
-                        _plot(first, first + monthsPerPlot - 1, minY, maxY),
-                      ],
-                    ],
-                  ),
+                  child: Column(children: [_plot(0, 11, minY, maxY)]),
                 ),
               ),
             ),
@@ -242,166 +223,179 @@ class _AnnualFlowChartState extends State<AnnualFlowChart> {
     );
   }
 
-  Widget _periodTitle(int first, int last) => Padding(
-    padding: const EdgeInsets.only(bottom: 8),
-    child: Text(
-      '${_month(first)} – ${_month(last)}',
-      style: Theme.of(context).textTheme.labelMedium,
-    ),
-  );
-
   Widget _plot(int first, int last, double minY, double maxY) {
     final colors = Theme.of(context).colorScheme;
     final scale = MediaQuery.textScalerOf(context).scale(10) / 10;
     final axisWidth = 40 * scale;
-    final bottomHeight = 28 * scale;
-    return SizedBox(
-      key: ValueKey('annual-flow-plot-$first'),
-      height: 200 + bottomHeight,
-      child: LayoutBuilder(
-        builder: (context, bounds) {
-          void select(Offset position) {
-            final plotWidth = bounds.maxWidth - axisWidth - 16;
-            if (plotWidth <= 0 ||
-                position.dx < axisWidth ||
-                position.dx > bounds.maxWidth - 16 ||
-                position.dy > bounds.maxHeight - bottomHeight)
-              return;
-            _select(
-              first +
-                  ((position.dx - axisWidth) / plotWidth * (last - first))
-                      .round()
-                      .clamp(0, last - first),
-            );
-          }
+    return LayoutBuilder(
+      builder: (context, available) {
+        final narrow = available.maxWidth < 640;
+        final staggered = narrow && scale > 1.5;
+        final bottomHeight =
+            (narrow ? (staggered ? 96.0 : 48.0) : 28.0) * scale;
+        return SizedBox(
+          key: ValueKey('annual-flow-plot-$first'),
+          height: 200 + bottomHeight,
+          child: LayoutBuilder(
+            builder: (context, bounds) {
+              void select(Offset position) {
+                final plotWidth = bounds.maxWidth - axisWidth - 16;
+                if (plotWidth <= 0 ||
+                    position.dx < axisWidth ||
+                    position.dx > bounds.maxWidth - 16 ||
+                    position.dy > bounds.maxHeight - bottomHeight)
+                  return;
+                _select(
+                  first +
+                      ((position.dx - axisWidth) / plotWidth * (last - first))
+                          .round()
+                          .clamp(0, last - first),
+                );
+              }
 
-          return MouseRegion(
-            cursor: SystemMouseCursors.precise,
-            onHover: (event) => select(event.localPosition),
-            child: Listener(
-              behavior: HitTestBehavior.opaque,
-              onPointerDown: (event) => select(event.localPosition),
-              onPointerMove: (event) => select(event.localPosition),
-              child: Padding(
-                padding: const EdgeInsets.only(right: 16),
-                child: AppLineChart(
-                  LineChartData(
-                    minX: first.toDouble(),
-                    maxX: last.toDouble(),
-                    minY: minY,
-                    maxY: maxY,
-                    clipData: FlClipData.all(),
-                    lineTouchData: LineTouchData(enabled: false),
-                    borderData: FlBorderData(show: false),
-                    gridData: FlGridData(
-                      drawVerticalLine: false,
-                      horizontalInterval: (maxY - minY) / 4,
-                      getDrawingHorizontalLine: (_) => FlLine(
-                        color: colors.outlineVariant.withValues(alpha: .5),
-                        strokeWidth: 1,
-                        dashArray: [4, 4],
-                      ),
-                    ),
-                    extraLinesData: ExtraLinesData(
-                      horizontalLines: minY < 0
-                          ? [
-                              HorizontalLine(
-                                y: 0,
-                                color: colors.onSurfaceVariant,
-                                strokeWidth: 1,
-                              ),
-                            ]
-                          : [],
-                      verticalLines: _selected >= first && _selected <= last
-                          ? [
-                              VerticalLine(
-                                x: _selected.toDouble(),
-                                color: colors.onSurfaceVariant.withValues(
-                                  alpha: .6,
+              return MouseRegion(
+                cursor: SystemMouseCursors.precise,
+                onHover: (event) => select(event.localPosition),
+                child: Listener(
+                  behavior: HitTestBehavior.opaque,
+                  onPointerDown: (event) => select(event.localPosition),
+                  onPointerMove: (event) => select(event.localPosition),
+                  child: Padding(
+                    padding: const EdgeInsets.only(right: 16),
+                    child: AppLineChart(
+                      LineChartData(
+                        minX: first.toDouble(),
+                        maxX: last.toDouble(),
+                        minY: minY,
+                        maxY: maxY,
+                        clipData: FlClipData.all(),
+                        lineTouchData: LineTouchData(enabled: false),
+                        borderData: FlBorderData(show: false),
+                        gridData: FlGridData(
+                          drawVerticalLine: false,
+                          horizontalInterval: (maxY - minY) / 4,
+                          getDrawingHorizontalLine: (_) => FlLine(
+                            color: colors.outlineVariant.withValues(alpha: .5),
+                            strokeWidth: 1,
+                            dashArray: [4, 4],
+                          ),
+                        ),
+                        extraLinesData: ExtraLinesData(
+                          horizontalLines: minY < 0
+                              ? [
+                                  HorizontalLine(
+                                    y: 0,
+                                    color: colors.onSurfaceVariant,
+                                    strokeWidth: 1,
+                                  ),
+                                ]
+                              : [],
+                          verticalLines: _selected >= first && _selected <= last
+                              ? [
+                                  VerticalLine(
+                                    x: _selected.toDouble(),
+                                    color: colors.onSurfaceVariant.withValues(
+                                      alpha: .6,
+                                    ),
+                                    strokeWidth: 1,
+                                    dashArray: [3, 3],
+                                  ),
+                                ]
+                              : [],
+                        ),
+                        titlesData: FlTitlesData(
+                          topTitles: const AxisTitles(
+                            sideTitles: SideTitles(showTitles: false),
+                          ),
+                          rightTitles: const AxisTitles(
+                            sideTitles: SideTitles(showTitles: false),
+                          ),
+                          leftTitles: AxisTitles(
+                            sideTitles: SideTitles(
+                              showTitles: true,
+                              reservedSize: axisWidth,
+                              interval: (maxY - minY) / 4,
+                              getTitlesWidget: (value, _) => Text(
+                                NumberFormat.compact(
+                                  locale: widget.locale,
+                                ).format(value),
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  color: colors.onSurfaceVariant,
                                 ),
-                                strokeWidth: 1,
-                                dashArray: [3, 3],
-                              ),
-                            ]
-                          : [],
-                    ),
-                    titlesData: FlTitlesData(
-                      topTitles: const AxisTitles(
-                        sideTitles: SideTitles(showTitles: false),
-                      ),
-                      rightTitles: const AxisTitles(
-                        sideTitles: SideTitles(showTitles: false),
-                      ),
-                      leftTitles: AxisTitles(
-                        sideTitles: SideTitles(
-                          showTitles: true,
-                          reservedSize: axisWidth,
-                          interval: (maxY - minY) / 4,
-                          getTitlesWidget: (value, _) => Text(
-                            NumberFormat.compact(
-                              locale: widget.locale,
-                            ).format(value),
-                            style: TextStyle(
-                              fontSize: 10,
-                              color: colors.onSurfaceVariant,
-                            ),
-                          ),
-                        ),
-                      ),
-                      bottomTitles: AxisTitles(
-                        sideTitles: SideTitles(
-                          showTitles: true,
-                          interval: 1,
-                          reservedSize: bottomHeight,
-                          getTitlesWidget: (value, meta) => SideTitleWidget(
-                            axisSide: meta.axisSide,
-                            fitInside: SideTitleFitInsideData.fromTitleMeta(
-                              meta,
-                              enabled: true,
-                            ),
-                            child: Text(
-                              _month(
-                                value.round().clamp(first, last),
-                                short: true,
-                              ),
-                              style: TextStyle(
-                                fontSize: 10,
-                                color: colors.onSurfaceVariant,
                               ),
                             ),
                           ),
-                        ),
-                      ),
-                    ),
-                    lineBarsData: [
-                      for (final series in widget.series)
-                        LineChartBarData(
-                          spots: [
-                            for (var month = first; month <= last; month++)
-                              FlSpot(month.toDouble(), series.values[month]),
-                          ],
-                          color: series.color,
-                          barWidth: 2.5,
-                          isCurved: false,
-                          dashArray: series.dashed ? [6, 4] : null,
-                          dotData: FlDotData(
-                            show: true,
-                            getDotPainter: (spot, _, bar, __) =>
-                                FlDotCirclePainter(
-                                  radius: spot.x == _selected ? 4 : 2,
-                                  color: series.color,
-                                  strokeWidth: 0,
+                          bottomTitles: AxisTitles(
+                            sideTitles: SideTitles(
+                              showTitles: true,
+                              interval: 1,
+                              reservedSize: bottomHeight,
+                              getTitlesWidget: (value, meta) => SideTitleWidget(
+                                axisSide: meta.axisSide,
+                                fitInside: SideTitleFitInsideData.fromTitleMeta(
+                                  meta,
+                                  enabled: !narrow,
                                 ),
+                                child: Padding(
+                                  padding: EdgeInsets.only(
+                                    top: staggered && value.round().isOdd
+                                        ? 46 * scale
+                                        : 0,
+                                  ),
+                                  child: RotatedBox(
+                                    quarterTurns: narrow ? 3 : 0,
+                                    child: Text(
+                                      _month(
+                                        value.round().clamp(first, last),
+                                        short: true,
+                                      ),
+                                      style: TextStyle(
+                                        fontSize: 10,
+                                        height: 1,
+                                        color: colors.onSurfaceVariant,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
                           ),
                         ),
-                    ],
+                        lineBarsData: [
+                          for (final series in widget.series)
+                            LineChartBarData(
+                              spots: [
+                                for (var month = first; month <= last; month++)
+                                  FlSpot(
+                                    month.toDouble(),
+                                    series.values[month],
+                                  ),
+                              ],
+                              color: series.color,
+                              barWidth: 2.5,
+                              isCurved: false,
+                              dashArray: series.dashed ? [6, 4] : null,
+                              dotData: FlDotData(
+                                show: true,
+                                getDotPainter: (spot, _, bar, __) =>
+                                    FlDotCirclePainter(
+                                      radius: spot.x == _selected ? 4 : 2,
+                                      color: series.color,
+                                      strokeWidth: 0,
+                                    ),
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
                   ),
                 ),
-              ),
-            ),
-          );
-        },
-      ),
+              );
+            },
+          ),
+        );
+      },
     );
   }
 }

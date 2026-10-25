@@ -75,6 +75,26 @@ void main() {
                 findsOneWidget,
               );
             }
+            final labels = [
+              for (var month = 1; month <= 12; month++)
+                tester.getRect(
+                  find.ancestor(
+                    of: find.text(
+                      DateFormat.MMM('en_US').format(DateTime(2000, month)),
+                    ),
+                    matching: find.byType(RotatedBox),
+                  ),
+                ),
+            ];
+            for (var i = 0; i < labels.length; i++) {
+              for (var j = i + 1; j < labels.length; j++) {
+                expect(
+                  labels[i].overlaps(labels[j]),
+                  isFalse,
+                  reason: 'Month labels $i and $j must not overlap',
+                );
+              }
+            }
             expect(
               tester
                   .widgetList<Scrollable>(find.byType(Scrollable))
@@ -88,10 +108,7 @@ void main() {
             final charts = tester
                 .widgetList<AppLineChart>(find.byType(AppLineChart))
                 .toList();
-            expect(
-              charts.length,
-              width == 320 ? (scale == 2 ? 4 : 2) : (scale == 2 ? 2 : 1),
-            );
+            expect(charts.length, 1);
             final data = charts.first.data;
             expect(data.minY, lessThan(-300));
             for (final chart in charts) {
@@ -99,11 +116,7 @@ void main() {
               expect(chart.data.maxY, data.maxY);
               expect(chart.data.lineBarsData.length, 4);
             }
-            final last = find.byKey(
-              ValueKey(
-                'annual-flow-plot-${width == 320 ? (scale == 2 ? 9 : 6) : (scale == 2 ? 6 : 0)}',
-              ),
-            );
+            final last = find.byKey(const ValueKey('annual-flow-plot-0'));
             await tester.ensureVisible(last);
             final rect = tester.getRect(last);
             await tester.tapAt(Offset(rect.right - 18, rect.center.dy));

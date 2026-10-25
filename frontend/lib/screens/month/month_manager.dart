@@ -1,4 +1,5 @@
 import 'package:mysold/widgets/page_activity_listener.dart';
+import 'package:mysold/widgets/cached_page_stack.dart';
 import 'package:mysold/widgets/month_page_header.dart';
 import 'package:mysold/widgets/app_choice_tabs.dart';
 import 'package:mysold/widgets/app_select_field.dart';
@@ -714,10 +715,13 @@ class _MonthManagerState extends State<MonthManagerScreen> {
                     Icons.sync_alt,
                   ],
                   selectedIndex: _selectedIndex,
-                  onSelected: (index) => setState(() {
-                    _selectedIndex = index;
-                    _selectedCategoryId = null;
-                  }),
+                  onSelected: (index) {
+                    if (index == _selectedIndex) return;
+                    setState(() {
+                      _selectedIndex = index;
+                      _selectedCategoryId = null;
+                    });
+                  },
                 ),
               ),
               Padding(
@@ -934,10 +938,32 @@ class _MonthManagerState extends State<MonthManagerScreen> {
             ? Center(child: Text('${_t('Erreur')} : $_transactionsError'))
             : _isLoadingTransactions && _transactions.isEmpty
             ? const Center(child: CircularProgressIndicator())
-            : _buildTabContent(
-                _transactions,
-                ['expense', 'income', 'investment', 'transfer'][_selectedIndex],
-                monthLabel,
+            : CachedPageStack(
+                index: _selectedIndex,
+                itemCount: 4,
+                revision: (
+                  transactions: _transactions,
+                  month: (_currentMonth.year, _currentMonth.month),
+                  references: references.referenceDataVersion,
+                  filters: (
+                    _searchQuery,
+                    _selectedCategoryId,
+                    _selectedAccountId,
+                    _minAmount,
+                    _maxAmount,
+                    _sortField,
+                    _sortAscending,
+                  ),
+                  currency: context.watch<CurrencyProvider>().currency,
+                  hidden: context.watch<PrivacyProvider>().hideAmounts,
+                  theme: Theme.of(context),
+                  locale: Localizations.localeOf(context),
+                ),
+                itemBuilder: (_, index) => _buildTabContent(
+                  _transactions,
+                  ['expense', 'income', 'investment', 'transfer'][index],
+                  monthLabel,
+                ),
               ),
       ),
     );

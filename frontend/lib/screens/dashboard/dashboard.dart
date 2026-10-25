@@ -1,3 +1,4 @@
+import 'package:mysold/widgets/lazy_section_list.dart';
 import 'package:mysold/widgets/graphiques/app_charts.dart';
 import 'package:mysold/widgets/graphiques/chart_info_region.dart';
 import 'package:mysold/widgets/graphiques/viewport_bar_chart.dart';
@@ -175,10 +176,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
         return RefreshIndicator(
           onRefresh: _refresh,
-          child: ListView(
-            padding: const EdgeInsets.fromLTRB(20, 24, 20, 28),
-            children: [
-              PageIntro(
+          child: LazySectionList(
+            gaps: const [0, 16, 18, 18, 18, 18, 18],
+            sections: [
+              (_) => PageIntro(
                 eyebrow: context.tr('PATRIMOINE'),
                 title: context.tr('Vue globale'),
                 subtitle: context.tr(
@@ -207,19 +208,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   ),
                 ),
               ),
-              _buildHeader(data, currency, privacy),
-              const SizedBox(height: 16),
-              _buildSummaryGrid(data, currency, privacy),
-              const SizedBox(height: 18),
-              _buildWealthEvolution(data, currency, privacy),
-              const SizedBox(height: 18),
-              _buildAccountsSection(data, currency, privacy),
-              const SizedBox(height: 18),
-              _buildMonthlyChart(data, currency, privacy),
-              const SizedBox(height: 18),
-              _buildExpenseCategories(data, currency, privacy),
-              const SizedBox(height: 18),
-              _buildQuickStats(data, currency, privacy),
+              (_) => _buildHeader(data, currency, privacy),
+              (_) => _buildSummaryGrid(data, currency, privacy),
+              (_) => _buildWealthEvolution(data, currency, privacy),
+              (_) => _buildAccountsSection(data, currency, privacy),
+              (_) => _buildMonthlyChart(data, currency, privacy),
+              (_) => _buildExpenseCategories(data, currency, privacy),
+              (_) => _buildQuickStats(data, currency, privacy),
             ],
           ),
         );

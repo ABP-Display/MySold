@@ -1,3 +1,4 @@
+import 'package:mysold/widgets/app_selection_button.dart';
 import 'package:flutter/material.dart';
 import 'package:mysold/l10n/app_localizations.dart';
 import 'package:mysold/widgets/app_design.dart';
@@ -132,36 +133,38 @@ class AppWorkspace extends StatelessWidget {
               ),
               const SizedBox(height: 12),
               for (var index = 0; index < destinations.length; index++) ...[
-                Material(
-                  color: index == selectedIndex
-                      ? colors.primary.withValues(alpha: 0.10)
-                      : Colors.transparent,
-                  borderRadius: BorderRadius.circular(10),
-                  child: ListTile(
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 12),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    leading: Icon(
-                      destinations[index].icon,
-                      size: 21,
-                      color: index == selectedIndex
-                          ? colors.primary
-                          : colors.onSurfaceVariant,
-                    ),
-                    title: Text(
-                      context.tr(destinations[index].label),
-                      style: TextStyle(
-                        fontSize: 13,
-                        fontWeight: index == selectedIndex
-                            ? FontWeight.w600
-                            : FontWeight.w400,
-                        color: index == selectedIndex
-                            ? colors.primary
-                            : colors.onSurface,
+                AppSelectionButton(
+                  key: ValueKey('destination-$index'),
+                  selected: index == selectedIndex,
+                  outlined: false,
+                  minHeight: 56,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 8,
+                  ),
+                  onPressed: () => onSelected(index),
+                  child: Row(
+                    children: [
+                      SizedBox(
+                        width: 40,
+                        child: Align(
+                          alignment: Alignment.centerLeft,
+                          child: Icon(destinations[index].icon, size: 21),
+                        ),
                       ),
-                    ),
-                    onTap: () => onSelected(index),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: Text(
+                          context.tr(destinations[index].label),
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: index == selectedIndex
+                                ? FontWeight.w600
+                                : FontWeight.w400,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
                 const SizedBox(height: 6),
@@ -257,17 +260,47 @@ class AppWorkspace extends StatelessWidget {
                     top: BorderSide(color: AppDesign.border(context)),
                   ),
                 ),
-                child: NavigationBar(
-                  selectedIndex: selectedIndex,
-                  onDestinationSelected: onSelected,
-                  destinations: destinations
-                      .map(
-                        (destination) => NavigationDestination(
-                          icon: Icon(destination.icon, size: 22),
-                          label: context.tr(destination.label),
-                        ),
-                      )
-                      .toList(),
+                key: const ValueKey('bottom-navigation'),
+                child: SafeArea(
+                  top: false,
+                  child: Padding(
+                    padding: const EdgeInsets.all(6),
+                    child: Row(
+                      children: [
+                        for (
+                          var index = 0;
+                          index < destinations.length;
+                          index++
+                        )
+                          Expanded(
+                            child: AppSelectionButton(
+                              key: ValueKey('destination-$index'),
+                              selected: selectedIndex == index,
+                              outlined: false,
+                              minHeight: 68,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 4,
+                                vertical: 8,
+                              ),
+                              onPressed: () => onSelected(index),
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(destinations[index].icon, size: 22),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    context.tr(destinations[index].label),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(fontSize: 12),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
                 ),
               ),
       );

@@ -451,6 +451,14 @@ compresse les scripts et fichiers WebAssembly avec gzip lorsque le navigateur
 l’accepte. Après une modification, reconstruire et numéroter la PWA avec les
 commandes ci-dessus (ou reconstruire l’image Docker), puis appliquer sa mise à jour.
 
+La navigation principale, les onglets du simulateur et les filtres d’opérations
+changent immédiatement de sélection, sans animation de texte, de couleur ou de
+vague au clic. Le survol et
+le focus au clavier restent visibles. Les pages déjà ouvertes conservent leur
+état et leur défilement ; revenir sur « Mois » ne reconstruit pas ses graphiques
+si les données sont inchangées. Les sections de « Stats » et « Global » sont
+construites au fur et à mesure des besoins du défilement.
+
 ## Formulaires et extensions du navigateur
 
 Les étapes d’inscription conservent les identifiants déjà saisis dans le même

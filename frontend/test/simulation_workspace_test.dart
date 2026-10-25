@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:mysold/widgets/app_selection_button.dart';
+import 'package:mysold/widgets/lazy_page_stack.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mysold/screens/settings/theme_settings.dart';
 import 'package:mysold/widgets/graphiques/simulation_chart.dart';
@@ -31,6 +33,41 @@ Future<void> setup(
 }
 
 void main() {
+  testWidgets('Tab selection retains forms and schedules no animation', (
+    tester,
+  ) async {
+    await setup(tester, AppThemes.dark, 1440, 1);
+    final budgetField = find.byType(TextFormField).first;
+    final element = tester.element(budgetField);
+    final controller = tester.widget<TextFormField>(budgetField).controller!;
+    controller.text = '4321';
+    // Changing tabs must retain the form, including its validation state.
+    await tester.tap(find.byKey(const ValueKey('simulation-tab-2')));
+    await tester.pump();
+    await tester.pump();
+    expect(tester.hasRunningAnimations, isFalse);
+    expect(
+      tester
+          .widget<AppSelectionButton>(
+            find.byKey(const ValueKey('simulation-tab-2')),
+          )
+          .selected,
+      isTrue,
+    );
+    await tester.tap(find.byKey(const ValueKey('simulation-tab-0')));
+    await tester.pump();
+    await tester.pump();
+    expect(tester.element(find.byType(TextFormField).first), same(element));
+    expect(
+      tester
+          .widget<TextFormField>(find.byType(TextFormField).first)
+          .controller!
+          .text,
+      '4321',
+    );
+    expect(tester.hasRunningAnimations, isFalse);
+    expect(tester.takeException(), isNull);
+  });
   testWidgets(
     'Zero values and negative savings keep chart axes and touch information usable',
     (tester) async {
@@ -81,7 +118,7 @@ void main() {
             final labels = ['Budget', 'Investissement', 'Prêt'];
             for (var index = 0; index < labels.length; index++) {
               final label = find.descendant(
-                of: find.byType(TabBar),
+                of: find.byKey(const ValueKey('simulation-tabs')),
                 matching: find.text(labels[index]),
               );
               expect(
@@ -92,7 +129,7 @@ void main() {
             }
             for (final tab in labels) {
               final tabFinder = find.descendant(
-                of: find.byType(TabBar),
+                of: find.byKey(const ValueKey('simulation-tabs')),
                 matching: find.text(tab),
               );
               await tester.ensureVisible(tabFinder);
@@ -138,21 +175,22 @@ void main() {
     'Horizontal gestures keep the current tab; an explicit tab press changes it',
     (tester) async {
       await setup(tester, AppThemes.forest, 390, 1);
-      final tabs = tester.widget<TabBar>(find.byType(TabBar)).controller!;
-      await tester.drag(find.byType(TabBarView), const Offset(-320, 0));
+      int selected() =>
+          tester.widget<LazyPageStack>(find.byType(LazyPageStack)).index;
+      await tester.drag(find.byType(LazyPageStack), const Offset(-320, 0));
       await tester.pumpAndSettle();
-      expect(tabs.index, 0);
+      expect(selected(), 0);
       final loanTab = find.descendant(
-        of: find.byType(TabBar),
+        of: find.byKey(const ValueKey('simulation-tabs')),
         matching: find.text('Prêt'),
       );
       await tester.ensureVisible(loanTab);
       await tester.tap(loanTab);
       await tester.pumpAndSettle();
-      expect(tabs.index, 2);
-      await tester.drag(find.byType(TabBarView), const Offset(320, 0));
+      expect(selected(), 2);
+      await tester.drag(find.byType(LazyPageStack), const Offset(320, 0));
       await tester.pumpAndSettle();
-      expect(tabs.index, 2);
+      expect(selected(), 2);
     },
   );
 
@@ -161,7 +199,7 @@ void main() {
     (tester) async {
       await setup(tester, AppThemes.dark, 1440, 1);
       final loanTab = find.descendant(
-        of: find.byType(TabBar),
+        of: find.byKey(const ValueKey('simulation-tabs')),
         matching: find.text('Prêt'),
       );
       await tester.ensureVisible(loanTab);

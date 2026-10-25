@@ -1,3 +1,4 @@
+import 'package:mysold/widgets/app_selection_button.dart';
 import 'package:flutter/material.dart';
 
 class AppChoiceTabs extends StatelessWidget {
@@ -15,24 +16,18 @@ class AppChoiceTabs extends StatelessWidget {
   @override
   Widget build(BuildContext context) => LayoutBuilder(
     builder: (context, constraints) {
-      Widget button(int index) => OutlinedButton.icon(
+      Widget button(int index) => AppSelectionButton(
         key: ValueKey('operation-type-$index'),
+        selected: selectedIndex == index,
         onPressed: () => onSelected(index),
-        icon: Icon(icons[index], size: 18),
-        label: Text(labels[index], textAlign: TextAlign.center),
-        style: OutlinedButton.styleFrom(
-          minimumSize: const Size(44, 46),
-          backgroundColor: selectedIndex == index
-              ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.12)
-              : null,
-          foregroundColor: selectedIndex == index
-              ? Theme.of(context).colorScheme.primary
-              : Theme.of(context).colorScheme.onSurfaceVariant,
-          side: BorderSide(
-            color: selectedIndex == index
-                ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.6)
-                : Theme.of(context).colorScheme.outlineVariant,
-          ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icons[index], size: 18),
+            const SizedBox(width: 8),
+            Flexible(child: Text(labels[index], textAlign: TextAlign.center)),
+          ],
         ),
       );
       if (constraints.maxWidth >= 760)

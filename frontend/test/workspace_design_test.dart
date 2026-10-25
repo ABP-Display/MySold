@@ -114,7 +114,7 @@ void main() {
             await tester.pumpAndSettle();
             expect(tester.takeException(), isNull);
             expect(
-              find.byType(NavigationBar),
+              find.byKey(const ValueKey('bottom-navigation')),
               size.width >= 1040 && scale == 1 ? findsNothing : findsOneWidget,
             );
             await tester.tap(find.byIcon(Icons.visibility_outlined));

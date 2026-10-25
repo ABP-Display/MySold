@@ -1,3 +1,4 @@
+import 'package:mysold/widgets/page_activity_listener.dart';
 import 'package:mysold/widgets/month_page_header.dart';
 import 'package:mysold/widgets/app_choice_tabs.dart';
 import 'package:mysold/widgets/app_select_field.dart';
@@ -53,7 +54,6 @@ class _MonthManagerState extends State<MonthManagerScreen> {
   int? _lastReferenceDataVersion;
   int? _lastFinancialDataVersion;
   bool _reloadScheduled = false;
-  bool _wasActive = false;
   int _transactionLoad = 0;
 
   @override
@@ -66,14 +66,6 @@ class _MonthManagerState extends State<MonthManagerScreen> {
     }
     _firestoreService = BudgetService(userId: currentUser.uid);
     _loadTransactionsForSelectedMonth(showLoader: true);
-  }
-
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    final active = TickerMode.of(context);
-    if (active && !_wasActive) _loadReferenceData();
-    _wasActive = active;
   }
 
   Future<void> _refresh({bool forceRefresh = false}) async {
@@ -225,13 +217,8 @@ class _MonthManagerState extends State<MonthManagerScreen> {
   Future<void> _loadReferenceData({bool forceRefresh = false}) async {
     final references = context.read<UserDataProvider>();
     await references.ensureReferences(forceRefresh: forceRefresh);
-    if (!mounted) return;
-
-    setState(() {
-      _categories = references.categories;
-      _accountIds = references.accounts;
-      _investmentIds = references.investments;
-    });
+    // Reference updates notify UserDataProvider, which this page already
+    // watches. A cached resume needs no second setState/rebuild of its charts.
   }
 
   //
@@ -936,20 +923,23 @@ class _MonthManagerState extends State<MonthManagerScreen> {
       Localizations.localeOf(context).toString(),
     ).format(_currentMonth);
 
-    return Scaffold(
-      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
-      floatingActionButton: _MonthAddFab(
-        onRefresh: () => _refresh(forceRefresh: true),
+    return PageActivityListener(
+      onResume: _loadReferenceData,
+      child: Scaffold(
+        floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
+        floatingActionButton: _MonthAddFab(
+          onRefresh: () => _refresh(forceRefresh: true),
+        ),
+        body: _transactionsError != null
+            ? Center(child: Text('${_t('Erreur')} : $_transactionsError'))
+            : _isLoadingTransactions && _transactions.isEmpty
+            ? const Center(child: CircularProgressIndicator())
+            : _buildTabContent(
+                _transactions,
+                ['expense', 'income', 'investment', 'transfer'][_selectedIndex],
+                monthLabel,
+              ),
       ),
-      body: _transactionsError != null
-          ? Center(child: Text('${_t('Erreur')} : $_transactionsError'))
-          : _isLoadingTransactions && _transactions.isEmpty
-          ? const Center(child: CircularProgressIndicator())
-          : _buildTabContent(
-              _transactions,
-              ['expense', 'income', 'investment', 'transfer'][_selectedIndex],
-              monthLabel,
-            ),
     );
   }
 

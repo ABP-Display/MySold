@@ -1,3 +1,4 @@
+import 'package:mysold/widgets/lazy_section_list.dart';
 import 'package:mysold/widgets/graphiques/app_charts.dart';
 import 'package:mysold/widgets/app_design.dart';
 import 'package:mysold/data/document_store.dart';
@@ -126,22 +127,16 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
         final data = snapshot.data ?? _AnalyticsData.empty();
         return RefreshIndicator(
           onRefresh: _refresh,
-          child: ListView(
-            padding: const EdgeInsets.fromLTRB(20, 24, 20, 28),
-            children: [
-              _buildHeader(data),
-              const SizedBox(height: 14),
-              _buildKpiGrid(data, currency, privacy),
-              const SizedBox(height: 16),
-              _buildMonthComparison(data, currency, privacy),
-              const SizedBox(height: 16),
-              _buildProjection(data, currency, privacy),
-              const SizedBox(height: 16),
-              _buildTopIncomes(data, currency, privacy),
-              const SizedBox(height: 16),
-              _buildTopExpenses(data, currency, privacy),
-              const SizedBox(height: 16),
-              _buildRecurringIncome(data, currency, privacy),
+          child: LazySectionList(
+            gaps: const [14, 16, 16, 16, 16, 16],
+            sections: [
+              (_) => _buildHeader(data),
+              (_) => _buildKpiGrid(data, currency, privacy),
+              (_) => _buildMonthComparison(data, currency, privacy),
+              (_) => _buildProjection(data, currency, privacy),
+              (_) => _buildTopIncomes(data, currency, privacy),
+              (_) => _buildTopExpenses(data, currency, privacy),
+              (_) => _buildRecurringIncome(data, currency, privacy),
             ],
           ),
         );

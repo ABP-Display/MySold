@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:mysold/models/simulation_projection.dart';
 import 'package:mysold/widgets/app_design.dart';
 import 'package:mysold/widgets/app_select_field.dart';
+import 'package:mysold/widgets/app_selection_button.dart';
+import 'package:mysold/widgets/lazy_page_stack.dart';
 import 'package:mysold/widgets/graphiques/simulation_chart.dart';
 
 class SimulationWorkspace extends StatefulWidget {
@@ -16,13 +18,8 @@ class SimulationWorkspace extends StatefulWidget {
   State<SimulationWorkspace> createState() => _SimulationWorkspaceState();
 }
 
-class _SimulationWorkspaceState extends State<SimulationWorkspace>
-    with SingleTickerProviderStateMixin {
-  late final _tabs = TabController(
-    length: 3,
-    vsync: this,
-    animationDuration: Duration.zero,
-  );
+class _SimulationWorkspaceState extends State<SimulationWorkspace> {
+  final _tabs = ValueNotifier<int>(0);
   final _budgetForm = GlobalKey<FormState>();
   final _investForm = GlobalKey<FormState>();
   final _loanForm = GlobalKey<FormState>();
@@ -103,6 +100,10 @@ class _SimulationWorkspaceState extends State<SimulationWorkspace>
         );
     final tabHeight = (measurement.height + 20).clamp(56.0, double.infinity);
     measurement.dispose();
+    // Keep the same page widgets when only the selected tab changes. Form
+    // edits and recalculation still rebuild them through this state's setState.
+    final pages = [_budgetPage(), _investPage(), _loanPage()];
+    const labels = ['Budget', 'Investissement', 'Prêt'];
     return Scaffold(
       appBar: appPageBar(
         context,
@@ -110,32 +111,43 @@ class _SimulationWorkspaceState extends State<SimulationWorkspace>
         title: const Text('Simulation'),
         bottom: PreferredSize(
           preferredSize: Size.fromHeight(tabHeight),
-          child: TabBar(
-            controller: _tabs,
-            isScrollable: false,
-            labelPadding: const EdgeInsets.symmetric(horizontal: 8),
-            tabAlignment: TabAlignment.fill,
-            indicatorSize: TabBarIndicatorSize.tab,
-            labelStyle: labelStyle,
-            unselectedLabelStyle: labelStyle,
-            tabs: [
-              for (final label in ['Budget', 'Investissement', 'Prêt'])
-                Tab(
-                  height: tabHeight,
-                  child: Text(
-                    label,
-                    textAlign: TextAlign.center,
-                    softWrap: true,
-                  ),
-                ),
-            ],
+          child: ValueListenableBuilder<int>(
+            valueListenable: _tabs,
+            builder: (context, selected, _) => SizedBox(
+              key: const ValueKey('simulation-tabs'),
+              height: tabHeight,
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  for (var index = 0; index < labels.length; index++)
+                    Expanded(
+                      child: AppSelectionButton(
+                        key: ValueKey('simulation-tab-$index'),
+                        selected: selected == index,
+                        isTab: true,
+                        outlined: false,
+                        padding: const EdgeInsets.symmetric(horizontal: 8),
+                        onPressed: () => _tabs.value = index,
+                        child: Center(
+                          child: Text(
+                            labels[index],
+                            style: labelStyle,
+                            textAlign: TextAlign.center,
+                            softWrap: true,
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ),
           ),
         ),
       ),
-      body: TabBarView(
-        controller: _tabs,
-        physics: const NeverScrollableScrollPhysics(),
-        children: [_budgetPage(), _investPage(), _loanPage()],
+      body: ValueListenableBuilder<int>(
+        valueListenable: _tabs,
+        builder: (context, selected, _) =>
+            LazyPageStack(index: selected, children: pages),
       ),
     );
   }

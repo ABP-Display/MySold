@@ -5,6 +5,7 @@ class MonthPageHeader extends StatelessWidget {
   final String title, subtitle, eyebrow, monthLabel, compactMonthLabel;
   final String previousLabel, nextLabel;
   final VoidCallback onPrevious, onNext;
+  final VoidCallback? onChoose;
   const MonthPageHeader({
     super.key,
     required this.title,
@@ -16,6 +17,7 @@ class MonthPageHeader extends StatelessWidget {
     required this.nextLabel,
     required this.onPrevious,
     required this.onNext,
+    this.onChoose,
   });
   @override
   Widget build(BuildContext context) => LayoutBuilder(
@@ -29,6 +31,11 @@ class MonthPageHeader extends StatelessWidget {
         action: Container(
           key: const ValueKey('month-selector'),
           decoration: AppDesign.panel(context),
+          width: compact ? 148 : 236,
+          height: (MediaQuery.textScalerOf(context).scale(12) * 2.4 + 16).clamp(
+            48.0,
+            84.0,
+          ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -42,18 +49,30 @@ class MonthPageHeader extends StatelessWidget {
                   tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                 ),
               ),
-              Flexible(
+              Expanded(
                 child: Semantics(
                   label: monthLabel,
+                  button: onChoose != null,
+                  onTap: onChoose,
                   excludeSemantics: true,
-                  child: Text(
-                    compact ? compactMonthLabel : monthLabel,
-                    textAlign: TextAlign.center,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
+                  child: InkWell(
+                    key: const ValueKey('month-selector-choose'),
+                    onTap: onChoose,
+                    child: Center(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 4),
+                        child: Text(
+                          compact ? compactMonthLabel : monthLabel,
+                          textAlign: TextAlign.center,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            height: 1.2,
+                          ),
+                        ),
+                      ),
                     ),
                   ),
                 ),

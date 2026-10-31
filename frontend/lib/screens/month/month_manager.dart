@@ -1,6 +1,7 @@
 import 'package:mysold/widgets/page_activity_listener.dart';
 import 'package:mysold/widgets/cached_page_stack.dart';
 import 'package:mysold/widgets/month_page_header.dart';
+import 'package:mysold/widgets/month_year_picker.dart';
 import 'package:mysold/widgets/app_choice_tabs.dart';
 import 'package:mysold/widgets/app_select_field.dart';
 import 'package:mysold/widgets/app_design.dart';
@@ -234,10 +235,16 @@ class _MonthManagerState extends State<MonthManagerScreen> {
 
   void _selectMonth(DateTime month) {
     final normalizedMonth = _monthStart(month);
+    if (normalizedMonth == _monthStart(_currentMonth)) return;
     setState(() {
       _currentMonth = normalizedMonth;
     });
     _loadTransactionsForSelectedMonth(showLoader: true);
+  }
+
+  Future<void> _chooseMonth() async {
+    final selected = await showMonthYearPicker(context, _currentMonth);
+    if (mounted && selected != null) _selectMonth(selected);
   }
 
   String get _currentType =>
@@ -697,6 +704,7 @@ class _MonthManagerState extends State<MonthManagerScreen> {
                   nextLabel: _t('Mois suivant'),
                   onPrevious: _prevMonth,
                   onNext: _nextMonth,
+                  onChoose: _chooseMonth,
                 ),
               ),
               Padding(

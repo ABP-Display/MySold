@@ -28,6 +28,7 @@ class AppLocalizations {
         const {
           'Paramètres': 'Parametres',
           'Dépenses': 'Depenses',
+          'Réinitialiser': 'Reinitialiser',
           'Sécurité et confidentialité': 'Securite et confidentialite',
           'Données personnelles': 'Donnees personnelles',
           'À propos': 'A propos',
@@ -178,6 +179,27 @@ Pour toute demande concernant les données personnelles, l’utilisateur peut co
 ''',
   },
   'es': {
+    'Rechercher une catégorie': 'Buscar una categoría',
+    'Nom : A → Z': 'Nombre: A → Z',
+    'Nom : Z → A': 'Nombre: Z → A',
+    'Montant croissant': 'Importe ascendente',
+    'Montant décroissant': 'Importe descendente',
+    'Filtrer par montant': 'Filtrar por importe',
+    'Montant filtré': 'Importe filtrado',
+    'Montant cumulé des transactions de chaque catégorie.':
+        'Importe acumulado de las transacciones de cada categoría.',
+    'Saisissez un montant positif ou nul.':
+        'Introduce un importe mayor o igual a cero.',
+    'Le maximum doit être supérieur ou égal au minimum.':
+        'El máximo debe ser mayor o igual al mínimo.',
+    'Aucune catégorie ne correspond aux filtres.':
+        'Ninguna categoría coincide con los filtros.',
+    'Choisir un mois': 'Elegir un mes',
+    'Année': 'Año',
+    'Année précédente': 'Año anterior',
+    'Année suivante': 'Año siguiente',
+    'Saisissez une année entre 1 et 9999.': 'Introduce un año entre 1 y 9999.',
+    'Réinitialiser': 'Restablecer',
     'Évolution mensuelle': 'Evolución mensual',
     'Touchez ou survolez un mois pour voir les montants.':
         'Toca un mes o pasa el cursor para ver los importes.',
@@ -393,6 +415,28 @@ Pour toute demande concernant les données personnelles, l’utilisateur peut co
         '¿Seguro que quieres eliminar esta transacción?',
   },
   'de': {
+    'Rechercher une catégorie': 'Kategorie suchen',
+    'Nom : A → Z': 'Name: A → Z',
+    'Nom : Z → A': 'Name: Z → A',
+    'Montant croissant': 'Betrag aufsteigend',
+    'Montant décroissant': 'Betrag absteigend',
+    'Filtrer par montant': 'Nach Betrag filtern',
+    'Montant filtré': 'Betrag gefiltert',
+    'Montant cumulé des transactions de chaque catégorie.':
+        'Gesamtbetrag der Transaktionen jeder Kategorie.',
+    'Saisissez un montant positif ou nul.':
+        'Gib einen Betrag größer oder gleich null ein.',
+    'Le maximum doit être supérieur ou égal au minimum.':
+        'Das Maximum muss mindestens dem Minimum entsprechen.',
+    'Aucune catégorie ne correspond aux filtres.':
+        'Keine Kategorie entspricht den Filtern.',
+    'Choisir un mois': 'Monat auswählen',
+    'Année': 'Jahr',
+    'Année précédente': 'Vorheriges Jahr',
+    'Année suivante': 'Nächstes Jahr',
+    'Saisissez une année entre 1 et 9999.':
+        'Gib ein Jahr zwischen 1 und 9999 ein.',
+    'Réinitialiser': 'Zurücksetzen',
     'Évolution mensuelle': 'Monatliche Entwicklung',
     'Touchez ou survolez un mois pour voir les montants.':
         'Tippe auf einen Monat oder bewege den Zeiger darüber, um die Beträge zu sehen.',
@@ -501,6 +545,28 @@ Pour toute demande concernant les données personnelles, l’utilisateur peut co
     'Verification...': 'Prüfung...',
   },
   'it': {
+    'Rechercher une catégorie': 'Cerca una categoria',
+    'Nom : A → Z': 'Nome: A → Z',
+    'Nom : Z → A': 'Nome: Z → A',
+    'Montant croissant': 'Importo crescente',
+    'Montant décroissant': 'Importo decrescente',
+    'Filtrer par montant': 'Filtra per importo',
+    'Montant filtré': 'Importo filtrato',
+    'Montant cumulé des transactions de chaque catégorie.':
+        'Importo totale delle transazioni di ogni categoria.',
+    'Saisissez un montant positif ou nul.':
+        'Inserisci un importo maggiore o uguale a zero.',
+    'Le maximum doit être supérieur ou égal au minimum.':
+        'Il massimo deve essere maggiore o uguale al minimo.',
+    'Aucune catégorie ne correspond aux filtres.':
+        'Nessuna categoria corrisponde ai filtri.',
+    'Choisir un mois': 'Scegli un mese',
+    'Année': 'Anno',
+    'Année précédente': 'Anno precedente',
+    'Année suivante': 'Anno successivo',
+    'Saisissez une année entre 1 et 9999.':
+        'Inserisci un anno compreso tra 1 e 9999.',
+    'Réinitialiser': 'Reimposta',
     'Évolution mensuelle': 'Andamento mensile',
     'Touchez ou survolez un mois pour voir les montants.':
         'Tocca un mese o passa il puntatore per vedere gli importi.',
@@ -609,6 +675,23 @@ Pour toute demande concernant les données personnelles, l’utilisateur peut co
     'Verification...': 'Verifica...',
   },
   'ja': {
+    'Rechercher une catégorie': 'カテゴリを検索',
+    'Nom : A → Z': '名前：昇順',
+    'Nom : Z → A': '名前：降順',
+    'Montant croissant': '金額の昇順',
+    'Montant décroissant': '金額の降順',
+    'Filtrer par montant': '金額で絞り込む',
+    'Montant filtré': '金額の絞り込み中',
+    'Montant cumulé des transactions de chaque catégorie.': '各カテゴリの取引の合計金額。',
+    'Saisissez un montant positif ou nul.': '0以上の金額を入力してください。',
+    'Le maximum doit être supérieur ou égal au minimum.': '最大金額は最小金額以上にしてください。',
+    'Aucune catégorie ne correspond aux filtres.': '条件に一致するカテゴリはありません。',
+    'Choisir un mois': '月を選択',
+    'Année': '年',
+    'Année précédente': '前年',
+    'Année suivante': '翌年',
+    'Saisissez une année entre 1 et 9999.': '1から9999の年を入力してください。',
+    'Réinitialiser': 'リセット',
     'Évolution mensuelle': '月ごとの推移',
     'Touchez ou survolez un mois pour voir les montants.':
         '月をタップするか、カーソルを合わせると金額を確認できます。',
@@ -719,6 +802,26 @@ Pour toute demande concernant les données personnelles, l’utilisateur peut co
 
 const Map<String, Map<String, String>> _translations = {
   'en': {
+    'Rechercher une catégorie': 'Search categories',
+    'Nom : A → Z': 'Name: A → Z',
+    'Nom : Z → A': 'Name: Z → A',
+    'Montant croissant': 'Amount ascending',
+    'Montant décroissant': 'Amount descending',
+    'Filtrer par montant': 'Filter by amount',
+    'Montant filtré': 'Amount filtered',
+    'Montant cumulé des transactions de chaque catégorie.':
+        'Total transaction amount for each category.',
+    'Saisissez un montant positif ou nul.':
+        'Enter an amount greater than or equal to zero.',
+    'Le maximum doit être supérieur ou égal au minimum.':
+        'The maximum must be greater than or equal to the minimum.',
+    'Aucune catégorie ne correspond aux filtres.':
+        'No categories match the filters.',
+    'Choisir un mois': 'Choose a month',
+    'Année': 'Year',
+    'Année précédente': 'Previous year',
+    'Année suivante': 'Next year',
+    'Saisissez une année entre 1 et 9999.': 'Enter a year between 1 and 9999.',
     'Évolution mensuelle': 'Monthly trends',
     'Touchez ou survolez un mois pour voir les montants.':
         'Tap or hover over a month to see the amounts.',

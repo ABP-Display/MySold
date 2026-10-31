@@ -1,4 +1,9 @@
 import 'package:mysold/widgets/app_design.dart';
+import 'package:mysold/widgets/app_selection_button.dart';
+import 'package:mysold/widgets/lazy_page_stack.dart';
+import 'package:mysold/widgets/category_filter_bar.dart';
+import 'package:mysold/widgets/category_amount_filter.dart';
+import 'package:mysold/models/category_filter.dart';
 import 'package:mysold/data/document_store.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -19,9 +24,15 @@ class CategoriePage extends StatefulWidget {
   State<CategoriePage> createState() => _CategoriePageState();
 }
 
-class _CategoriePageState extends State<CategoriePage>
-    with SingleTickerProviderStateMixin {
-  late final TabController _tabController;
+class _CategoriePageState extends State<CategoriePage> {
+  int _selectedIndex = 0;
+  late Stream<QuerySnapshot<Map<String, dynamic>>> _categoryStream,
+      _transactionStream;
+  final _search = [TextEditingController(), TextEditingController()];
+  final _minimum = <double?>[null, null], _maximum = <double?>[null, null];
+  final _orders = [CategoryOrder.nameAscending, CategoryOrder.nameAscending];
+  QuerySnapshot<Map<String, dynamic>>? _aggregatedSnapshot;
+  final _totals = <String, double>{}, _counts = <String, int>{};
 
   CollectionReference<Map<String, dynamic>> get _categoriesRef {
     return DocumentStore.instance
@@ -40,7 +51,44 @@ class _CategoriePageState extends State<CategoriePage>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
+    _createStreams();
+  }
+
+  void _createStreams() {
+    _categoryStream = _categoriesRef.snapshots();
+    _transactionStream = _transactionsRef.snapshots();
+    _aggregatedSnapshot = null;
+    _totals.clear();
+    _counts.clear();
+  }
+
+  @override
+  void didUpdateWidget(covariant CategoriePage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.userId != widget.userId) {
+      for (var i = 0; i < 2; i++) {
+        _search[i].clear();
+        _minimum[i] = null;
+        _maximum[i] = null;
+        _orders[i] = CategoryOrder.nameAscending;
+      }
+      _createStreams();
+    }
+  }
+
+  Future<void> _openAmountFilter(int index) async {
+    final result = await showAppSheet<CategoryAmountRange>(
+      context: context,
+      builder: (_) => CategoryAmountFilter(
+        minimum: _minimum[index],
+        maximum: _maximum[index],
+      ),
+    );
+    if (mounted && result != null)
+      setState(() {
+        _minimum[index] = result.minimum;
+        _maximum[index] = result.maximum;
+      });
   }
 
   Future<void> _openAddCategorie({DocumentSnapshot? doc}) async {
@@ -49,7 +97,7 @@ class _CategoriePageState extends State<CategoriePage>
       MaterialPageRoute(
         builder: (context) => AddCategoryPage(
           userId: widget.userId,
-          existingData: doc?.data() as Map<String, dynamic>?,
+          existingData: doc?.data(),
           categoryId: doc?.id,
         ),
       ),
@@ -127,18 +175,42 @@ class _CategoriePageState extends State<CategoriePage>
 
   @override
   Widget build(BuildContext context) {
+    final tabHeight = (MediaQuery.textScalerOf(context).scale(14) * 1.5 + 24)
+        .clamp(52.0, 96.0)
+        .toDouble();
     return Scaffold(
       appBar: appPageBar(
         context,
         title: Text(context.tr('Gestion des categories')),
-        bottom: TabBar(
-          controller: _tabController,
-          splashFactory: NoSplash.splashFactory,
-          overlayColor: WidgetStateProperty.all(Colors.transparent),
-          tabs: [
-            Tab(text: context.tr('Depenses')),
-            Tab(text: context.tr('Revenus')),
-          ],
+        bottom: PreferredSize(
+          preferredSize: Size.fromHeight(tabHeight),
+          child: SizedBox(
+            height: tabHeight,
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                for (var index = 0; index < 2; index++)
+                  Expanded(
+                    child: AppSelectionButton(
+                      key: ValueKey('category-tab-$index'),
+                      selected: index == _selectedIndex,
+                      isTab: true,
+                      outlined: false,
+                      onPressed: () {
+                        if (index != _selectedIndex)
+                          setState(() => _selectedIndex = index);
+                      },
+                      child: Center(
+                        child: Text(
+                          context.tr(index == 0 ? 'Dépenses' : 'Revenus'),
+                          style: const TextStyle(fontSize: 14, height: 1.2),
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
         ),
       ),
       floatingActionButton: FloatingActionButton.extended(
@@ -146,95 +218,148 @@ class _CategoriePageState extends State<CategoriePage>
         icon: const Icon(Icons.add),
         label: Text(context.tr('Categorie')),
       ),
-      body: TabBarView(
-        controller: _tabController,
-        children: [_buildTabContent('expense'), _buildTabContent('income')],
+      body: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+        stream: _categoryStream,
+        builder: (context, categories) =>
+            StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+              stream: _transactionStream,
+              builder: (context, transactions) {
+                if (categories.hasError || transactions.hasError)
+                  return Center(
+                    child: Text(
+                      '${context.tr('Erreur')} : ${categories.error ?? transactions.error}',
+                    ),
+                  );
+                if (!categories.hasData || !transactions.hasData)
+                  return const Center(child: CircularProgressIndicator());
+                if (!identical(_aggregatedSnapshot, transactions.data)) {
+                  _aggregatedSnapshot = transactions.data;
+                  _totals.clear();
+                  _counts.clear();
+                  for (final doc in transactions.data!.docs) {
+                    final data = doc.data();
+                    if (data['type'] != 'income' && data['type'] != 'expense')
+                      continue;
+                    final reference = data['categoryId'];
+                    final id = reference is DocumentReference
+                        ? reference.id
+                        : reference?.toString();
+                    if (id == null || id.isEmpty) continue;
+                    _totals[id] =
+                        (_totals[id] ?? 0) +
+                        (data['amount'] as num? ?? 0).toDouble();
+                    _counts[id] = (_counts[id] ?? 0) + 1;
+                  }
+                }
+                final models = categories.data!.docs
+                    .map(
+                      (doc) => _CategoryViewModel.fromFirestore(
+                        doc.id,
+                        doc.data(),
+                        doc,
+                      ),
+                    )
+                    .toList();
+                return LazyPageStack(
+                  index: _selectedIndex,
+                  children: [
+                    _buildTabContent('expense', models),
+                    _buildTabContent('income', models),
+                  ],
+                );
+              },
+            ),
       ),
     );
   }
 
-  Widget _buildTabContent(String type) {
+  Widget _buildTabContent(String type, List<_CategoryViewModel> models) {
     final currency = context.watch<CurrencyProvider>().currency;
     final privacy = context.watch<PrivacyProvider>();
     final isExpense = type == 'expense';
-
-    return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-      stream: _categoriesRef.where('type', isEqualTo: type).snapshots(),
-      builder: (context, categorySnapshot) {
-        if (categorySnapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
-        }
-
-        if (categorySnapshot.hasError) {
-          return Center(
-            child: Text('${context.tr('Erreur')} : ${categorySnapshot.error}'),
+    final index = isExpense ? 0 : 1;
+    final categories = models
+        .where((category) => category.type == type)
+        .toList();
+    if (categories.isEmpty) return _buildEmptyState(isExpense);
+    final total = categories.fold(
+      0.0,
+      (sum, category) => sum + (_totals[category.id] ?? 0),
+    );
+    final filter = CategoryFilter(
+      query: _search[index].text,
+      minimum: _minimum[index],
+      maximum: _maximum[index],
+      order: _orders[index],
+    );
+    final visible =
+        categories
+            .where(
+              (category) =>
+                  filter.matches(category.name, _totals[category.id] ?? 0),
+            )
+            .toList()
+          ..sort(
+            (a, b) => filter.compare(
+              a.name,
+              _totals[a.id] ?? 0,
+              b.name,
+              _totals[b.id] ?? 0,
+            ),
           );
-        }
-
-        final categories = (categorySnapshot.data?.docs ?? []).map((doc) {
-          final data = doc.data();
-          return _CategoryViewModel.fromFirestore(doc.id, data, doc);
-        }).toList()..sort((a, b) => a.name.compareTo(b.name));
-
-        return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-          stream: _transactionsRef.where('type', isEqualTo: type).snapshots(),
-          builder: (context, transactionSnapshot) {
-            if (transactionSnapshot.hasError) {
-              return Center(
-                child: Text(
-                  '${context.tr('Erreur')} : ${transactionSnapshot.error}',
-                ),
-              );
-            }
-
-            final totals = <String, double>{};
-            final counts = <String, int>{};
-            for (final doc in transactionSnapshot.data?.docs ?? []) {
-              final data = doc.data();
-              final categoryId = data['categoryId'] as String?;
-              if (categoryId == null) continue;
-
-              totals[categoryId] =
-                  (totals[categoryId] ?? 0) + (data['amount'] ?? 0).toDouble();
-              counts[categoryId] = (counts[categoryId] ?? 0) + 1;
-            }
-
-            final totalAmount = categories.fold(0.0, (sum, category) {
-              return sum + (totals[category.id] ?? 0);
-            });
-
-            if (categories.isEmpty) {
-              return _buildEmptyState(isExpense);
-            }
-
-            return ListView(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 96),
-              children: [
-                _buildHeader(
-                  isExpense: isExpense,
-                  count: categories.length,
-                  totalAmount: totalAmount,
-                  currency: currency,
-                  privacy: privacy,
-                ),
-                const SizedBox(height: 16),
-                ...categories.map(
-                  (category) => Padding(
-                    padding: const EdgeInsets.only(bottom: 12),
-                    child: _buildCategoryCard(
-                      category: category,
-                      amount: totals[category.id] ?? 0,
-                      transactionCount: counts[category.id] ?? 0,
-                      totalAmount: totalAmount,
-                      currency: currency,
-                      isExpense: isExpense,
-                      privacy: privacy,
-                    ),
-                  ),
-                ),
-              ],
-            );
-          },
+    return ListView.builder(
+      key: PageStorageKey('category-list-$type'),
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 96),
+      itemCount: 2 + (visible.isEmpty ? 1 : visible.length),
+      itemBuilder: (context, position) {
+        if (position == 0)
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 16),
+            child: _buildHeader(
+              isExpense: isExpense,
+              count: categories.length,
+              totalAmount: total,
+              currency: currency,
+              privacy: privacy,
+            ),
+          );
+        if (position == 1)
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 16),
+            child: CategoryFilterBar(
+              controller: _search[index],
+              order: _orders[index],
+              amountFiltered:
+                  _minimum[index] != null || _maximum[index] != null,
+              onSearch: (_) => setState(() {}),
+              onOrder: (order) => setState(() => _orders[index] = order),
+              onAmount: () => _openAmountFilter(index),
+              onClearAmount: () => setState(() {
+                _minimum[index] = null;
+                _maximum[index] = null;
+              }),
+            ),
+          );
+        if (visible.isEmpty)
+          return Padding(
+            padding: const EdgeInsets.all(24),
+            child: Text(
+              context.tr('Aucune catégorie ne correspond aux filtres.'),
+              textAlign: TextAlign.center,
+            ),
+          );
+        final category = visible[position - 2];
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 12),
+          child: _buildCategoryCard(
+            category: category,
+            amount: _totals[category.id] ?? 0,
+            transactionCount: _counts[category.id] ?? 0,
+            totalAmount: total,
+            currency: currency,
+            isExpense: isExpense,
+            privacy: privacy,
+          ),
         );
       },
     );
@@ -429,7 +554,7 @@ class _CategoriePageState extends State<CategoriePage>
 
   Widget _buildEmptyState(bool isExpense) {
     return Center(
-      child: Padding(
+      child: SingleChildScrollView(
         padding: const EdgeInsets.all(28),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -490,7 +615,9 @@ class _CategoriePageState extends State<CategoriePage>
 
   @override
   void dispose() {
-    _tabController.dispose();
+    for (final controller in _search) {
+      controller.dispose();
+    }
     super.dispose();
   }
 }

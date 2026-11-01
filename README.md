@@ -365,15 +365,6 @@ compte sont révoquées. L’administrateur doit vérifier l’identité de la p
 
 ## Données persistantes et sauvegardes
 
-La vue **Global** compare les comptes et catégories à une référence annuelle
-conservée en base. La référence initiale est estimée avec l'historique disponible,
-puis les références suivantes sont enregistrées au changement d'année, avant la
-première écriture financière ou à la première consultation. Les opérations ne
-sont jamais remises à zéro. Pour les catégories, les valeurs représentent le
-cumul des opérations, et non un solde disponible. Les résultats sont calculés
-côté serveur et mis en cache. Voir les détails dans le
-[guide des données](docs/DONNEES.md#références-annuelles-de-la-vue-global).
-
 Les volumes sont déclarés directement dans `compose.yaml` :
 
 ```text
@@ -444,6 +435,18 @@ Le catalogue d’icônes utilise des codes dynamiques : conserver
 `--no-tree-shake-icons`. La configuration Nginx sert `/api/` et Flutter sur la
 même origine. Un simple `flutter run` sans proxy vers l’API ne suffit pas.
 
+## Statistiques et vue annuelle
+
+**Stats mensuelles** permet de sélectionner un mois, de le comparer à M−1
+(à date égale ou en entier) et d'estimer le reste en fin de mois. Le suivi
+quotidien des dépenses, leurs catégories principales, le panier moyen, les
+jours sans dépense et le classement des opérations utilisent la même lecture
+du mois et de M−1. Les opérations futures sont exclues des indicateurs courants.
+
+**Annuel** regroupe les synthèses et graphiques de l'année sélectionnée.
+Les comptes et catégories se consultent dans **Profil**. Les références de
+solde annuelles et leurs calculs par compte/catégorie sont retirés.
+
 ## Polices et performances web
 
 Les thèmes et l’authentification utilisent des polices embarquées. Noto Sans
@@ -465,7 +468,7 @@ changent immédiatement de sélection, sans animation de texte, de couleur ou de
 vague au clic. Le survol et
 le focus au clavier restent visibles. Les pages déjà ouvertes conservent leur
 état et leur défilement ; revenir sur « Mois » ne reconstruit pas ses graphiques
-si les données sont inchangées. Les sections de « Stats » et « Global » sont
+si les données sont inchangées. Les sections de « Stats mensuelles » et « Annuel » sont
 construites au fur et à mesure des besoins du défilement.
 
 ## Formulaires et extensions du navigateur

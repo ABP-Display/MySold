@@ -288,11 +288,22 @@ class AppWorkspace extends StatelessWidget {
                                 children: [
                                   Icon(destinations[index].icon, size: 22),
                                   const SizedBox(height: 4),
-                                  Text(
-                                    context.tr(destinations[index].label),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: const TextStyle(fontSize: 12),
+                                  SizedBox(
+                                    height:
+                                        MediaQuery.textScalerOf(
+                                          context,
+                                        ).scale(12) *
+                                        2.3,
+                                    child: Text(
+                                      context.tr(destinations[index].label),
+                                      maxLines: 2,
+                                      overflow: TextOverflow.ellipsis,
+                                      textAlign: TextAlign.center,
+                                      style: const TextStyle(
+                                        fontSize: 12,
+                                        height: 1.15,
+                                      ),
+                                    ),
                                   ),
                                 ],
                               ),

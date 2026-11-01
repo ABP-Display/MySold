@@ -28,9 +28,24 @@ Les titres des pages utilisent une taille commune de 28 pixels sur mobile et
 ordinateur, avec le même alignement à gauche et les mêmes espacements.
 Les titres des pages secondaires peuvent revenir à la ligne et leur barre
 de navigation adapte sa hauteur au texte, y compris avec un texte agrandi.
-Dans le budget mensuel et la vue globale, le sélecteur est à droite du titre ;
+Dans le budget mensuel, les statistiques mensuelles et la vue annuelle, le sélecteur est à droite du titre ;
 le mois est abrégé sur petit écran. Si la largeur ou le texte agrandi ne permet
 plus cette disposition, le sélecteur passe dessous, aligné à droite.
+
+La navigation distingue « Stats mensuelles » et « Annuel ». Les statistiques
+chargent uniquement le mois sélectionné et M−1. La comparaison à date égale
+est proposée pour un mois en cours ; les mois terminés sont comparés en entier.
+Le rythme des dépenses cumule les montants par jour, avec une zone de lecture
+fixe sous le graphique et un curseur utilisable au toucher ou au clavier.
+Les parts des catégories incluent une ligne « Autres » au-delà des cinq postes
+principaux. Les habitudes et le classement des opérations utilisent les mêmes
+données, sans requête supplémentaire. Les opérations futures et les transferts
+sont exclus des indicateurs de consommation. La projection prolonge le rythme
+des dépenses observées, sans inventer de revenus futurs.
+
+Les comptes et catégories se consultent dans Profil. Les références annuelles,
+leur cache serveur et les comparaisons annuelles par compte/catégorie sont
+retirés ; aucune capture de solde ni tâche annuelle n'est exécutée.
 La page PIN garde son fond noir et le logo original : logo centré, titre dessous,
 puis texte d’aide et espace de 32 pixels avant la saisie.
 Les cadres d’information des graphiques en barres et de la répartition des

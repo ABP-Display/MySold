@@ -52,25 +52,3 @@ CREATE TABLE IF NOT EXISTS mfa_challenges (
     expires_at timestamptz NOT NULL
 );
 CREATE INDEX IF NOT EXISTS mfa_challenges_user ON mfa_challenges(user_id);
--- Small server-owned annual references, included in normal PostgreSQL backups.
-CREATE TABLE IF NOT EXISTS annual_tracking (
-    user_id text PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
-    time_zone text NOT NULL,
-    revision bigint NOT NULL DEFAULT 0,
-    started_at timestamptz NOT NULL DEFAULT now()
-);
-CREATE TABLE IF NOT EXISTS annual_snapshots (
-    user_id text NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    year integer NOT NULL,
-    data jsonb NOT NULL,
-    created_at timestamptz NOT NULL DEFAULT now(),
-    PRIMARY KEY (user_id, year)
-);
-CREATE TABLE IF NOT EXISTS annual_report_cache (
-    user_id text NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    year integer NOT NULL,
-    revision bigint NOT NULL,
-    as_of date NOT NULL,
-    data jsonb NOT NULL,
-    PRIMARY KEY (user_id, year)
-);

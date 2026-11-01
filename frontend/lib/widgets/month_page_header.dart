@@ -51,6 +51,7 @@ class MonthPageHeader extends StatelessWidget {
               ),
               Expanded(
                 child: Semantics(
+                  container: true,
                   label: monthLabel,
                   button: onChoose != null,
                   onTap: onChoose,

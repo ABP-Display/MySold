@@ -1,14 +1,8 @@
-import 'dart:async';
-import 'package:mysold/services/client_timezone.dart';
 import 'package:mysold/services/budget_service.dart';
 import 'package:mysold/widgets/lazy_section_list.dart';
 import 'package:mysold/widgets/graphiques/app_charts.dart';
 import 'package:mysold/widgets/graphiques/annual_flow_chart.dart';
 import 'package:mysold/widgets/app_design.dart';
-import 'package:mysold/widgets/annual_evolution_section.dart';
-import 'package:mysold/widgets/app_selection_button.dart';
-import 'package:mysold/models/annual_evolution.dart';
-import 'package:mysold/data/api_client.dart';
 
 import 'package:mysold/data/document_store.dart';
 import 'package:mysold/data/local_auth.dart';
@@ -31,54 +25,9 @@ class DashboardScreen extends StatefulWidget {
   State<DashboardScreen> createState() => _DashboardScreenState();
 }
 
-class _DashboardScreenState extends State<DashboardScreen>
-    with WidgetsBindingObserver {
-  Timer? _dayRefresh;
-  int _calendarYear = DateTime.now().year;
-
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addObserver(this);
-    _scheduleDayRefresh();
-  }
-
-  void _scheduleDayRefresh() {
-    _dayRefresh?.cancel();
-    final now = DateTime.now();
-    _dayRefresh = Timer(
-      DateTime(now.year, now.month, now.day + 1).difference(now) +
-          const Duration(seconds: 1),
-      _refreshCalendar,
-    );
-  }
-
-  void _refreshCalendar() {
-    if (!mounted) return;
-    final year = DateTime.now().year;
-    setState(() {
-      if (_selectedYear == _calendarYear) _selectedYear = year;
-      _calendarYear = year;
-      _yearCache.clear();
-    });
-    _scheduleDayRefresh();
-  }
-
-  @override
-  void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.resumed) _refreshCalendar();
-  }
-
-  @override
-  void dispose() {
-    _dayRefresh?.cancel();
-    WidgetsBinding.instance.removeObserver(this);
-    super.dispose();
-  }
-
+class _DashboardScreenState extends State<DashboardScreen> {
   final Map<int, Future<_AnnualDashboardData>> _yearCache = {};
   int _selectedYear = DateTime.now().year;
-  bool _showIncomeCategories = false;
   int? _lastFinancialDataVersion;
   int? _lastReferenceDataVersion;
   final Set<_MonthlyChartSeries> _monthlyChartSeries = {
@@ -98,17 +47,10 @@ class _DashboardScreenState extends State<DashboardScreen>
     final transactionsFuture = BudgetService(
       userId: uid,
     ).getTransactionsForYear(year);
-    final evolutionFuture = ApiClient.instance.request('annual-evolution', {
-      'year': year,
-      'timeZone': clientTimeZone(),
-    });
-
-    final (accountSnapshot, transactions, report) = await (
+    final (accountSnapshot, transactions) = await (
       accountFuture,
       transactionsFuture,
-      evolutionFuture,
     ).wait;
-    final evolution = AnnualEvolution.fromMap(report);
     final accounts = accountSnapshot.docs
         .map(
           (doc) => (balance: (doc.data()['balance'] as num? ?? 0).toDouble()),
@@ -148,7 +90,6 @@ class _DashboardScreenState extends State<DashboardScreen>
 
     return _AnnualDashboardData(
       year: year,
-      evolution: evolution,
       incomeTotal: incomeTotal,
       expenseTotal: expenseTotal,
       investmentTotal: investmentTotal,
@@ -213,11 +154,11 @@ class _DashboardScreenState extends State<DashboardScreen>
         return RefreshIndicator(
           onRefresh: _refresh,
           child: LazySectionList(
-            gaps: const [0, 16, 18, 18, 18, 18, 18],
+            gaps: const [0, 16, 18, 18, 18],
             sections: [
               (_) => PageIntro(
                 eyebrow: context.tr('PATRIMOINE'),
-                title: context.tr('Vue globale'),
+                title: context.tr('Annuel'),
                 subtitle: context.tr(
                   'Une vue d’ensemble de vos comptes et de votre année.',
                 ),
@@ -247,9 +188,7 @@ class _DashboardScreenState extends State<DashboardScreen>
               (_) => _buildHeader(data, currency, privacy),
               (_) => _buildSummaryGrid(data, currency, privacy),
               (_) => _buildWealthEvolution(data, currency, privacy),
-              (_) => _buildAccountsSection(data, currency, privacy),
               (_) => _buildMonthlyChart(data, currency, privacy),
-              (_) => _buildExpenseCategories(data, currency, privacy),
               (_) => _buildQuickStats(data, currency, privacy),
             ],
           ),
@@ -485,38 +424,6 @@ class _DashboardScreenState extends State<DashboardScreen>
     );
   }
 
-  Widget _buildAccountsSection(
-    _AnnualDashboardData data,
-    String currency,
-    PrivacyProvider privacy,
-  ) {
-    final evolution = data.evolution;
-    final locale = Localizations.localeOf(context).toString();
-    return AnnualEvolutionSection(
-      key: ValueKey('account-evolution-${data.year}'),
-      title: context.tr('Évolution des comptes'),
-      subtitle: context.tr(
-        'Référence annuelle conservée, comparée au solde de fin de période.',
-      ),
-      icon: Icons.account_balance_wallet_outlined,
-      beginningLabel: DateFormat.yMMMd(locale).format(DateTime(data.year)),
-      endingLabel: DateFormat.yMMMd(locale).format(evolution.endingDate),
-      entries: evolution.accounts,
-      currency: currency,
-      hideAmounts: privacy.hideAmounts,
-      emptyLabel: context.tr(
-        evolution.isFuture
-            ? 'Cette année n’a pas encore commencé.'
-            : 'Aucun compte disponible.',
-      ),
-      note: context.tr(
-        evolution.source == 'reconstructed'
-            ? 'Première référence reconstituée avec les opérations disponibles, puis conservée. Les anciens ajustements manuels ne peuvent pas être reconstitués.'
-            : 'Référence conservée au changement d’année. Les variations incluent les opérations et les ajustements de solde.',
-      ),
-    );
-  }
-
   void _toggleMonthlyChartSeries(_MonthlyChartSeries series) {
     setState(() {
       if (_monthlyChartSeries.contains(series)) {
@@ -736,56 +643,6 @@ class _DashboardScreenState extends State<DashboardScreen>
               ],
             ),
         ],
-      ),
-    );
-  }
-
-  Widget _buildExpenseCategories(
-    _AnnualDashboardData data,
-    String currency,
-    PrivacyProvider privacy,
-  ) {
-    final evolution = data.evolution;
-    final locale = Localizations.localeOf(context).toString();
-    final first = DateFormat.yMMMd(locale).format(DateTime(data.year));
-    final last = DateFormat.yMMMd(locale).format(evolution.endingDate);
-    return AnnualEvolutionSection(
-      key: ValueKey('category-evolution-${data.year}-$_showIncomeCategories'),
-      title: context.tr('Évolution des catégories'),
-      subtitle: context.tr(
-        'Cumul des opérations au début de l’année et à la date indiquée.',
-      ),
-      icon: Icons.category_outlined,
-      beginningLabel: first,
-      endingLabel: last,
-      entries: _showIncomeCategories ? evolution.income : evolution.expenses,
-      currency: currency,
-      hideAmounts: privacy.hideAmounts,
-      lowerIsBetter: !_showIncomeCategories,
-      emptyLabel: context.tr(
-        evolution.isFuture
-            ? 'Cette année n’a pas encore commencé.'
-            : 'Aucune catégorie disponible.',
-      ),
-      controls: Row(
-        children: [
-          for (final income in [false, true]) ...[
-            if (income) const SizedBox(width: 8),
-            Expanded(
-              child: AppSelectionButton(
-                selected: _showIncomeCategories == income,
-                onPressed: () => setState(() => _showIncomeCategories = income),
-                child: Text(
-                  context.tr(income ? 'Revenus' : 'Dépenses'),
-                  textAlign: TextAlign.center,
-                ),
-              ),
-            ),
-          ],
-        ],
-      ),
-      note: context.tr(
-        'La différence correspond aux opérations ajoutées depuis la référence annuelle. Le cumul n’est pas un solde disponible. Une base nulle ne permet pas de calculer un taux.',
       ),
     );
   }
@@ -1123,7 +980,6 @@ const _monthLabels = [
 
 class _AnnualDashboardData {
   final int year;
-  final AnnualEvolution evolution;
   final double incomeTotal;
   final double expenseTotal;
   final double investmentTotal;
@@ -1136,7 +992,6 @@ class _AnnualDashboardData {
 
   const _AnnualDashboardData({
     required this.year,
-    required this.evolution,
     required this.incomeTotal,
     required this.expenseTotal,
     required this.investmentTotal,
@@ -1163,7 +1018,6 @@ class _AnnualDashboardData {
   factory _AnnualDashboardData.empty(int year) {
     return _AnnualDashboardData(
       year: year,
-      evolution: AnnualEvolution.empty(year),
       incomeTotal: 0,
       expenseTotal: 0,
       investmentTotal: 0,

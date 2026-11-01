@@ -83,7 +83,7 @@ void main() {
               selectedIndex: selected,
               destinations: const [
                 WorkspaceDestination('Mois', Icons.calendar_month),
-                WorkspaceDestination('Stats', Icons.bar_chart),
+                WorkspaceDestination('Stats mensuelles', Icons.bar_chart),
                 WorkspaceDestination('Profil', Icons.person),
               ],
               onSelected: (index) => setState(() => selected = index),

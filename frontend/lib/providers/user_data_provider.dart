@@ -60,8 +60,7 @@ class UserDataProvider extends ChangeNotifier {
 
     final loadedAt = _lastReferenceLoad;
     final isFresh = loadedAt != null &&
-        DateTime.now().difference(loadedAt) < _cacheDuration &&
-        hasReferences;
+        DateTime.now().difference(loadedAt) < _cacheDuration;
 
     if (!forceRefresh && isFresh) return Future.value();
     if (!forceRefresh && _referenceLoadFuture != null) {

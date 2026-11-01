@@ -136,7 +136,7 @@ class InstallationTests(unittest.TestCase):
         self.compose('exec', '-T', 'db', 'createdb', '-U', 'budget_owner', 'mysold_test')
         self.compose('exec', '-T', '-e', 'POSTGRES_DB=mysold_test', 'api',
                      'python', '-m', 'unittest', '-v',
-                     'test_api', 'test_mfa', 'test_totp', 'test_origin_policy', 'test_annual_evolution')
+                     'test_api', 'test_mfa', 'test_totp', 'test_origin_policy')
 
 
 if __name__ == '__main__':

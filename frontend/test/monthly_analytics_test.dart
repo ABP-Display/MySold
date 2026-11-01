@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/gestures.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:mysold/models/monthly_analytics.dart';
 import 'package:mysold/screens/settings/theme_settings.dart';
 import 'package:mysold/widgets/analytics/monthly_analytics_sections.dart';
+import 'package:mysold/widgets/analytics/monthly_analysis_chart.dart';
 import 'package:mysold/widgets/privacy/privacy_chart_mask.dart';
 import 'package:mysold/widgets/month_page_header.dart';
 import 'package:mysold/widgets/lazy_section_list.dart';
@@ -14,327 +16,377 @@ MonthlyOperation operation(
   double amount,
   DateTime date, {
   String type = 'expense',
-  String? category = 'food',
-  String? label,
-}) => MonthlyOperation(
-  id: id,
-  type: type,
-  amount: amount,
-  date: date,
-  categoryId: category,
-  description: label ?? id,
-);
-
-MonthlyAnalytics fixture() => MonthlyAnalytics.build(
+}) => MonthlyOperation(id: id, type: type, amount: amount, date: date);
+MonthlyAnalytics fixture({bool full = false}) => MonthlyAnalytics.build(
   month: DateTime(2026, 11),
   now: DateTime(2026, 11, 15),
-  categoryNames: {'food': 'Alimentation et achats pour la maison'},
+  sameDayComparison: !full,
   transactions: [
-    operation('Salaire reçu', 2000, DateTime(2026, 11, 1), type: 'income'),
-    operation('Courses importantes', 150, DateTime(2026, 11, 2)),
-    operation('Courses récentes', 50, DateTime(2026, 11, 14)),
-    operation('Investissement', 300, DateTime(2026, 11, 3), type: 'investment'),
-    operation('Ancien mois', 180, DateTime(2026, 10, 2)),
-    operation('Salaire précédent', 1800, DateTime(2026, 10, 1), type: 'income'),
+    operation('income', 2000, DateTime(2026, 11, 1), type: 'income'),
+    operation('expense', 150, DateTime(2026, 11, 2)),
+    operation('recent', 50, DateTime(2026, 11, 14)),
+    operation('investment', 300, DateTime(2026, 11, 3), type: 'investment'),
+    operation('transfer', 400, DateTime(2026, 11, 4), type: 'transfer'),
+    operation('old-expense', 180, DateTime(2026, 10, 2)),
+    operation('old-income', 1800, DateTime(2026, 10, 1), type: 'income'),
+    operation('old-investment', 100, DateTime(2026, 10, 3), type: 'investment'),
+    operation('old-transfer', 200, DateTime(2026, 10, 4), type: 'transfer'),
+    operation('old-late', 20, DateTime(2026, 10, 25)),
   ],
 );
 
 void main() {
-  testWidgets(
-    'Month choice is a separate accessible button inside a lazy stats header',
-    (tester) async {
-      final semantics = tester.ensureSemantics();
-      var choices = 0;
-      await tester.pumpWidget(
-        MaterialApp(
-          home: Scaffold(
-            body: LazySectionList(
-              gaps: const [16],
-              sections: [
-                (_) => MonthPageHeader(
-                  title: 'Stats mensuelles',
-                  subtitle: 'Votre mois, comparé et expliqué.',
-                  eyebrow: 'ANALYSE',
-                  monthLabel: 'novembre 2026',
-                  compactMonthLabel: 'nov. 2026',
-                  previousLabel: 'Mois précédent',
-                  nextLabel: 'Mois suivant',
-                  onPrevious: () {},
-                  onNext: () {},
-                  onChoose: () => choices++,
-                ),
-                (_) => const Text('Résumé du mois'),
-              ],
-            ),
-          ),
-        ),
-      );
-      await tester.pumpAndSettle();
-      expect(find.bySemanticsLabel('novembre 2026'), findsOneWidget);
-      await tester.tap(find.byKey(const ValueKey('month-selector-choose')));
-      await tester.pumpAndSettle();
-      expect(choices, 1);
-      semantics.dispose();
-    },
-  );
-  testWidgets('The spending chart permits mouse-wheel page scrolling', (
-    tester,
-  ) async {
-    final scroll = ScrollController();
-    addTearDown(scroll.dispose);
-    await tester.pumpWidget(
-      MaterialApp(
-        home: Scaffold(
-          body: ListView(
-            controller: scroll,
-            children: [
-              MonthlySpendingChart(
-                data: fixture(),
-                currency: '€',
-                hidden: false,
-              ),
-              const SizedBox(height: 1500),
-            ],
-          ),
-        ),
-      ),
-    );
-    await tester.pumpAndSettle();
-    final position = tester.getCenter(find.byType(LineChart));
-    final mouse = await tester.createGesture(kind: PointerDeviceKind.mouse);
-    await mouse.addPointer(location: position);
-    await tester.sendEventToBinding(
-      PointerScrollEvent(position: position, scrollDelta: const Offset(0, 180)),
-    );
-    await tester.pumpAndSettle();
-    expect(scroll.offset, greaterThan(0));
-    await mouse.removePointer();
-    expect(tester.takeException(), isNull);
-  });
-  testWidgets('The spending chart permits vertical page scrolling on touch', (
-    tester,
-  ) async {
-    final scroll = ScrollController();
-    addTearDown(scroll.dispose);
-    await tester.pumpWidget(
-      MaterialApp(
-        home: Scaffold(
-          body: ListView(
-            controller: scroll,
-            children: [
-              MonthlySpendingChart(
-                data: fixture(),
-                currency: '€',
-                hidden: false,
-              ),
-              const SizedBox(height: 1500),
-            ],
-          ),
-        ),
-      ),
-    );
-    await tester.pumpAndSettle();
-    await tester.drag(find.byType(LineChart), const Offset(0, -180));
-    await tester.pumpAndSettle();
-    expect(scroll.offset, greaterThan(0));
-    expect(tester.takeException(), isNull);
-  });
   test(
-    'Equal dates exclude future operations and transfers; full comparison includes later M-1 days',
+    'All series include daily and cumulative amounts, with transfers outside the remainder',
     () {
-      final rows = [
-        operation('today', .1, DateTime(2026, 11, 5, 23)),
-        operation('second', .2, DateTime(2026, 11, 5)),
-        operation('future', 999, DateTime(2026, 11, 6)),
-        operation('transfer', 100, DateTime(2026, 11, 2), type: 'transfer'),
-        operation('early', 10, DateTime(2026, 10, 5)),
-        operation('late', 30, DateTime(2026, 10, 20)),
-      ];
-      final equal = MonthlyAnalytics.build(
-        month: DateTime(2026, 11),
-        now: DateTime(2026, 11, 5),
-        transactions: rows,
-      );
-      expect(equal.current.expense, .3);
-      expect(equal.previous.expense, 10);
-      expect(equal.previousDays, 5);
-      expect(equal.cumulativeExpense.last, .3);
-      expect(equal.daysWithoutExpense, 4);
-      final full = MonthlyAnalytics.build(
-        month: DateTime(2026, 11),
-        now: DateTime(2026, 11, 5),
-        transactions: rows,
-        sameDayComparison: false,
-      );
-      expect(full.previous.expense, 40);
-      expect(full.current.expense, .3);
+      final data = fixture();
+      expect(data.current.income, 2000);
+      expect(data.current.expense, 200);
+      expect(data.current.investment, 300);
+      expect(data.current.available, 1500);
+      expect(data.current.transfer, 400);
+      expect(data.projectedAvailable, 1300);
+      for (final series in MonthlySeries.values) {
+        expect(data.values(series).last, data.current.value(series));
+        expect(
+          data.values(series, previous: true).last,
+          data.previous.value(series),
+        );
+      }
+      expect(data.values(MonthlySeries.remaining, cumulative: false)[1], -150);
+      expect(data.values(MonthlySeries.transfer, cumulative: false)[3], 400);
+      expect(data.dailyCount[3], 1);
+      expect(data.dailyCount.fold(0, (a, b) => a + b), 5);
+      expect(data.financialOperationCount, 4);
     },
   );
   test(
-    'January includes December M-1; leap months and shorter previous months are capped',
+    'Equal-date and full-month modes apply to all M-1 series without fabricating missing days',
     () {
-      final january = MonthlyAnalytics.build(
-        month: DateTime(2027, 1),
-        now: DateTime(2027, 1, 15),
-        transactions: [operation('december', 42, DateTime(2026, 12, 14))],
-      );
-      expect(january.previous.expense, 42);
+      final equal = fixture(), full = fixture(full: true);
+      expect(equal.previous.expense, 180);
+      expect(full.previous.expense, 200);
+      expect(equal.values(MonthlySeries.expense, previous: true).length, 15);
+      expect(full.values(MonthlySeries.expense, previous: true).length, 31);
+      expect(full.values(MonthlySeries.expense).length, 15);
       final march = MonthlyAnalytics.build(
         month: DateTime(2024, 3),
         now: DateTime(2024, 3, 31),
         transactions: [],
       );
       expect(march.previousDays, 29);
-      final february = MonthlyAnalytics.build(
-        month: DateTime(2024, 2),
-        now: DateTime(2024, 2, 29),
-        transactions: [],
-      );
-      expect(february.daysInMonth, 29);
+      expect(march.values(MonthlySeries.income, previous: true).length, 29);
     },
   );
   test(
-    'Projection keeps received income and investments; completed months use their real result',
+    'January includes December M-1, future operations are excluded, and cents stay exact',
     () {
-      final data = fixture();
-      expect(data.current.available, 1500);
-      expect(data.projectedAvailable, 1300);
-      expect(data.averagePurchase, 100);
-      expect(data.daysWithoutExpense, 13);
-      expect(data.expenseCount, 2);
-      expect(data.categories.single.amount, 200);
-      final past = MonthlyAnalytics.build(
-        month: DateTime(2026, 11),
-        now: DateTime(2026, 12),
-        transactions: data.operations,
+      final data = MonthlyAnalytics.build(
+        month: DateTime(2027, 1),
+        now: DateTime(2027, 1, 5),
+        transactions: [
+          operation('a', .1, DateTime(2027, 1, 5, 23)),
+          operation('b', .2, DateTime(2027, 1, 5)),
+          operation('future', 999, DateTime(2027, 1, 6)),
+          operation('december', 42, DateTime(2026, 12, 5)),
+        ],
       );
-      expect(past.projectedAvailable, 1500);
-      expect(past.previousDays, 31);
-      expect(past.sameDayComparison, false);
+      expect(data.current.expense, .3);
+      expect(data.previous.expense, 42);
+      expect(data.values(MonthlySeries.expense).last, .3);
+    },
+  );
+  test(
+    'Empty, transfer-only and future months do not invent a financial projection',
+    () {
       final empty = MonthlyAnalytics.build(
         month: DateTime(2026, 11),
         now: DateTime(2026, 11, 1),
         transactions: [],
       );
       expect(empty.projectedAvailable, isNull);
+      expect(empty.hasActivity, false);
+      final transfer = MonthlyAnalytics.build(
+        month: DateTime(2026, 11),
+        now: DateTime(2026, 11, 5),
+        transactions: [
+          operation('t', 500, DateTime(2026, 11, 1), type: 'transfer'),
+        ],
+      );
+      expect(transfer.hasActivity, true);
+      expect(transfer.current.available, 0);
+      expect(transfer.projectedAvailable, isNull);
       final future = MonthlyAnalytics.build(
         month: DateTime(2027, 1),
         now: DateTime(2026, 11, 1),
-        transactions: data.operations,
+        transactions: [],
       );
-      expect(future.elapsedDays, 0);
-      expect(future.operations, isEmpty);
-      expect(future.projectedAvailable, isNull);
+      expect(future.isFuture, true);
+      expect(future.values(MonthlySeries.remaining), isEmpty);
     },
   );
-  test(
-    'Operation ranking switches between amount and date and excludes other types',
-    () {
-      final data = fixture();
-      expect(
-        data.ranked('expense', MonthlyOperationOrder.amount).first.id,
-        'Courses importantes',
-      );
-      expect(
-        data.ranked('expense', MonthlyOperationOrder.latest).first.id,
-        'Courses récentes',
-      );
-      expect(
-        data.ranked('income', MonthlyOperationOrder.amount).single.id,
-        'Salaire reçu',
-      );
-    },
-  );
-
   for (final theme in AppThemes.themes.entries) {
     for (final width in [320.0, 1440.0]) {
       for (final scale in [1.0, 2.0]) {
-        testWidgets('${theme.key}: monthly analysis fits $width / $scale', (
-          tester,
-        ) async {
-          tester.view.physicalSize = Size(width, 1000);
-          tester.view.devicePixelRatio = 1;
-          addTearDown(tester.view.resetPhysicalSize);
-          addTearDown(tester.view.resetDevicePixelRatio);
-          final data = fixture();
-          await tester.pumpWidget(
-            MaterialApp(
-              theme: theme.value,
-              builder: (context, child) => MediaQuery(
-                data: MediaQuery.of(
-                  context,
-                ).copyWith(textScaler: TextScaler.linear(scale)),
-                child: child!,
-              ),
-              home: Scaffold(
-                body: SingleChildScrollView(
-                  child: Padding(
-                    padding: const EdgeInsets.all(20),
-                    child: Column(
-                      children: [
-                        MonthlyOverview(
-                          data: data,
-                          currency: '€',
-                          hidden: false,
-                        ),
-                        MonthlyComparison(
-                          data: data,
-                          currency: '€',
-                          hidden: false,
-                          onSameDay: (_) {},
-                        ),
-                        MonthlyProjection(
-                          data: data,
-                          currency: '€',
-                          hidden: false,
-                        ),
-                        MonthlySpendingChart(
-                          data: data,
-                          currency: '€',
-                          hidden: false,
-                        ),
-                        MonthlyCategoryBreakdown(
-                          data: data,
-                          currency: '€',
-                          hidden: false,
-                        ),
-                        MonthlyHabits(data: data, currency: '€', hidden: false),
-                        MonthlyOperationRanking(
-                          data: data,
-                          currency: '€',
-                          hidden: false,
-                        ),
-                      ],
+        testWidgets(
+          '${theme.key}: three monthly sections fit $width / $scale',
+          (tester) async {
+            tester.view.physicalSize = Size(width, 1000);
+            tester.view.devicePixelRatio = 1;
+            addTearDown(tester.view.resetPhysicalSize);
+            addTearDown(tester.view.resetDevicePixelRatio);
+            final data = fixture();
+            await tester.pumpWidget(
+              MaterialApp(
+                theme: theme.value,
+                builder: (context, child) => MediaQuery(
+                  data: MediaQuery.of(
+                    context,
+                  ).copyWith(textScaler: TextScaler.linear(scale)),
+                  child: child!,
+                ),
+                home: Scaffold(
+                  body: SingleChildScrollView(
+                    child: Padding(
+                      padding: const EdgeInsets.all(20),
+                      child: Column(
+                        children: [
+                          MonthlyOverview(
+                            data: data,
+                            currency: '€',
+                            hidden: false,
+                          ),
+                          MonthlyProjection(
+                            data: data,
+                            currency: '€',
+                            hidden: false,
+                          ),
+                          MonthlyAnalysisChart(
+                            data: data,
+                            currency: '€',
+                            hidden: false,
+                            onSameDay: (_) {},
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ),
               ),
-            ),
-          );
-          await tester.pumpAndSettle();
-          expect(tester.takeException(), isNull);
-        });
+            );
+            await tester.pumpAndSettle();
+            expect(find.byType(Slider), findsNothing);
+            expect(tester.takeException(), isNull);
+          },
+        );
       }
     }
   }
-  testWidgets('Discreet mode masks the chart, amounts and financial counts', (
+  testWidgets(
+    'Metric and daily-mode selection changes the chart, with negative remaining values',
+    (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: SingleChildScrollView(
+              child: MonthlyAnalysisChart(
+                data: fixture(),
+                currency: '€',
+                hidden: false,
+                onSameDay: (_) {},
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('analysis-remaining')));
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(find.byKey(const ValueKey('analysis-daily')));
+      await tester.tap(find.byKey(const ValueKey('analysis-daily')));
+      await tester.pumpAndSettle();
+      final chart = tester.widget<LineChart>(find.byType(LineChart));
+      expect(
+        chart.data.lineBarsData.last.spots.any((spot) => spot.y < 0),
+        true,
+      );
+      expect(chart.data.minY, lessThan(0));
+      await tester.ensureVisible(
+        find.byKey(const ValueKey('analysis-transfer')),
+      );
+      await tester.tap(find.byKey(const ValueKey('analysis-transfer')));
+      await tester.pumpAndSettle();
+      final transfers = tester.widget<LineChart>(find.byType(LineChart));
+      expect(transfers.data.lineBarsData.last.spots[3].y, 400);
+      expect(tester.takeException(), isNull);
+    },
+  );
+  testWidgets(
+    'Hover and touch select days directly; the fixed readout stays outside the plot',
+    (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: SingleChildScrollView(
+              child: MonthlyAnalysisChart(
+                data: fixture(),
+                currency: '€',
+                hidden: false,
+                onSameDay: (_) {},
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      final plot = find.byKey(const ValueKey('monthly-analysis-plot'));
+      await tester.ensureVisible(plot);
+      await tester.pumpAndSettle();
+      final bounds = tester.getRect(plot);
+      final mouse = await tester.createGesture(kind: PointerDeviceKind.mouse);
+      await mouse.addPointer(
+        location: Offset(bounds.left + 48, bounds.top + 50),
+      );
+      await mouse.moveTo(Offset(bounds.left + 48, bounds.top + 55));
+      await tester.pumpAndSettle();
+      expect(
+        tester
+            .widget<Text>(
+              find.byKey(const ValueKey('monthly-analysis-selected-day')),
+            )
+            .data,
+        contains('Jour 1'),
+      );
+      await mouse.removePointer();
+      await tester.tapAt(Offset(bounds.right - 18, bounds.top + 50));
+      await tester.pumpAndSettle();
+      expect(
+        tester
+            .widget<Text>(
+              find.byKey(const ValueKey('monthly-analysis-selected-day')),
+            )
+            .data,
+        contains('Jour 15'),
+      );
+      expect(
+        tester
+            .getTopLeft(find.byKey(const ValueKey('monthly-analysis-detail')))
+            .dy,
+        greaterThan(tester.getBottomLeft(plot).dy),
+      );
+      Focus.of(tester.element(find.byType(LineChart))).requestFocus();
+      await tester.pump();
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowLeft);
+      await tester.pumpAndSettle();
+      expect(
+        tester
+            .widget<Text>(
+              find.byKey(const ValueKey('monthly-analysis-selected-day')),
+            )
+            .data,
+        contains('Jour 14'),
+      );
+      expect(find.byType(Slider), findsNothing);
+      expect(tester.takeException(), isNull);
+    },
+  );
+  testWidgets('Touch and mouse wheel still scroll the page across the chart', (
     tester,
   ) async {
-    final data = fixture();
+    final scroll = ScrollController();
+    addTearDown(scroll.dispose);
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: ListView(
+            controller: scroll,
+            children: [
+              MonthlyAnalysisChart(
+                data: fixture(),
+                currency: '€',
+                hidden: false,
+                onSameDay: (_) {},
+              ),
+              const SizedBox(height: 1500),
+            ],
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.byType(LineChart));
+    await tester.pumpAndSettle();
+    var before = scroll.offset;
+    await tester.drag(find.byType(LineChart), const Offset(0, -130));
+    await tester.pumpAndSettle();
+    expect(scroll.offset, greaterThan(before));
+    await tester.ensureVisible(find.byType(LineChart));
+    await tester.pumpAndSettle();
+    before = scroll.offset;
+    final position = tester.getCenter(find.byType(LineChart));
+    final mouse = await tester.createGesture(kind: PointerDeviceKind.mouse);
+    await mouse.addPointer(location: position);
+    await tester.sendEventToBinding(
+      PointerScrollEvent(position: position, scrollDelta: const Offset(0, 130)),
+    );
+    await tester.pumpAndSettle();
+    expect(scroll.offset, greaterThan(before));
+    await mouse.removePointer();
+    expect(tester.takeException(), isNull);
+  });
+  testWidgets(
+    'Changing period clamps a selected day; zero values have a finite axis',
+    (tester) async {
+      final data = fixture(full: true);
+      final empty = MonthlyAnalytics.build(
+        month: DateTime(2026, 11),
+        now: DateTime(2026, 11, 1),
+        transactions: [
+          operation('transfer', 10, DateTime(2026, 11, 1), type: 'transfer'),
+        ],
+      );
+      late StateSetter change;
+      var selected = data;
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: StatefulBuilder(
+              builder: (_, update) {
+                change = update;
+                return SingleChildScrollView(
+                  child: MonthlyAnalysisChart(
+                    data: selected,
+                    currency: '€',
+                    hidden: false,
+                    onSameDay: (_) {},
+                  ),
+                );
+              },
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      change(() => selected = empty);
+      await tester.pumpAndSettle();
+      final chart = tester.widget<LineChart>(find.byType(LineChart));
+      expect(chart.data.maxY.isFinite, true);
+      expect(chart.data.maxY, greaterThan(chart.data.minY));
+      expect(tester.takeException(), isNull);
+    },
+  );
+  testWidgets('Discreet mode hides lines, values and transaction counts', (
+    tester,
+  ) async {
     await tester.pumpWidget(
       MaterialApp(
         home: Scaffold(
           body: SingleChildScrollView(
-            child: Column(
-              children: [
-                MonthlySpendingChart(data: data, currency: '€', hidden: true),
-                MonthlyHabits(data: data, currency: '€', hidden: true),
-                MonthlyCategoryBreakdown(
-                  data: data,
-                  currency: '€',
-                  hidden: true,
-                ),
-              ],
+            child: MonthlyAnalysisChart(
+              data: fixture(),
+              currency: '€',
+              hidden: true,
+              onSameDay: (_) {},
             ),
           ),
         ),
@@ -342,60 +394,45 @@ void main() {
     );
     await tester.pumpAndSettle();
     expect(find.byType(PrivacyChartMask), findsOneWidget);
-    expect(find.byType(Slider), findsNothing);
-    expect(find.textContaining('200,00'), findsNothing);
-    expect(find.text('13 / 15'), findsNothing);
+    expect(find.byType(LineChart), findsNothing);
+    expect(find.byKey(const ValueKey('monthly-analysis-detail')), findsNothing);
+    expect(find.textContaining('2,000'), findsNothing);
     expect(tester.takeException(), isNull);
   });
-  testWidgets(
-    'Daily graph supports pointer selection with the info outside the plot',
-    (tester) async {
-      await tester.pumpWidget(
-        MaterialApp(
-          home: Scaffold(
-            body: SingleChildScrollView(
-              child: MonthlySpendingChart(
-                data: fixture(),
-                currency: '€',
-                hidden: false,
-              ),
-            ),
-          ),
-        ),
-      );
-      await tester.pumpAndSettle();
-      final slider = find.byKey(const ValueKey('monthly-chart-day'));
-      await tester.ensureVisible(slider);
-      await tester.pumpAndSettle();
-      await tester.drag(slider, const Offset(-120, 0));
-      await tester.pumpAndSettle();
-      expect(tester.widget<Slider>(slider).value, isNot(15));
-      expect(tester.takeException(), isNull);
-    },
-  );
-  testWidgets('Ranking selectors change the displayed type and sort order', (
+  testWidgets('Month choice is its own accessible button in the lazy header', (
     tester,
   ) async {
+    final semantics = tester.ensureSemantics();
+    var choices = 0;
     await tester.pumpWidget(
       MaterialApp(
         home: Scaffold(
-          body: SingleChildScrollView(
-            child: MonthlyOperationRanking(
-              data: fixture(),
-              currency: '€',
-              hidden: false,
-            ),
+          body: LazySectionList(
+            gaps: const [16],
+            sections: [
+              (_) => MonthPageHeader(
+                title: 'Stats mensuelles',
+                subtitle: 'Votre mois',
+                eyebrow: 'ANALYSE',
+                monthLabel: 'novembre 2026',
+                compactMonthLabel: 'nov. 2026',
+                previousLabel: 'Mois précédent',
+                nextLabel: 'Mois suivant',
+                onPrevious: () {},
+                onNext: () {},
+                onChoose: () => choices++,
+              ),
+              (_) => const Text('Résumé'),
+            ],
           ),
         ),
       ),
     );
     await tester.pumpAndSettle();
-    await tester.tap(find.byKey(const ValueKey('monthly-operation-type')));
+    expect(find.bySemanticsLabel('novembre 2026'), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('month-selector-choose')));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Revenus').last);
-    await tester.pumpAndSettle();
-    expect(find.text('Salaire reçu'), findsOneWidget);
-    expect(find.text('Courses importantes'), findsNothing);
-    expect(tester.takeException(), isNull);
+    expect(choices, 1);
+    semantics.dispose();
   });
 }

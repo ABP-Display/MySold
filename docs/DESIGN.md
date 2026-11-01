@@ -35,13 +35,19 @@ plus cette disposition, le sélecteur passe dessous, aligné à droite.
 La navigation distingue « Stats mensuelles » et « Annuel ». Les statistiques
 chargent uniquement le mois sélectionné et M−1. La comparaison à date égale
 est proposée pour un mois en cours ; les mois terminés sont comparés en entier.
-Le rythme des dépenses cumule les montants par jour, avec une zone de lecture
-fixe sous le graphique et un curseur utilisable au toucher ou au clavier.
-Les parts des catégories incluent une ligne « Autres » au-delà des cinq postes
-principaux. Les habitudes et le classement des opérations utilisent les mêmes
-données, sans requête supplémentaire. Les opérations futures et les transferts
-sont exclus des indicateurs de consommation. La projection prolonge le rythme
-des dépenses observées, sans inventer de revenus futurs.
+La page est organisée en trois blocs : quatre résumés, projection de fin de mois,
+puis analyse face à M−1. Quatre cartes comparatives sélectionnent le poste à
+tracer : revenus, dépenses, investissements ou reste. Une commande supplémentaire
+donne accès aux transferts, qui n'entrent pas dans le calcul du reste.
+Le graphique affiche deux courbes : mois choisi et M−1 en pointillés. Les modes
+« Cumulé » et « Par jour » partagent les mêmes données en mémoire. Le survol,
+l'appui ou le glissement sur la courbe sélectionne un jour ; les flèches du
+clavier permettent aussi de le changer. Les montants, l'écart et le nombre
+d'opérations de tous types pour ce jour restent dans un encadré sous le graphique,
+sans curseur ni infobulle flottante. Le geste vertical continue de faire défiler
+la page. Le survol ne reconstruit que le graphique et cet encadré.
+Les opérations futures sont exclues des indicateurs courants. La projection
+prolonge le rythme des dépenses observées, sans inventer de revenus futurs.
 
 Les comptes et catégories se consultent dans Profil. Les références annuelles,
 leur cache serveur et les comparaisons annuelles par compte/catégorie sont

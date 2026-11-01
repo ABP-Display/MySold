@@ -437,11 +437,14 @@ même origine. Un simple `flutter run` sans proxy vers l’API ne suffit pas.
 
 ## Statistiques et vue annuelle
 
-**Stats mensuelles** permet de sélectionner un mois, de le comparer à M−1
-(à date égale ou en entier) et d'estimer le reste en fin de mois. Le suivi
-quotidien des dépenses, leurs catégories principales, le panier moyen, les
-jours sans dépense et le classement des opérations utilisent la même lecture
-du mois et de M−1. Les opérations futures sont exclues des indicateurs courants.
+**Stats mensuelles** présente les quatre résumés, la projection de fin de mois,
+puis une analyse interactive face à M−1. Les revenus, dépenses, investissements
+et le reste se sélectionnent depuis leurs cartes comparatives ; les transferts
+sont accessibles séparément. Le graphique propose une lecture cumulée ou par
+jour, à date égale ou face au mois précédent entier. Le survol et le toucher
+sélectionnent directement un jour, avec les montants et le nombre d'opérations
+affichés sous le graphique. Aucun curseur séparé n'est nécessaire. Les données
+restent limitées au mois choisi et à M−1 ; les opérations futures sont exclues.
 
 **Annuel** regroupe les synthèses et graphiques de l'année sélectionnée.
 Les comptes et catégories se consultent dans **Profil**. Les références de

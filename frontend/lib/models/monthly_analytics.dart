@@ -1,8 +1,9 @@
 double _round(double value) => (value * 100).round() / 100;
 
+enum MonthlySeries { income, expense, investment, remaining, transfer }
+
 class MonthlyOperation {
-  final String id, type, description;
-  final String? categoryId;
+  final String id, type;
   final double amount;
   final DateTime date;
   const MonthlyOperation({
@@ -10,34 +11,36 @@ class MonthlyOperation {
     required this.type,
     required this.amount,
     required this.date,
-    this.categoryId,
-    this.description = '',
   });
 }
 
 class MonthlyTotals {
-  final double income, expense, investment;
-  const MonthlyTotals({this.income = 0, this.expense = 0, this.investment = 0});
+  final double income, expense, investment, transfer;
+  const MonthlyTotals({
+    this.income = 0,
+    this.expense = 0,
+    this.investment = 0,
+    this.transfer = 0,
+  });
   double get available => _round(income - expense - investment);
+  double value(MonthlySeries series) => switch (series) {
+    MonthlySeries.income => income,
+    MonthlySeries.expense => expense,
+    MonthlySeries.investment => investment,
+    MonthlySeries.remaining => available,
+    MonthlySeries.transfer => transfer,
+  };
 }
 
-class MonthlyCategoryTotal {
-  final String id, name;
-  final double amount;
-  const MonthlyCategoryTotal(this.id, this.name, this.amount);
-}
-
-enum MonthlyOperationOrder { amount, latest }
-
-/// One pass over at most two months. No account snapshots or annual history.
+/// One bounded pass over the selected month and M-1; all chart data is local.
 class MonthlyAnalytics {
   final DateTime month, previousMonth;
-  final int elapsedDays, daysInMonth, previousDays;
+  final int elapsedDays, daysInMonth, previousDays, financialOperationCount;
   final bool isCurrent, isFuture, sameDayComparison;
   final MonthlyTotals current, previous;
-  final List<double> dailyExpense, previousDailyExpense;
-  final List<MonthlyCategoryTotal> categories;
-  final List<MonthlyOperation> operations;
+  final Map<MonthlySeries, List<double>> _daily, _previousDaily;
+  final Map<MonthlySeries, List<double>> _cumulative, _previousCumulative;
+  final List<int> dailyCount, previousDailyCount;
   const MonthlyAnalytics._({
     required this.month,
     required this.previousMonth,
@@ -49,50 +52,42 @@ class MonthlyAnalytics {
     required this.sameDayComparison,
     required this.current,
     required this.previous,
-    required this.dailyExpense,
-    required this.previousDailyExpense,
-    required this.categories,
-    required this.operations,
-  });
+    required this.financialOperationCount,
+    required Map<MonthlySeries, List<double>> daily,
+    required Map<MonthlySeries, List<double>> previousDaily,
+    required Map<MonthlySeries, List<double>> cumulative,
+    required Map<MonthlySeries, List<double>> previousCumulative,
+    required this.dailyCount,
+    required this.previousDailyCount,
+  }) : _daily = daily,
+       _previousDaily = previousDaily,
+       _cumulative = cumulative,
+       _previousCumulative = previousCumulative;
 
-  int get expenseCount => operations.where((tx) => tx.type == 'expense').length;
-  int get daysWithoutExpense =>
-      elapsedDays -
-      dailyExpense.take(elapsedDays).where((value) => value > 0).length;
-  double get averagePurchase =>
-      expenseCount == 0 ? 0 : current.expense / expenseCount;
-  double get dailyAverage =>
-      elapsedDays == 0 ? 0 : current.expense / elapsedDays;
-  double? get projectedAvailable => isFuture || operations.isEmpty
+  bool get hasActivity =>
+      dailyCount.any((count) => count > 0) ||
+      previousDailyCount.any((count) => count > 0);
+  double? get projectedAvailable => isFuture || financialOperationCount == 0
       ? null
       : isCurrent
-      ? _round(current.income - current.investment - dailyAverage * daysInMonth)
+      ? _round(
+          current.income -
+              current.investment -
+              current.expense / elapsedDays * daysInMonth,
+        )
       : current.available;
-  List<double> get cumulativeExpense =>
-      _cumulative(dailyExpense.take(elapsedDays));
-  List<double> get previousCumulativeExpense =>
-      _cumulative(previousDailyExpense.take(previousDays));
-  static List<double> _cumulative(Iterable<double> values) {
-    var total = 0.0;
-    return [for (final value in values) total = _round(total + value)];
-  }
-
-  List<MonthlyOperation> ranked(String type, MonthlyOperationOrder order) {
-    final result = operations.where((tx) => tx.type == type).toList();
-    result.sort((a, b) {
-      final primary = order == MonthlyOperationOrder.amount
-          ? b.amount.compareTo(a.amount)
-          : b.date.compareTo(a.date);
-      return primary == 0 ? a.id.compareTo(b.id) : primary;
-    });
-    return result.take(5).toList();
-  }
+  List<double> values(
+    MonthlySeries series, {
+    bool previous = false,
+    bool cumulative = true,
+  }) => (cumulative
+      ? (previous ? _previousCumulative : _cumulative)
+      : (previous ? _previousDaily : _daily))[series]!;
 
   factory MonthlyAnalytics.build({
     required DateTime month,
     required DateTime now,
     required Iterable<MonthlyOperation> transactions,
-    Map<String, String> categoryNames = const {},
     bool sameDayComparison = true,
   }) {
     month = DateTime(month.year, month.month);
@@ -118,49 +113,74 @@ class MonthlyAnalytics {
       previousMonth.month,
       previousDays + 1,
     );
-    var income = 0.0, expense = 0.0, investment = 0.0;
-    var oldIncome = 0.0, oldExpense = 0.0, oldInvestment = 0.0;
-    final daily = List<double>.filled(days, 0),
-        oldDaily = List<double>.filled(previousLength, 0);
-    final grouped = <String, double>{};
-    final operations = <MonthlyOperation>[];
+    final daily = {
+      for (final series in MonthlySeries.values)
+        series: List<double>.filled(elapsed, 0),
+    };
+    final oldDaily = {
+      for (final series in MonthlySeries.values)
+        series: List<double>.filled(previousDays, 0),
+    };
+    final counts = List<int>.filled(elapsed, 0),
+        oldCounts = List<int>.filled(previousDays, 0);
+    var financialCount = 0;
     for (final tx in transactions) {
-      if (tx.type != 'income' &&
-          tx.type != 'expense' &&
-          tx.type != 'investment')
-        continue;
+      final series = switch (tx.type) {
+        'income' => MonthlySeries.income,
+        'expense' => MonthlySeries.expense,
+        'investment' => MonthlySeries.investment,
+        'transfer' => MonthlySeries.transfer,
+        _ => null,
+      };
+      if (series == null) continue;
       final value = tx.amount.abs();
       if (!tx.date.isBefore(month) &&
           tx.date.isBefore(nextMonth) &&
           tx.date.isBefore(cutoff)) {
-        operations.add(tx);
-        if (tx.type == 'income') income += value;
-        if (tx.type == 'investment') investment += value;
-        if (tx.type == 'expense') {
-          expense += value;
-          daily[tx.date.day - 1] += value;
-          final key = tx.categoryId ?? '';
-          grouped[key] = (grouped[key] ?? 0) + value;
-        }
+        daily[series]![tx.date.day - 1] += value;
+        counts[tx.date.day - 1]++;
+        if (series != MonthlySeries.transfer) financialCount++;
       } else if (!tx.date.isBefore(previousMonth) &&
           tx.date.isBefore(month) &&
           tx.date.isBefore(previousCutoff)) {
-        if (tx.type == 'income') oldIncome += value;
-        if (tx.type == 'investment') oldInvestment += value;
-        if (tx.type == 'expense') {
-          oldExpense += value;
-          oldDaily[tx.date.day - 1] += value;
-        }
+        oldDaily[series]![tx.date.day - 1] += value;
+        oldCounts[tx.date.day - 1]++;
       }
     }
-    final categories = [
-      for (final row in grouped.entries)
-        MonthlyCategoryTotal(
-          row.key,
-          categoryNames[row.key] ?? '',
-          _round(row.value),
-        ),
-    ]..sort((a, b) => b.amount.compareTo(a.amount));
+    void complete(Map<MonthlySeries, List<double>> values, int length) {
+      for (var day = 0; day < length; day++) {
+        for (final series in MonthlySeries.values.where(
+          (s) => s != MonthlySeries.remaining,
+        )) {
+          values[series]![day] = _round(values[series]![day]);
+        }
+        values[MonthlySeries.remaining]![day] = _round(
+          values[MonthlySeries.income]![day] -
+              values[MonthlySeries.expense]![day] -
+              values[MonthlySeries.investment]![day],
+        );
+      }
+    }
+
+    complete(daily, elapsed);
+    complete(oldDaily, previousDays);
+    Map<MonthlySeries, List<double>> cumulative(
+      Map<MonthlySeries, List<double>> values,
+    ) => {
+      for (final entry in values.entries) entry.key: _accumulate(entry.value),
+    };
+    final sums = cumulative(daily), oldSums = cumulative(oldDaily);
+    MonthlyTotals totals(Map<MonthlySeries, List<double>> values) {
+      double last(MonthlySeries series) =>
+          values[series]!.isEmpty ? 0 : values[series]!.last;
+      return MonthlyTotals(
+        income: last(MonthlySeries.income),
+        expense: last(MonthlySeries.expense),
+        investment: last(MonthlySeries.investment),
+        transfer: last(MonthlySeries.transfer),
+      );
+    }
+
     return MonthlyAnalytics._(
       month: month,
       previousMonth: previousMonth,
@@ -170,20 +190,21 @@ class MonthlyAnalytics {
       isCurrent: isCurrent,
       isFuture: future,
       sameDayComparison: equal,
-      current: MonthlyTotals(
-        income: _round(income),
-        expense: _round(expense),
-        investment: _round(investment),
-      ),
-      previous: MonthlyTotals(
-        income: _round(oldIncome),
-        expense: _round(oldExpense),
-        investment: _round(oldInvestment),
-      ),
-      dailyExpense: daily.map(_round).toList(),
-      previousDailyExpense: oldDaily.map(_round).toList(),
-      categories: categories,
-      operations: operations,
+      current: totals(sums),
+      previous: totals(oldSums),
+      financialOperationCount: financialCount,
+      daily: daily,
+      previousDaily: oldDaily,
+      cumulative: sums,
+      previousCumulative: oldSums,
+      dailyCount: counts,
+      previousDailyCount: oldCounts,
     );
+  }
+  static List<double> _accumulate(List<double> values) {
+    var total = 0.0;
+    return List.unmodifiable([
+      for (final value in values) total = _round(total + value),
+    ]);
   }
 }

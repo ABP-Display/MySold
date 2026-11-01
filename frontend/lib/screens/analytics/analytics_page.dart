@@ -12,6 +12,7 @@ import 'package:mysold/widgets/lazy_section_list.dart';
 import 'package:mysold/widgets/month_page_header.dart';
 import 'package:mysold/widgets/month_year_picker.dart';
 import 'package:mysold/widgets/analytics/monthly_analytics_sections.dart';
+import 'package:mysold/widgets/analytics/monthly_analysis_chart.dart';
 
 class AnalyticsPage extends StatefulWidget {
   const AnalyticsPage({super.key});
@@ -25,7 +26,7 @@ class _AnalyticsPageState extends State<AnalyticsPage>
   DateTime _calendarMonth = DateTime(DateTime.now().year, DateTime.now().month);
   final _cache = <DateTime, Future<_MonthlySource>>{};
   bool _sameDay = true;
-  int? _financialVersion, _referenceVersion;
+  int? _financialVersion;
   _MonthlySource? _derivedSource;
   MonthlyAnalytics? _derived;
   String? _derivedDay;
@@ -58,7 +59,7 @@ class _AnalyticsPageState extends State<AnalyticsPage>
   Future<_MonthlySource> _load(DateTime month) {
     return _cache.putIfAbsent(month, () async {
       final uid = LocalAuth.instance.currentUser?.uid;
-      if (uid == null) return const _MonthlySource([], {});
+      if (uid == null) return const _MonthlySource([]);
       // One bounded query, including M-1 even when it belongs to the prior year.
       final query = DocumentStore.instance
           .collection('users')
@@ -78,29 +79,17 @@ class _AnalyticsPageState extends State<AnalyticsPage>
           )
           .orderBy('date')
           .get();
-      final (snapshot, categories) = await (
-        query,
-        context.read<UserDataProvider>().getCategories(),
-      ).wait;
+      final snapshot = await query;
       return _MonthlySource(
         snapshot.docs.map((doc) {
           final data = doc.data();
-          final category = data['categoryId'];
           return MonthlyOperation(
             id: doc.id,
             type: data['type'] as String? ?? '',
             amount: (data['amount'] as num).toDouble(),
             date: (data['date'] as Timestamp).toDate(),
-            categoryId: category is DocumentReference
-                ? category.id
-                : category as String?,
-            description: data['description'] as String? ?? '',
           );
         }).toList(),
-        {
-          for (final category in categories.entries)
-            category.key: category.value['name']?.toString() ?? '',
-        },
       );
     });
   }
@@ -140,7 +129,6 @@ class _AnalyticsPageState extends State<AnalyticsPage>
         month: _month,
         now: now,
         transactions: source.transactions,
-        categoryNames: source.categories,
         sameDayComparison: _sameDay,
       );
       _derivedSource = source;
@@ -154,10 +142,8 @@ class _AnalyticsPageState extends State<AnalyticsPage>
     final user = context.watch<UserDataProvider>();
     final privacy = context.watch<PrivacyProvider>();
     final currency = context.watch<CurrencyProvider>().currency;
-    if (_financialVersion != user.financialDataVersion ||
-        _referenceVersion != user.referenceDataVersion) {
+    if (_financialVersion != user.financialDataVersion) {
       _financialVersion = user.financialDataVersion;
-      _referenceVersion = user.referenceDataVersion;
       _cache.clear();
       _derived = null;
     }
@@ -218,7 +204,12 @@ class _AnalyticsPageState extends State<AnalyticsPage>
               currency: currency,
               hidden: privacy.hideAmounts,
             ),
-            (_) => MonthlyComparison(
+            (_) => MonthlyProjection(
+              data: data,
+              currency: currency,
+              hidden: privacy.hideAmounts,
+            ),
+            (_) => MonthlyAnalysisChart(
               data: data,
               currency: currency,
               hidden: privacy.hideAmounts,
@@ -226,31 +217,6 @@ class _AnalyticsPageState extends State<AnalyticsPage>
                 _sameDay = value;
                 _derived = null;
               }),
-            ),
-            (_) => MonthlyProjection(
-              data: data,
-              currency: currency,
-              hidden: privacy.hideAmounts,
-            ),
-            (_) => MonthlySpendingChart(
-              data: data,
-              currency: currency,
-              hidden: privacy.hideAmounts,
-            ),
-            (_) => MonthlyCategoryBreakdown(
-              data: data,
-              currency: currency,
-              hidden: privacy.hideAmounts,
-            ),
-            (_) => MonthlyHabits(
-              data: data,
-              currency: currency,
-              hidden: privacy.hideAmounts,
-            ),
-            (_) => MonthlyOperationRanking(
-              data: data,
-              currency: currency,
-              hidden: privacy.hideAmounts,
             ),
           ],
         ];
@@ -268,6 +234,5 @@ class _AnalyticsPageState extends State<AnalyticsPage>
 
 class _MonthlySource {
   final List<MonthlyOperation> transactions;
-  final Map<String, String> categories;
-  const _MonthlySource(this.transactions, this.categories);
+  const _MonthlySource(this.transactions);
 }

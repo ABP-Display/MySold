@@ -4,6 +4,57 @@ String? monthlyAnalyticsText(String key, String language) {
 }
 
 const _texts = <String, List<String>>{
+  'Analyse face à M−1': [
+    'Analysis against M−1',
+    'Análisis frente a M−1',
+    'Analyse gegenüber M−1',
+    'Analisi rispetto a M−1',
+    '前月比較分析',
+  ],
+  'Choisissez un poste pour comparer son évolution et le rythme des transactions.': [
+    'Choose a metric to compare its trend and transaction activity.',
+    'Elige un indicador para comparar su evolución y el ritmo de las operaciones.',
+    'Wähle eine Kennzahl, um Verlauf und Buchungsaktivität zu vergleichen.',
+    'Scegli una voce per confrontare andamento e ritmo delle operazioni.',
+    '項目を選択して推移と取引ペースを比較できます。',
+  ],
+  'Cumulé': ['Cumulative', 'Acumulado', 'Kumuliert', 'Cumulato', '累計'],
+  'Par jour': ['Daily', 'Por día', 'Pro Tag', 'Per giorno', '日別'],
+  'Analyse quotidienne': [
+    'Daily analysis',
+    'Análisis diario',
+    'Tägliche Analyse',
+    'Analisi giornaliera',
+    '日別分析',
+  ],
+  'Touchez ou survolez un jour pour voir les montants.': [
+    'Touch or hover over a day to see amounts.',
+    'Toca un día o pasa el cursor para ver los importes.',
+    'Tippe auf einen Tag oder bewege den Zeiger darüber, um Beträge zu sehen.',
+    'Tocca un giorno o passa il puntatore per vedere gli importi.',
+    '日付に触れるかカーソルを合わせると金額を表示します。',
+  ],
+  'Opérations ce jour': [
+    'Transactions that day',
+    'Operaciones ese día',
+    'Buchungen an diesem Tag',
+    'Operazioni del giorno',
+    '当日の取引件数',
+  ],
+  'Aucune opération enregistrée sur ces périodes.': [
+    'No transactions recorded in these periods.',
+    'No hay operaciones registradas en estos períodos.',
+    'Keine Buchungen in diesen Zeiträumen erfasst.',
+    'Nessuna operazione registrata in questi periodi.',
+    'この期間の取引記録はありません。',
+  ],
+  'Les transferts sont suivis séparément et ne modifient pas le reste.': [
+    'Transfers are tracked separately and do not change the remainder.',
+    'Las transferencias se muestran por separado y no modifican el resto.',
+    'Umbuchungen werden separat erfasst und verändern den Restbetrag nicht.',
+    'I trasferimenti sono mostrati separatamente e non modificano il residuo.',
+    '振替は個別に表示され、残額には影響しません。',
+  ],
   'Annuel': ['Annual', 'Anual', 'Jährlich', 'Annuale', '年間'],
   'Stats mensuelles': [
     'Monthly stats',

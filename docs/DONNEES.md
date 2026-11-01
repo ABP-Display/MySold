@@ -28,6 +28,33 @@ Une reconstruction Docker ne supprime pas ces dossiers. Les anciens volumes
 Docker nommés ne sont ni importés ni supprimés automatiquement : cette
 configuration utilise uniquement `data/postgres`.
 
+## Références annuelles de la vue Global
+
+MySold conserve une référence par utilisateur et par année dans PostgreSQL :
+le solde de chaque compte et le cumul historique des opérations de chaque
+catégorie au 1er janvier. Aucun compte ni transaction n'est remis à zéro.
+Seule la référence de comparaison change d'une année à l'autre.
+
+La première référence est reconstituée à partir des soldes et opérations
+disponibles, puis figée. Elle ne peut pas retrouver les ajustements manuels
+effectués avant son activation. Ensuite, la référence de la nouvelle année est
+enregistrée avant la première écriture financière, ou à la première consultation
+de Global si aucune écriture n'a eu lieu. Le fuseau du navigateur utilisé lors
+de l'activation est conservé pour rendre la frontière annuelle cohérente.
+Les années déjà terminées utilisent la référence de l'année suivante comme
+solde de clôture dès qu'elle existe.
+
+Le serveur traite l'historique avec un curseur de taille limitée et met les
+résultats en cache en base. Ce cache est invalidé après une écriture financière
+et renouvelé au changement de jour. Aucun traitement périodique de l'historique
+ne tourne dans le navigateur. Le premier calcul dépend de la taille de l'historique.
+
+Les tables `annual_tracking`, `annual_snapshots` et `annual_report_cache` sont
+créées automatiquement à la mise à jour. Elles sont incluses dans la copie de
+`data/postgres` et les sauvegardes `pg_dump`. L'export CSV financier ne contient
+pas ces références : un transfert par CSV recréera une première référence
+estimée. Pour conserver les références figées, transférer la base complète.
+
 ## Sauvegarder sans arrêter le site
 
 Depuis le dossier MySold, avec PostgreSQL démarré :

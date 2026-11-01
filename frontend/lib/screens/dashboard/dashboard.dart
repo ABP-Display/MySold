@@ -1,7 +1,14 @@
+import 'dart:async';
+import 'package:mysold/services/client_timezone.dart';
+import 'package:mysold/services/budget_service.dart';
 import 'package:mysold/widgets/lazy_section_list.dart';
 import 'package:mysold/widgets/graphiques/app_charts.dart';
 import 'package:mysold/widgets/graphiques/annual_flow_chart.dart';
 import 'package:mysold/widgets/app_design.dart';
+import 'package:mysold/widgets/annual_evolution_section.dart';
+import 'package:mysold/widgets/app_selection_button.dart';
+import 'package:mysold/models/annual_evolution.dart';
+import 'package:mysold/data/api_client.dart';
 
 import 'package:mysold/data/document_store.dart';
 import 'package:mysold/data/local_auth.dart';
@@ -10,7 +17,6 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
-import 'package:mysold/services/budget_service.dart';
 import 'package:mysold/l10n/app_localizations.dart';
 import 'package:mysold/models/transaction_model.dart';
 import 'package:mysold/providers/user_data_provider.dart';
@@ -25,11 +31,54 @@ class DashboardScreen extends StatefulWidget {
   State<DashboardScreen> createState() => _DashboardScreenState();
 }
 
-class _DashboardScreenState extends State<DashboardScreen> {
+class _DashboardScreenState extends State<DashboardScreen>
+    with WidgetsBindingObserver {
+  Timer? _dayRefresh;
+  int _calendarYear = DateTime.now().year;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _scheduleDayRefresh();
+  }
+
+  void _scheduleDayRefresh() {
+    _dayRefresh?.cancel();
+    final now = DateTime.now();
+    _dayRefresh = Timer(
+      DateTime(now.year, now.month, now.day + 1).difference(now) +
+          const Duration(seconds: 1),
+      _refreshCalendar,
+    );
+  }
+
+  void _refreshCalendar() {
+    if (!mounted) return;
+    final year = DateTime.now().year;
+    setState(() {
+      if (_selectedYear == _calendarYear) _selectedYear = year;
+      _calendarYear = year;
+      _yearCache.clear();
+    });
+    _scheduleDayRefresh();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) _refreshCalendar();
+  }
+
+  @override
+  void dispose() {
+    _dayRefresh?.cancel();
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
   final Map<int, Future<_AnnualDashboardData>> _yearCache = {};
   int _selectedYear = DateTime.now().year;
-  bool _accountsExpanded = false;
-  int _visibleAccountCount = 5;
+  bool _showIncomeCategories = false;
   int? _lastFinancialDataVersion;
   int? _lastReferenceDataVersion;
   final Set<_MonthlyChartSeries> _monthlyChartSeries = {
@@ -43,30 +92,32 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final uid = LocalAuth.instance.currentUser?.uid;
     if (uid == null) return _AnnualDashboardData.empty(year);
 
-    final service = BudgetService(userId: uid);
     final userDoc = DocumentStore.instance.collection('users').doc(uid);
 
     final accountFuture = userDoc.collection('accounts').get();
-    final categoriesFuture = context.read<UserDataProvider>().getCategories();
-    final transactionsFuture = service.getTransactionsForYear(year);
+    final transactionsFuture = BudgetService(
+      userId: uid,
+    ).getTransactionsForYear(year);
+    final evolutionFuture = ApiClient.instance.request('annual-evolution', {
+      'year': year,
+      'timeZone': clientTimeZone(),
+    });
 
-    final accountSnapshot = await accountFuture;
-    final categories = await categoriesFuture;
-    final transactions = await transactionsFuture;
-
-    final accounts = accountSnapshot.docs.map((doc) {
-      final data = doc.data();
-      return _AccountSummary(
-        name: data['name'] ?? 'Compte',
-        balance: (data['balance'] ?? 0).toDouble(),
-      );
-    }).toList()..sort((a, b) => b.balance.compareTo(a.balance));
+    final (accountSnapshot, transactions, report) = await (
+      accountFuture,
+      transactionsFuture,
+      evolutionFuture,
+    ).wait;
+    final evolution = AnnualEvolution.fromMap(report);
+    final accounts = accountSnapshot.docs
+        .map(
+          (doc) => (balance: (doc.data()['balance'] as num? ?? 0).toDouble()),
+        )
+        .toList();
 
     final monthlyIncome = List<double>.filled(12, 0);
     final monthlyExpense = List<double>.filled(12, 0);
     final monthlyInvestment = List<double>.filled(12, 0);
-    final expenseByCategory = <String, double>{};
-
     for (final tx in transactions) {
       final monthIndex = tx.date.month - 1;
       if (monthIndex < 0 || monthIndex > 11) continue;
@@ -75,9 +126,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
         monthlyIncome[monthIndex] += tx.amount;
       } else if (tx.type == 'expense') {
         monthlyExpense[monthIndex] += tx.amount;
-        final categoryName = categories[tx.categoryId]?['name'] ?? 'Autre';
-        expenseByCategory[categoryName] =
-            (expenseByCategory[categoryName] ?? 0) + tx.amount;
       } else if (tx.type == 'investment') {
         monthlyInvestment[monthIndex] += tx.amount.abs();
       }
@@ -100,7 +148,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
     return _AnnualDashboardData(
       year: year,
-      accounts: accounts,
+      evolution: evolution,
       incomeTotal: incomeTotal,
       expenseTotal: expenseTotal,
       investmentTotal: investmentTotal,
@@ -108,14 +156,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
       monthlyIncome: monthlyIncome,
       monthlyExpense: monthlyExpense,
       monthlyInvestment: monthlyInvestment,
-      expenseByCategory: expenseByCategory,
       actualWealthPoints: wealthEvolution.actualPoints,
       projectedWealthPoints: wealthEvolution.projectedPoints,
     );
   }
 
   void _changeYear(int delta) {
-    setState(() => _selectedYear += delta);
+    setState(() => _selectedYear = (_selectedYear + delta).clamp(1, 9998));
   }
 
   Future<void> _refresh() async {
@@ -443,134 +490,29 @@ class _DashboardScreenState extends State<DashboardScreen> {
     String currency,
     PrivacyProvider privacy,
   ) {
-    final activeAccounts = data.accounts
-        .where((account) => account.balance.abs() > 0.005)
-        .toList();
-    final accountsToDisplay = data.accounts
-        .take(_visibleAccountCount)
-        .toList(growable: false);
-    final hasMoreAccounts = _visibleAccountCount < data.accounts.length;
-
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: _panelDecoration(),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          InkWell(
-            borderRadius: BorderRadius.circular(14),
-            onTap: () {
-              setState(() {
-                _accountsExpanded = !_accountsExpanded;
-                if (!_accountsExpanded) _visibleAccountCount = 5;
-              });
-            },
-            child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 4),
-              child: Row(
-                children: [
-                  Icon(
-                    Icons.account_balance_wallet_outlined,
-                    size: 20,
-                    color: Theme.of(context).colorScheme.primary,
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      context.tr('Comptes'),
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
-                  Flexible(
-                    child: Text(
-                      '${activeAccounts.length} ${context.tr('comptes actifs')}',
-                      textAlign: TextAlign.end,
-                      overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: Theme.of(
-                          context,
-                        ).colorScheme.onSurface.withOpacity(0.68),
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 6),
-                  Icon(
-                    _accountsExpanded
-                        ? Icons.expand_less_rounded
-                        : Icons.expand_more_rounded,
-                  ),
-                ],
-              ),
-            ),
-          ),
-          if (_accountsExpanded) const SizedBox(height: 12),
-          if (data.accounts.isEmpty)
-            Text(context.tr('Aucun compte disponible.'))
-          else if (_accountsExpanded) ...[
-            ...accountsToDisplay.map((account) {
-              final share = data.accountTotal <= 0
-                  ? 0.0
-                  : (account.balance / data.accountTotal)
-                        .clamp(0.0, 1.0)
-                        .toDouble();
-              return Padding(
-                padding: const EdgeInsets.only(bottom: 12),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            account.name,
-                            style: const TextStyle(fontWeight: FontWeight.w700),
-                          ),
-                        ),
-                        Text(
-                          _money(account.balance, currency, privacy),
-                          style: const TextStyle(fontWeight: FontWeight.w600),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    LinearProgressIndicator(
-                      value: privacy.hideAmounts
-                          ? 1
-                          : share.isFinite
-                          ? share
-                          : 0,
-                      minHeight: 6,
-                      color: privacy.hideAmounts
-                          ? Theme.of(
-                              context,
-                            ).colorScheme.onSurface.withOpacity(0.18)
-                          : null,
-                      borderRadius: BorderRadius.circular(999),
-                    ),
-                  ],
-                ),
-              );
-            }),
-            if (hasMoreAccounts)
-              Align(
-                alignment: Alignment.center,
-                child: TextButton.icon(
-                  onPressed: () {
-                    setState(() {
-                      _visibleAccountCount = (_visibleAccountCount + 5)
-                          .clamp(0, data.accounts.length)
-                          .toInt();
-                    });
-                  },
-                  icon: const Icon(Icons.add_rounded),
-                  label: Text(context.tr('Afficher plus')),
-                ),
-              ),
-          ],
-        ],
+    final evolution = data.evolution;
+    final locale = Localizations.localeOf(context).toString();
+    return AnnualEvolutionSection(
+      key: ValueKey('account-evolution-${data.year}'),
+      title: context.tr('Évolution des comptes'),
+      subtitle: context.tr(
+        'Référence annuelle conservée, comparée au solde de fin de période.',
+      ),
+      icon: Icons.account_balance_wallet_outlined,
+      beginningLabel: DateFormat.yMMMd(locale).format(DateTime(data.year)),
+      endingLabel: DateFormat.yMMMd(locale).format(evolution.endingDate),
+      entries: evolution.accounts,
+      currency: currency,
+      hideAmounts: privacy.hideAmounts,
+      emptyLabel: context.tr(
+        evolution.isFuture
+            ? 'Cette année n’a pas encore commencé.'
+            : 'Aucun compte disponible.',
+      ),
+      note: context.tr(
+        evolution.source == 'reconstructed'
+            ? 'Première référence reconstituée avec les opérations disponibles, puis conservée. Les anciens ajustements manuels ne peuvent pas être reconstitués.'
+            : 'Référence conservée au changement d’année. Les variations incluent les opérations et les ajustements de solde.',
       ),
     );
   }
@@ -803,90 +745,49 @@ class _DashboardScreenState extends State<DashboardScreen> {
     String currency,
     PrivacyProvider privacy,
   ) {
-    final entries = data.expenseByCategory.entries.toList()
-      ..sort((a, b) => b.value.compareTo(a.value));
-
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: _panelDecoration(),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+    final evolution = data.evolution;
+    final locale = Localizations.localeOf(context).toString();
+    final first = DateFormat.yMMMd(locale).format(DateTime(data.year));
+    final last = DateFormat.yMMMd(locale).format(evolution.endingDate);
+    return AnnualEvolutionSection(
+      key: ValueKey('category-evolution-${data.year}-$_showIncomeCategories'),
+      title: context.tr('Évolution des catégories'),
+      subtitle: context.tr(
+        'Cumul des opérations au début de l’année et à la date indiquée.',
+      ),
+      icon: Icons.category_outlined,
+      beginningLabel: first,
+      endingLabel: last,
+      entries: _showIncomeCategories ? evolution.income : evolution.expenses,
+      currency: currency,
+      hideAmounts: privacy.hideAmounts,
+      lowerIsBetter: !_showIncomeCategories,
+      emptyLabel: context.tr(
+        evolution.isFuture
+            ? 'Cette année n’a pas encore commencé.'
+            : 'Aucune catégorie disponible.',
+      ),
+      controls: Row(
         children: [
-          _sectionTitle('Depenses par categorie', Icons.pie_chart_outline),
-          const SizedBox(height: 14),
-          if (entries.isEmpty)
-            Text(context.tr('Aucune depense pour cette annee.'))
-          else if (privacy.hideAmounts)
-            const PrivacyChartMask(height: 190)
-          else ...[
-            SizedBox(
-              height: 190,
-              child: AppPieChart(
-                PieChartData(
-                  sectionsSpace: 2,
-                  centerSpaceRadius: 42,
-                  sections: _buildCategorySections(entries),
+          for (final income in [false, true]) ...[
+            if (income) const SizedBox(width: 8),
+            Expanded(
+              child: AppSelectionButton(
+                selected: _showIncomeCategories == income,
+                onPressed: () => setState(() => _showIncomeCategories = income),
+                child: Text(
+                  context.tr(income ? 'Revenus' : 'Dépenses'),
+                  textAlign: TextAlign.center,
                 ),
               ),
             ),
-            const SizedBox(height: 12),
-            ...entries.take(6).map((entry) {
-              final share = data.expenseTotal == 0
-                  ? 0.0
-                  : (entry.value / data.expenseTotal * 100);
-              return Padding(
-                padding: const EdgeInsets.symmetric(vertical: 5),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Text(entry.key, overflow: TextOverflow.ellipsis),
-                    ),
-                    Text(
-                      '${share.toStringAsFixed(0)}% - ${_money(entry.value, currency, privacy)}',
-                      style: const TextStyle(fontWeight: FontWeight.w700),
-                    ),
-                  ],
-                ),
-              );
-            }),
           ],
         ],
       ),
+      note: context.tr(
+        'La différence correspond aux opérations ajoutées depuis la référence annuelle. Le cumul n’est pas un solde disponible. Une base nulle ne permet pas de calculer un taux.',
+      ),
     );
-  }
-
-  List<PieChartSectionData> _buildCategorySections(
-    List<MapEntry<String, double>> entries,
-  ) {
-    const colors = [
-      Colors.redAccent,
-      Colors.orange,
-      Colors.purple,
-      Colors.teal,
-      Colors.blue,
-      Colors.amber,
-      Colors.pink,
-      Colors.cyan,
-    ];
-
-    final total = entries.fold(0.0, (sum, entry) => sum + entry.value);
-
-    return entries.take(8).toList().asMap().entries.map((item) {
-      final index = item.key;
-      final entry = item.value;
-      final percentage = total == 0 ? 0 : (entry.value / total * 100);
-      return PieChartSectionData(
-        color: colors[index % colors.length],
-        value: entry.value,
-        title: '${percentage.toStringAsFixed(0)}%',
-        radius: 58,
-        titleStyle: const TextStyle(
-          fontSize: 12,
-          fontWeight: FontWeight.w600,
-          color: Colors.white,
-        ),
-      );
-    }).toList();
   }
 
   Widget _buildQuickStats(
@@ -1222,7 +1123,7 @@ const _monthLabels = [
 
 class _AnnualDashboardData {
   final int year;
-  final List<_AccountSummary> accounts;
+  final AnnualEvolution evolution;
   final double incomeTotal;
   final double expenseTotal;
   final double investmentTotal;
@@ -1230,13 +1131,12 @@ class _AnnualDashboardData {
   final List<double> monthlyIncome;
   final List<double> monthlyExpense;
   final List<double> monthlyInvestment;
-  final Map<String, double> expenseByCategory;
   final List<_WealthPoint> actualWealthPoints;
   final List<_WealthPoint> projectedWealthPoints;
 
   const _AnnualDashboardData({
     required this.year,
-    required this.accounts,
+    required this.evolution,
     required this.incomeTotal,
     required this.expenseTotal,
     required this.investmentTotal,
@@ -1244,7 +1144,6 @@ class _AnnualDashboardData {
     required this.monthlyIncome,
     required this.monthlyExpense,
     required this.monthlyInvestment,
-    required this.expenseByCategory,
     required this.actualWealthPoints,
     required this.projectedWealthPoints,
   });
@@ -1264,7 +1163,7 @@ class _AnnualDashboardData {
   factory _AnnualDashboardData.empty(int year) {
     return _AnnualDashboardData(
       year: year,
-      accounts: const [],
+      evolution: AnnualEvolution.empty(year),
       incomeTotal: 0,
       expenseTotal: 0,
       investmentTotal: 0,
@@ -1272,18 +1171,10 @@ class _AnnualDashboardData {
       monthlyIncome: List<double>.filled(12, 0),
       monthlyExpense: List<double>.filled(12, 0),
       monthlyInvestment: List<double>.filled(12, 0),
-      expenseByCategory: const {},
       actualWealthPoints: [_WealthPoint(x: 0, value: 0, date: DateTime(year))],
       projectedWealthPoints: const [],
     );
   }
-}
-
-class _AccountSummary {
-  final String name;
-  final double balance;
-
-  const _AccountSummary({required this.name, required this.balance});
 }
 
 class _WealthEvolutionData {

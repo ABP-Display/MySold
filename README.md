@@ -365,6 +365,15 @@ compte sont révoquées. L’administrateur doit vérifier l’identité de la p
 
 ## Données persistantes et sauvegardes
 
+La vue **Global** compare les comptes et catégories à une référence annuelle
+conservée en base. La référence initiale est estimée avec l'historique disponible,
+puis les références suivantes sont enregistrées au changement d'année, avant la
+première écriture financière ou à la première consultation. Les opérations ne
+sont jamais remises à zéro. Pour les catégories, les valeurs représentent le
+cumul des opérations, et non un solde disponible. Les résultats sont calculés
+côté serveur et mis en cache. Voir les détails dans le
+[guide des données](docs/DONNEES.md#références-annuelles-de-la-vue-global).
+
 Les volumes sont déclarés directement dans `compose.yaml` :
 
 ```text

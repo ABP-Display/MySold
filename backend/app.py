@@ -10,6 +10,7 @@ from datetime import datetime, timedelta, timezone
 from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 from functools import wraps
 from pathlib import Path
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 import psycopg
 from flask import Flask, g, jsonify, request
@@ -19,6 +20,7 @@ from werkzeug.exceptions import HTTPException
 from werkzeug.security import check_password_hash, generate_password_hash
 from origin_policy import DEFAULT_APP_ORIGIN, is_allowed_origin
 import totp
+import annual_evolution
 
 UTC = timezone.utc
 COLLECTIONS = {'accounts', 'categories', 'investments', 'transactions', 'budgetAlerts'}
@@ -424,6 +426,22 @@ def get_document():
     return jsonify(data=load(g.db, g.user['id'], local_path(body().get('path'))))
 
 
+@app.post('/api/annual-evolution')
+@authenticated
+def annual_report():
+    payload = body()
+    year, time_zone = payload.get('year'), payload.get('timeZone', 'Europe/Paris')
+    if type(year) is not int or not 1 <= year <= 9998:
+        raise Problem('Année invalide.')
+    if not isinstance(time_zone, str) or len(time_zone) > 80:
+        raise Problem('Fuseau horaire invalide.')
+    try:
+        ZoneInfo(time_zone)
+    except (ZoneInfoNotFoundError, ValueError):
+        raise Problem('Fuseau horaire invalide.')
+    return jsonify(annual_evolution.report(g.db, g.user['id'], year, time_zone, now()))
+
+
 @app.post('/api/documents/query')
 @authenticated
 def query_documents():
@@ -600,6 +618,12 @@ def commit():
     db.execute('SELECT id FROM users WHERE id=%s FOR UPDATE', (uid,))
     if db.execute('SELECT 1 FROM requests WHERE user_id=%s AND id=%s', (uid, request_id)).fetchone():
         return jsonify(ok=True)
+    financial = any(isinstance(op, dict) and isinstance(op.get('path'), str)
+                    and len(op['path'].split('/')) >= 4
+                    and op['path'].split('/')[2] in {'accounts', 'categories', 'investments', 'transactions'}
+                    for op in operations)
+    if financial:
+        annual_evolution.before_financial_write(db, uid, now())
     touched, originals, investments_changed = {}, {}, False
     for operation in operations:
         if not isinstance(operation, dict):
@@ -662,6 +686,8 @@ def commit():
                     raise Problem('Ce compte détient encore des investissements.')
     db.execute("DELETE FROM requests WHERE user_id=%s AND created_at < now() - interval '7 days'", (uid,))
     db.execute('INSERT INTO requests(user_id,id) VALUES (%s,%s)', (uid, request_id))
+    if financial:
+        annual_evolution.invalidate(db, uid)
     return jsonify(ok=True)
 
 

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'self_hosted_legal.dart';
+import 'annual_evolution_strings.dart';
 
 class AppLocalizations {
   final Locale locale;
@@ -22,6 +23,8 @@ class AppLocalizations {
 
   String t(String key) {
     final languageCode = locale.languageCode;
+    final evolution = annualEvolutionText(key, languageCode);
+    if (evolution != null) return evolution;
     final legal = selfHostedLegal(key, languageCode);
     if (legal != null) return legal;
     final legacyKey =

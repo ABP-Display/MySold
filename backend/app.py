@@ -19,6 +19,7 @@ from werkzeug.exceptions import HTTPException
 from werkzeug.security import check_password_hash, generate_password_hash
 from origin_policy import DEFAULT_APP_ORIGIN, is_allowed_origin
 import totp
+from encryption import INDEX_FIELDS, migrate_encryption, vault
 
 UTC = timezone.utc
 COLLECTIONS = {'accounts', 'categories', 'investments', 'transactions', 'budgetAlerts'}
@@ -49,6 +50,8 @@ def connect():
 def migrate():
     with connect() as db:
         db.execute(Path(__file__).with_name('schema.sql').read_text())
+        db.commit()
+        migrate_encryption(db)
 
 
 def now():
@@ -139,7 +142,8 @@ def cookie_response(user, db=None):
         store(db)
     response = jsonify(user={'uid': user['id'], 'email': user['email']})
     response.set_cookie('mysold_session', token, httponly=True, samesite='Strict',
-                        secure=os.getenv('COOKIE_SECURE', 'true').lower() == 'true',
+                        secure=(os.getenv('COOKIE_SECURE', 'true').lower() == 'true'
+                                or request.headers.get('Origin', '').startswith('https://')),
                         max_age=7 * 86400, path='/')
     return response
 
@@ -225,8 +229,10 @@ def login():
             db.execute('INSERT INTO mfa_challenges(token_hash,user_id,expires_at) VALUES (%s,%s,%s)',
                        (digest(challenge), user['id'], now() + timedelta(minutes=5)))
             return jsonify(mfa_required=True, challenge=challenge)
-        db.execute('''UPDATE documents SET data=jsonb_set(data,'{lastConnection}',%s)
-                      WHERE user_id=%s AND path='user' ''', (Jsonb(timestamp()), user['id']))
+        profile = load(db, user['id'], 'user')
+        if profile is not None:
+            profile['lastConnection'] = timestamp()
+            save(db, user['id'], 'user', profile)
         return cookie_response(user, db)
 
 
@@ -258,12 +264,14 @@ def mfa_verify():
         rate_limit('mfa-user:' + user['id'], 15)
         pending = db.execute('SELECT token_hash FROM mfa_challenges WHERE token_hash=%s AND expires_at > now() FOR UPDATE',
                              (digest(challenge),)).fetchone()
-        factor = db.execute('SELECT * FROM mfa WHERE user_id=%s FOR UPDATE', (user['id'],)).fetchone()
+        factor = load_factor(db, user['id'])
         if not pending or not factor or not factor['secret'] or not consume_mfa_code(db, user['id'], factor, code):
             raise Problem('Code incorrect ou déjà utilisé.', 'invalid-mfa', 401)
         db.execute('DELETE FROM mfa_challenges WHERE user_id=%s', (user['id'],))
-        db.execute('''UPDATE documents SET data=jsonb_set(data,'{lastConnection}',%s)
-                      WHERE user_id=%s AND path='user' ''', (Jsonb(timestamp()), user['id']))
+        profile = load(db, user['id'], 'user')
+        if profile is not None:
+            profile['lastConnection'] = timestamp()
+            save(db, user['id'], 'user', profile)
         return cookie_response(user, db)
 
 
@@ -273,7 +281,7 @@ def mfa_password(data):
     user = g.db.execute('SELECT password_hash FROM users WHERE id=%s FOR UPDATE', (g.user['id'],)).fetchone()
     if not isinstance(password, str) or len(password) > 256 or not check_password_hash(user['password_hash'], password):
         raise Problem('Mot de passe incorrect.', 'invalid-credentials', 401)
-    return g.db.execute('SELECT * FROM mfa WHERE user_id=%s FOR UPDATE', (g.user['id'],)).fetchone()
+    return load_factor(g.db, g.user['id'])
 
 
 def revoke_other_sessions():
@@ -308,7 +316,7 @@ def mfa_setup():
     secret = totp.new_secret()
     g.db.execute('''INSERT INTO mfa(user_id,pending_secret,pending_expires_at) VALUES (%s,%s,%s)
         ON CONFLICT(user_id) DO UPDATE SET pending_secret=excluded.pending_secret,pending_expires_at=excluded.pending_expires_at''',
-        (g.user['id'], secret, now() + timedelta(minutes=10)))
+        (g.user['id'], vault(g.db).mfa_seal(g.user['id'], secret), now() + timedelta(minutes=10)))
     return jsonify(secret=secret, uri=totp.provisioning_uri(secret, g.user['email']))
 
 
@@ -407,15 +415,26 @@ def absolute(path):
     return 'users/' + g.user['id'] + ('' if path == 'user' else '/' + path)
 
 
+def load_factor(db, uid):
+    factor = db.execute('SELECT * FROM mfa WHERE user_id=%s FOR UPDATE', (uid,)).fetchone()
+    if factor:
+        store = vault(db)
+        for field in ('secret', 'pending_secret'):
+            factor[field] = store.mfa_open(uid, factor[field])
+    return factor
+
+
 def load(db, uid, path):
-    row = db.execute('SELECT data FROM documents WHERE user_id=%s AND path=%s', (uid, path)).fetchone()
-    return row['data'] if row else None
+    row = db.execute('SELECT path,data,sealed_data FROM documents WHERE user_id=%s AND path=%s', (uid, path)).fetchone()
+    return vault(db).decode(uid, row) if row else None
 
 
 def save(db, uid, path, data):
     collection = path.split('/')[0] if path != 'user' else ''
-    db.execute('''INSERT INTO documents(user_id,path,collection,data) VALUES (%s,%s,%s,%s)
-        ON CONFLICT(user_id,path) DO UPDATE SET data=excluded.data''', (uid, path, collection, Jsonb(data)))
+    index, encrypted = vault(db).encode(uid, path, data)
+    db.execute('''INSERT INTO documents(user_id,path,collection,data,sealed_data) VALUES (%s,%s,%s,%s,%s)
+        ON CONFLICT(user_id,path) DO UPDATE SET data=excluded.data,sealed_data=excluded.sealed_data''',
+        (uid, path, collection, Jsonb(index), encrypted))
 
 
 @app.post('/api/documents/get')
@@ -433,7 +452,11 @@ def query_documents():
     filters = data.get('filters', [])
     if not isinstance(filters, list) or len(filters) > 10:
         raise Problem('Filtres invalides.')
+    private_query = bool(data.get('order') and data['order'] not in INDEX_FIELDS)
+    normalized_filters = []
     for item in filters:
+        if not isinstance(item, dict):
+            raise Problem('Filtre invalide.')
         field, operator, value = item.get('field'), item.get('op'), item.get('value')
         if field not in FIELDS or operator not in {'eq', 'gte', 'lt'}:
             raise Problem('Filtre inconnu.')
@@ -446,14 +469,18 @@ def query_documents():
             if isinstance(value, (dict, list)):
                 raise Problem('Valeur de filtre invalide.')
             value = str(value).lower() if isinstance(value, bool) else str(value)
-        clauses.append(f'{expr} {op} %s')
-        params.extend([field, value])
+        normalized_filters.append((field, operator, value))
+        if field not in INDEX_FIELDS:
+            private_query = True
+        else:
+            clauses.append(f'{expr} {op} %s')
+            params.extend([field, value])
     order = data.get('order')
     if order and order not in FIELDS:
         raise Problem('Tri inconnu.')
     direction = 'DESC' if data.get('descending') else 'ASC'
     ordering = 'path ASC'
-    if order:
+    if order and order in INDEX_FIELDS:
         expr = "data->%s->>'value'" if order in {'date', 'createdAt'} else 'data->>%s'
         ordering = f'{expr} {direction} NULLS LAST, path ASC'
         params.append(order)
@@ -466,9 +493,43 @@ def query_documents():
     if offset < 0 or (maximum is not None and maximum < 1):
         raise Problem('Pagination invalide.')
     count = 500 if maximum is None else min(500, max(0, maximum-offset))
-    params.extend([count+1, offset])
-    rows = g.db.execute('SELECT path,data FROM documents WHERE ' + ' AND '.join(clauses) +
-                        ' ORDER BY ' + ordering + ' LIMIT %s OFFSET %s', params).fetchall()
+    store = vault(g.db)
+    if private_query:
+        if order and order in INDEX_FIELDS:
+            params.pop()  # Server-side sorting applies after private filtering.
+        rows = g.db.execute('SELECT path,data,sealed_data FROM documents WHERE ' + ' AND '.join(clauses), params).fetchall()
+        rows = [{'path': r['path'], 'data': store.decode(g.user['id'], r)} for r in rows]
+        def text_value(document, field):
+            value = document.get(field)
+            if isinstance(value, dict) and value.get('_type') == 'timestamp':
+                value = value.get('value')
+            if value is None:
+                return None
+            if field in {'amount', 'balance'}:
+                return Decimal(str(value))
+            return str(value).lower() if isinstance(value, bool) else str(value)
+        for field, operator, value in normalized_filters:
+            if field in {'amount', 'balance'}:
+                try:
+                    value = Decimal(value)
+                    if not value.is_finite():
+                        raise InvalidOperation()
+                except InvalidOperation:
+                    raise Problem('Montant de filtre invalide.')
+            rows = [r for r in rows if (actual := text_value(r['data'], field)) is not None and
+                    {'eq': lambda: actual == value, 'gte': lambda: actual >= value, 'lt': lambda: actual < value}[operator]()]
+        rows.sort(key=lambda r: r['path'])
+        if order:
+            present = [r for r in rows if text_value(r['data'], order) is not None]
+            missing = [r for r in rows if text_value(r['data'], order) is None]
+            present.sort(key=lambda r: text_value(r['data'], order), reverse=direction == 'DESC')
+            rows = present + missing
+        rows = rows[offset:offset+count+1]
+    else:
+        params.extend([count+1, offset])
+        rows = g.db.execute('SELECT path,data,sealed_data FROM documents WHERE ' + ' AND '.join(clauses) +
+                            ' ORDER BY ' + ordering + ' LIMIT %s OFFSET %s', params).fetchall()
+        rows = [{'path': r['path'], 'data': store.decode(g.user['id'], r)} for r in rows]
     more = len(rows) > count and (maximum is None or offset+count < maximum)
     return jsonify(documents=[{'path': absolute(r['path']), 'data': r['data']} for r in rows[:count]],
                    cursor=str(offset+count) if more else None)
@@ -641,13 +702,13 @@ def commit():
                               (uid, Jsonb({field: path.split('/')[-1]}))).fetchone():
                     raise Problem('Cet élément est encore utilisé.', 'in-use', 409)
     # Managed account values always derive from holdings, including CSV imports.
-    account_rows = db.execute("SELECT path,data FROM documents WHERE user_id=%s AND collection='accounts'", (uid,)).fetchall()
+    account_rows = db.execute("SELECT path,data,sealed_data FROM documents WHERE user_id=%s AND collection='accounts'", (uid,)).fetchall()
     for row in account_rows:
-        path, account = row['path'], row['data']
+        path, account = row['path'], vault(db).decode(uid, row)
         if account.get('managedByInvestments'):
             if investments_changed or path in touched:
-                values = db.execute("SELECT data->>'balance' AS balance FROM documents WHERE user_id=%s AND collection='investments' AND data->>'holdingAccountId'=%s", (uid, path.split('/')[-1])).fetchall()
-                account['balance'] = money(sum((Decimal(v['balance'] or '0') for v in values), Decimal(0)))
+                values = db.execute("SELECT path,data,sealed_data FROM documents WHERE user_id=%s AND collection='investments' AND data->>'holdingAccountId'=%s", (uid, path.split('/')[-1])).fetchall()
+                account['balance'] = money(sum((Decimal(str(vault(db).decode(uid, v).get('balance', 0))) for v in values), Decimal(0)))
                 save(db, uid, path, account)
         elif path in touched:
             previous = originals[path]

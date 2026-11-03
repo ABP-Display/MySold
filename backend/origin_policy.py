@@ -15,6 +15,10 @@ def is_allowed_origin(origin, configured_origins):
             return False
         # Accessing port also rejects malformed/out-of-range ports.
         parsed.port
+        # Plain HTTP is reserved for local development. An allowlist entry must
+        # never authorize sending browser credentials over a remote HTTP origin.
+        if parsed.scheme == 'http' and parsed.hostname not in {'localhost', '127.0.0.1', '::1'}:
+            return False
     except ValueError:
         return False
     allowed = {value.strip().rstrip('/') for value in configured_origins.split(',')

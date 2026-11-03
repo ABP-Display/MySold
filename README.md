@@ -35,8 +35,9 @@ Le modèle `.env.example` contient des valeurs génériques et des commentaires.
 Après la copie, renseigner **`POSTGRES_PASSWORD`** dans `.env` avant le lancement ;
 le nom de base (`POSTGRES_DB`), l’utilisateur (`POSTGRES_USER`) et l’adresse du
 site sont personnalisables. Une valeur de mot de passe vide bloque le lancement.
-Compose crée directement `data/postgres` et `data/backups`. Aucun mot de passe
-n’est généré ni aucun fichier de configuration modifié automatiquement.
+Compose crée `data/postgres`, `data/backups` et `data/keys`. Le service ponctuel
+`keys` initialise une clé maître aléatoire privée ; les mots de passe restent
+choisis par l’administrateur et les utilisateurs. Aucun `.env` n’est modifié.
 
 ### Domaine personnel ou accès distant
 
@@ -53,8 +54,8 @@ COOKIE_SECURE=true
 
 Le DNS et le reverse proxy HTTPS doivent pointer vers le serveur, sur le port
 `28085`. Remplacer les domaines du modèle par celui de sa propre instance.
-Pour un accès HTTP par IP, renseigner plutôt
-`APP_ORIGIN=http://ADRESSE_DU_SERVEUR:28085` et `COOKIE_SECURE=false`.
+L’accès distant exige HTTPS : les origines HTTP distantes sont refusées, même
+si elles figurent dans `APP_ORIGIN`. HTTP reste autorisé sur la boucle locale.
 `localhost` désigne l’ordinateur sur lequel le navigateur est ouvert.
 
 Conserver `.env` privé et utiliser un mot de passe long et unique. Les mots de
@@ -77,7 +78,8 @@ docker compose up -d --build
 ```
 
 Conserver `data/` et `.env`. Les reconstructions des images ne
-suppriment ni la base ni le secret. La mise à jour de la PWA est ensuite proposée
+suppriment ni la base ni les clés de chiffrement. Sauvegarder **`data/keys` avec
+la base** : perdre la clé maître rend les données chiffrées irrécupérables. La mise à jour de la PWA est ensuite proposée
 aux utilisateurs quand une nouvelle version du frontend est disponible.
 
 ### Construction automatique, développement et forks
@@ -113,7 +115,8 @@ docker compose ps
 docker compose logs --tail=100 db api web
 ```
 
-Les trois services `db`, `api` et `web` doivent être sains. Le premier démarrage
+Les services `db`, `api` et `web` doivent être sains ; `keys` doit avoir terminé
+avec le code 0. Le premier démarrage
 peut demander quelques minutes, le temps de télécharger et construire les images.
 
 ## Architecture
@@ -136,7 +139,13 @@ db : PostgreSQL + dossier data/postgres
 - `frontend/lib/services/budget_service.dart` : logique de gestion financière.
 - `backend/` : authentification, validation, accès SQL et commandes administrateur.
 - `backend/schema.sql` : création idempotente des tables et index.
-- `compose.yaml` : déploiement des trois services.
+- `compose.yaml` : services applicatifs et initialisation ponctuelle des clés.
+
+Les échanges publics utilisent HTTPS/TLS via votre proxy. Les documents et
+secrets 2AF sont chiffrés en AES-256-GCM avec une clé distincte par utilisateur,
+protégée par la clé maître de l’instance. Le serveur peut les déchiffrer pour
+fonctionner. Voir les [garanties et limites](docs/SECURITE.md), ainsi que les
+[consignes de sauvegarde des clés](docs/DONNEES.md).
 
 Les données financières utilisent des documents JSONB PostgreSQL rattachés à un
 utilisateur, avec des collections connues (`accounts`, `categories`,
@@ -395,7 +404,8 @@ décrits dans [le guide de design](docs/DESIGN.md).
 
 Le workflow vérifie les releases, le refus d’un mot de passe manquant et une
 installation depuis le modèle `.env.example` personnalisé, avec création de
-compte et conservation des données après reconstruction :
+compte, conservation des données et clés après reconstruction, puis restauration
+d’un dump chiffré :
 
 ```sh
 python3 -m unittest discover -s frontend/tool -p 'test_web_release.py' -v
@@ -413,12 +423,14 @@ leur base de test.
 
 ```sh
 docker compose exec db sh -ec 'createdb -U "$POSTGRES_USER" mysold_test'
-docker compose exec -e POSTGRES_DB=mysold_test api python -m unittest -v test_api test_mfa test_totp test_origin_policy
+docker compose exec -e POSTGRES_DB=mysold_test api python -m unittest -v test_api test_mfa test_totp test_origin_policy test_encryption
 ```
 
 Si la base de test existe déjà, ne répéter que la seconde commande. Les tests
 couvrent l’isolation, les écritures atomiques, les débits concurrents, les
-investissements, les références, la suppression et les requêtes filtrées.
+investissements, les références, la suppression et les requêtes filtrées. Ils
+vérifient aussi l’intégrité AES, les clés distinctes, la migration avec reprise,
+le refus d’une mauvaise clé et la conservation des secrets 2AF.
 
 Pour travailler sur l’interface avec Flutter installé :
 
@@ -437,14 +449,24 @@ même origine. Un simple `flutter run` sans proxy vers l’API ne suffit pas.
 
 ## Statistiques et vue annuelle
 
-**Stats mensuelles** présente les quatre résumés, la projection de fin de mois,
-puis une analyse interactive face à M−1. Les revenus, dépenses, investissements
-et le reste se sélectionnent depuis leurs cartes comparatives ; les transferts
-sont accessibles séparément. Le graphique propose une lecture cumulée ou par
-jour, à date égale ou face au mois précédent entier. Le survol et le toucher
-sélectionnent directement un jour, avec les montants et le nombre d'opérations
-affichés sous le graphique. Aucun curseur séparé n'est nécessaire. Les données
-restent limitées au mois choisi et à M−1 ; les opérations futures sont exclues.
+**Stats mensuelles** propose un sélecteur d’année, quatre résumés annuels,
+la projection du mois en cours (ou le résultat de décembre pour une année passée),
+puis un graphique sur **les douze mois**, sans défilement horizontal. Cinq postes
+sont disponibles : revenus, dépenses, investissements, transferts et reste.
+La référence M−1 apparaît en pointillés, avec le mois réel précisé dans le détail.
+
+Les deux groupes de filtres sont centrés et symétriques : **Mois complets / À date
+égale** et **Cumulé / Par jour**. Cumulé affiche le total de chaque mois ; Par
+jour affiche sa moyenne quotidienne. À date égale arrête le mois en cours et sa
+référence M−1 au même nombre de jours, borné à la durée du mois précédent ; les
+mois terminés restent complets. Les mois futurs n’affichent pas de zéro fictif.
+Le survol, le toucher et le clavier sélectionnent directement un mois, dont les
+montants et le nombre d’opérations, tous types confondus, restent sous le tracé.
+
+Une seule lecture porte sur l’année choisie et décembre de l’année précédente,
+puis les calculs sont conservés en mémoire jusqu’au changement des données.
+Changer de série ou de mode ne relit pas la base. Aucun instantané annuel ni
+calcul d’évolution des soldes n’est stocké.
 
 **Annuel** regroupe les synthèses et graphiques de l'année sélectionnée.
 Les comptes et catégories se consultent dans **Profil**. Les références de

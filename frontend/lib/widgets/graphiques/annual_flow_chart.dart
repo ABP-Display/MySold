@@ -25,13 +25,18 @@ class AnnualFlowChart extends StatefulWidget {
   final int year;
   final String currency, locale;
   final List<AnnualFlowSeries> series;
+  final List<bool>? availableMonths;
+  final Widget Function(BuildContext, int)? detailFooter;
   const AnnualFlowChart({
     super.key,
     required this.year,
     required this.currency,
     required this.locale,
     required this.series,
-  }) : assert(series.length > 0);
+    this.availableMonths,
+    this.detailFooter,
+  }) : assert(series.length > 0),
+       assert(availableMonths == null || availableMonths.length == 12);
 
   @override
   State<AnnualFlowChart> createState() => _AnnualFlowChartState();
@@ -66,12 +71,18 @@ class _AnnualFlowChartState extends State<AnnualFlowChart> {
   String _money(double value) => NumberFormat.currency(
     locale: widget.locale,
     symbol: widget.currency,
+    decimalDigits: 2,
   ).format(value);
 
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
-    final values = widget.series.expand((series) => series.values);
+    final values = widget.series.expand(
+      (series) => [
+        for (var i = 0; i < 12; i++)
+          if (widget.availableMonths?[i] ?? true) series.values[i],
+      ],
+    );
     final low = values.fold(0.0, math.min);
     final high = values.fold(0.0, math.max);
     final range = math.max(1.0, high - low);
@@ -170,14 +181,16 @@ class _AnnualFlowChartState extends State<AnnualFlowChart> {
                   const SizedBox(height: 12),
                   LayoutBuilder(
                     builder: (context, details) {
-                      final columns =
-                          MediaQuery.textScalerOf(context).scale(12) > 18
-                          ? 1
-                          : details.maxWidth >= 720
-                          ? 4
-                          : details.maxWidth >= 200
-                          ? 2
-                          : 1;
+                      final columns = math.min(
+                        widget.series.length,
+                        MediaQuery.textScalerOf(context).scale(12) > 18
+                            ? 1
+                            : details.maxWidth >= 720
+                            ? 4
+                            : details.maxWidth >= 200
+                            ? 2
+                            : 1,
+                      );
                       final width =
                           (details.maxWidth - 12 * (columns - 1)) / columns;
                       return Wrap(
@@ -198,7 +211,9 @@ class _AnnualFlowChartState extends State<AnnualFlowChart> {
                                   ),
                                   const SizedBox(height: 4),
                                   Text(
-                                    _money(series.values[_selected]),
+                                    (widget.availableMonths?[_selected] ?? true)
+                                        ? _money(series.values[_selected])
+                                        : '—',
                                     style: Theme.of(context)
                                         .textTheme
                                         .titleSmall
@@ -214,6 +229,10 @@ class _AnnualFlowChartState extends State<AnnualFlowChart> {
                       );
                     },
                   ),
+                  if (widget.detailFooter != null) ...[
+                    const SizedBox(height: 12),
+                    widget.detailFooter!(context, _selected),
+                  ],
                 ],
               ),
             ),
@@ -364,28 +383,35 @@ class _AnnualFlowChartState extends State<AnnualFlowChart> {
                         ),
                         lineBarsData: [
                           for (final series in widget.series)
-                            LineChartBarData(
-                              spots: [
-                                for (var month = first; month <= last; month++)
-                                  FlSpot(
-                                    month.toDouble(),
-                                    series.values[month],
-                                  ),
-                              ],
-                              color: series.color,
-                              barWidth: 2.5,
-                              isCurved: false,
-                              dashArray: series.dashed ? [6, 4] : null,
-                              dotData: FlDotData(
-                                show: true,
-                                getDotPainter: (spot, _, bar, __) =>
-                                    FlDotCirclePainter(
-                                      radius: spot.x == _selected ? 4 : 2,
-                                      color: series.color,
-                                      strokeWidth: 0,
-                                    ),
+                            if (widget.availableMonths == null ||
+                                widget.availableMonths!.any((value) => value))
+                              LineChartBarData(
+                                spots: [
+                                  for (
+                                    var month = first;
+                                    month <= last;
+                                    month++
+                                  )
+                                    if (widget.availableMonths?[month] ?? true)
+                                      FlSpot(
+                                        month.toDouble(),
+                                        series.values[month],
+                                      ),
+                                ],
+                                color: series.color,
+                                barWidth: 2.5,
+                                isCurved: false,
+                                dashArray: series.dashed ? [6, 4] : null,
+                                dotData: FlDotData(
+                                  show: true,
+                                  getDotPainter: (spot, _, bar, __) =>
+                                      FlDotCirclePainter(
+                                        radius: spot.x == _selected ? 4 : 2,
+                                        color: series.color,
+                                        strokeWidth: 0,
+                                      ),
+                                ),
                               ),
-                            ),
                         ],
                       ),
                     ),

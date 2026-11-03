@@ -22,8 +22,9 @@ Le fichier `.env.example` fournit les champs commentés à renseigner. Choisir
 son mot de passe `POSTGRES_PASSWORD` avant de lancer Compose : une valeur vide
 est refusée. Les noms `POSTGRES_DB` et `POSTGRES_USER` sont personnalisables
 avant la première initialisation. Compose crée les dossiers persistants
-`data/postgres` et `data/backups` et initialise les tables. Il ne génère aucun
-secret ni compte utilisateur prédéfini.
+`data/postgres`, `data/backups`, `data/keys` et initialise les tables. Le service
+ponctuel `keys` crée automatiquement une clé maître privée de 32 octets, sans
+l’afficher. Aucun compte utilisateur ni mot de passe par défaut n’est créé.
 
 ## Personnaliser le fichier `.env`
 
@@ -67,18 +68,19 @@ Un proxy installé directement sur le serveur peut utiliser
 utiliser une adresse joignable du serveur, ou un réseau Docker partagé avec
 `web` et la destination `http://web:8080`.
 
-### Accès direct par IP
+### Accès local et distant
 
-Pour un essai HTTP, remplacer l’adresse d’exemple par celle de son serveur :
+HTTP est réservé à `localhost`, `127.0.0.1` et `[::1]` pour les installations
+locales. L’accès distant par IP ou domaine exige un certificat HTTPS valide,
+y compris sur le réseau local. Le client ne transmet pas de données vers une
+origine HTTP distante et l’API refuse ses écritures même si elle est autorisée
+dans `.env`. Pour une PWA sur téléphone, utiliser un domaine HTTPS accessible.
 
-```dotenv
-APP_ORIGIN=http://192.0.2.10:28085
-COOKIE_SECURE=false
-```
-
-Ouvrir exactement cette adresse dans le navigateur. `localhost` convient depuis
-la machine qui héberge Docker. Pour une PWA sur téléphone, utiliser un domaine
-HTTPS accessible depuis celui-ci.
+Le proxy doit rediriger HTTP vers HTTPS, utiliser TLS 1.2 ou 1.3 et remplacer
+`X-Forwarded-Proto` par le protocole public réel (`https`). MySold ajoute alors
+HSTS sur les réponses. Définir `COOKIE_SECURE=true` ; une connexion provenant
+d’une origine HTTPS reçoit aussi automatiquement un cookie de session Secure.
+Les certificats et le proxy ne sont pas générés par Compose.
 
 Une origine comprend le protocole, le domaine ou l’IP et le port non standard,
 sans chemin. Plusieurs origines sont séparées par des virgules ; aucun joker.
@@ -87,7 +89,8 @@ l’inscription ou d’une écriture. `WEB_PORT` peut être modifié, en adaptan
 les origines HTTP et la destination du proxy.
 
 Le port est publié sur toutes les interfaces. Chaque administrateur configure
-son pare-feu, son DNS et son proxy. La base et l’API ne publient aucun port.
+son pare-feu, son DNS et son proxy. En production, réserver le port HTTP `28085`
+au proxy avec le pare-feu. La base et l’API ne publient aucun port.
 
 Après toute modification de `.env` :
 
@@ -127,6 +130,11 @@ docker compose up -d --build
 
 Conserver `data/` et `.env`. Aucun script de migration n’est à lancer.
 La mise à jour du schéma est effectuée automatiquement au démarrage de l’API.
+Lors du premier passage au chiffrement, les documents existants et secrets 2AF
+sont convertis par lots avant l’ouverture de l’API ; une interruption reprend
+au prochain lancement. Faire une sauvegarde préalable, puis sauvegarder aussi
+`data/keys` dès cette première mise à jour. Une mauvaise clé bloque le démarrage,
+sans réinitialiser les données. Ne jamais supprimer ou remplacer ce dossier.
 La PWA propose ensuite sa mise à jour lorsqu’un nouveau build Web est installé.
 
 ## Vérifier et administrer
@@ -151,3 +159,5 @@ le Dockerfile avec vérification d’intégrité. Si la release correspondant au
 sources n’est pas encore disponible, attendre la réussite du workflow **Web
 release**, puis relancer la construction. Le serveur ne compile pas Flutter.
 Le [README](../README.md) décrit aussi la compilation depuis les sources et les forks.
+
+Le [guide de sécurité](SECURITE.md) décrit le chiffrement, ses limites et la récupération.

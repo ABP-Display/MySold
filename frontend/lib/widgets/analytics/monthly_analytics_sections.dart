@@ -66,11 +66,13 @@ class MonthlyStatsPanel extends StatelessWidget {
 
 class MonthlyOverview extends StatelessWidget {
   final MonthlyAnalytics data;
+  final MonthlyTotals? totals;
   final String currency;
   final bool hidden;
   const MonthlyOverview({
     super.key,
     required this.data,
+    this.totals,
     required this.currency,
     required this.hidden,
   });
@@ -78,22 +80,27 @@ class MonthlyOverview extends StatelessWidget {
   Widget build(BuildContext context) => AppMetricGrid(
     children: [
       for (final item in [
-        ('Revenus', data.current.income, Icons.south_west, Colors.green),
+        (
+          'Revenus',
+          (totals ?? data.current).income,
+          Icons.south_west,
+          Colors.green,
+        ),
         (
           'Dépenses',
-          data.current.expense,
+          (totals ?? data.current).expense,
           Icons.north_east,
           Theme.of(context).colorScheme.error,
         ),
         (
           'Investissements',
-          data.current.investment,
+          (totals ?? data.current).investment,
           Icons.trending_up,
           Theme.of(context).colorScheme.primary,
         ),
         (
-          'Reste du mois',
-          data.current.available,
+          totals == null ? 'Reste du mois' : 'Reste de l’année',
+          (totals ?? data.current).available,
           Icons.payments_outlined,
           Theme.of(context).colorScheme.primary,
         ),
@@ -145,11 +152,8 @@ class MonthlyProjection extends StatelessWidget {
   Widget build(BuildContext context) => MonthlyStatsPanel(
     title: 'Projection fin de mois',
     icon: Icons.auto_graph,
-    subtitle: context.tr(
-      data.isCurrent
-          ? 'Dépenses estimées au rythme actuel, revenus reçus et investissements inchangés.'
-          : 'Mois terminé : résultat réel.',
-    ),
+    subtitle:
+        '${DateFormat.yMMMM(Localizations.localeOf(context).toString()).format(data.month)} · ${context.tr(data.isCurrent ? 'Dépenses estimées au rythme actuel, revenus reçus et investissements inchangés.' : 'Mois terminé : résultat réel.')}',
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [

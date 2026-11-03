@@ -26,3 +26,5 @@ backend/.venv/
 .vscode/
 .DS_Store
 test-results/
+
+/mysold-keys*.tar.gz

@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:mysold/data/document_store.dart';
 import 'package:mysold/data/local_auth.dart';
@@ -10,7 +9,8 @@ import 'package:mysold/screens/settings/currency_provider.dart';
 import 'package:mysold/screens/settings/privacy_provider.dart';
 import 'package:mysold/widgets/lazy_section_list.dart';
 import 'package:mysold/widgets/month_page_header.dart';
-import 'package:mysold/widgets/month_year_picker.dart';
+import 'package:mysold/widgets/stats_year_picker.dart';
+import 'package:mysold/models/stats_year.dart';
 import 'package:mysold/widgets/analytics/monthly_analytics_sections.dart';
 import 'package:mysold/widgets/analytics/monthly_analysis_chart.dart';
 
@@ -22,13 +22,12 @@ class AnalyticsPage extends StatefulWidget {
 
 class _AnalyticsPageState extends State<AnalyticsPage>
     with WidgetsBindingObserver {
-  DateTime _month = DateTime(DateTime.now().year, DateTime.now().month);
-  DateTime _calendarMonth = DateTime(DateTime.now().year, DateTime.now().month);
-  final _cache = <DateTime, Future<_MonthlySource>>{};
+  int _year = DateTime.now().year, _calendarYear = DateTime.now().year;
+  final _cache = <int, Future<_MonthlySource>>{};
   bool _sameDay = true;
   int? _financialVersion;
   _MonthlySource? _derivedSource;
-  MonthlyAnalytics? _derived;
+  StatsYear? _derived;
   String? _derivedDay;
 
   @override
@@ -47,20 +46,20 @@ class _AnalyticsPageState extends State<AnalyticsPage>
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state != AppLifecycleState.resumed || !mounted) return;
     final now = DateTime.now();
-    final current = DateTime(now.year, now.month);
+    final current = now.year;
     setState(() {
-      if (_month == _calendarMonth) _month = current;
-      _calendarMonth = current;
+      if (_year == _calendarYear) _year = current;
+      _calendarYear = current;
       _cache.clear();
       _derived = null;
     });
   }
 
-  Future<_MonthlySource> _load(DateTime month) {
-    return _cache.putIfAbsent(month, () async {
+  Future<_MonthlySource> _load(int year) {
+    return _cache.putIfAbsent(year, () async {
       final uid = LocalAuth.instance.currentUser?.uid;
       if (uid == null) return const _MonthlySource([]);
-      // One bounded query, including M-1 even when it belongs to the prior year.
+      // One indexed query for the selected year plus December needed by January M-1.
       final query = DocumentStore.instance
           .collection('users')
           .doc(uid)
@@ -68,15 +67,10 @@ class _AnalyticsPageState extends State<AnalyticsPage>
           .where(
             'date',
             isGreaterThanOrEqualTo: Timestamp.fromDate(
-              DateTime(month.year, month.month - 1),
+              year == 1 ? DateTime(1) : DateTime(year - 1, 12),
             ),
           )
-          .where(
-            'date',
-            isLessThan: Timestamp.fromDate(
-              DateTime(month.year, month.month + 1),
-            ),
-          )
+          .where('date', isLessThan: Timestamp.fromDate(DateTime(year + 1)))
           .orderBy('date')
           .get();
       final snapshot = await query;
@@ -94,20 +88,20 @@ class _AnalyticsPageState extends State<AnalyticsPage>
     });
   }
 
-  void _selectMonth(DateTime value) {
-    final month = DateTime(value.year, value.month);
-    if (month == _month) return;
+  void _selectYear(int value) {
+    final year = value.clamp(1, 9998);
+    if (year == _year) return;
     setState(() {
-      _month = month;
+      _year = year;
       _derived = null;
-      if (_cache.length >= 6 && !_cache.containsKey(month))
+      if (_cache.length >= 3 && !_cache.containsKey(year))
         _cache.remove(_cache.keys.first);
     });
   }
 
-  Future<void> _chooseMonth() async {
-    final value = await showMonthYearPicker(context, _month);
-    if (mounted && value != null) _selectMonth(value);
+  Future<void> _chooseYear() async {
+    final value = await chooseStatsYear(context, _year);
+    if (mounted && value != null) _selectYear(value);
   }
 
   Future<void> _refresh() async {
@@ -116,20 +110,20 @@ class _AnalyticsPageState extends State<AnalyticsPage>
       _cache.clear();
       _derived = null;
     });
-    await _load(_month);
+    await _load(_year);
   }
 
-  MonthlyAnalytics _derive(_MonthlySource source) {
+  StatsYear _derive(_MonthlySource source) {
     final now = DateTime.now();
     final day = '${now.year}-${now.month}-${now.day}';
     if (_derived == null ||
         !identical(source, _derivedSource) ||
         _derivedDay != day) {
-      _derived = MonthlyAnalytics.build(
-        month: _month,
+      _derived = StatsYear.build(
+        year: _year,
         now: now,
         transactions: source.transactions,
-        sameDayComparison: _sameDay,
+        sameDay: _sameDay,
       );
       _derivedSource = source;
       _derivedDay = day;
@@ -147,21 +141,20 @@ class _AnalyticsPageState extends State<AnalyticsPage>
       _cache.clear();
       _derived = null;
     }
-    final locale = Localizations.localeOf(context).toString();
     Widget header() => MonthPageHeader(
       title: context.tr('Stats mensuelles'),
       eyebrow: context.tr('ANALYSE'),
-      subtitle: context.tr('Votre mois, comparé et expliqué.'),
-      monthLabel: DateFormat.yMMMM(locale).format(_month),
-      compactMonthLabel: DateFormat.yMMM(locale).format(_month),
-      previousLabel: context.tr('Mois précédent'),
-      nextLabel: context.tr('Mois suivant'),
-      onPrevious: () => _selectMonth(DateTime(_month.year, _month.month - 1)),
-      onNext: () => _selectMonth(DateTime(_month.year, _month.month + 1)),
-      onChoose: _chooseMonth,
+      subtitle: context.tr('Tous les mois de votre année, comparés à M−1.'),
+      monthLabel: '$_year',
+      compactMonthLabel: '$_year',
+      previousLabel: context.tr('Année précédente'),
+      nextLabel: context.tr('Année suivante'),
+      onPrevious: () => _selectYear(_year - 1),
+      onNext: () => _selectYear(_year + 1),
+      onChoose: _chooseYear,
     );
     return FutureBuilder<_MonthlySource>(
-      future: _load(_month),
+      future: _load(_year),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting ||
             !snapshot.hasData)
@@ -190,22 +183,19 @@ class _AnalyticsPageState extends State<AnalyticsPage>
           (_) => header(),
           if (data.isFuture)
             (_) => MonthlyStatsPanel(
-              title: 'Mois à venir',
+              title: 'Année à venir',
               icon: Icons.event_outlined,
-              child: Text(
-                context.tr(
-                  'Les statistiques seront disponibles lorsque ce mois aura commencé.',
-                ),
-              ),
+              child: Text(context.tr('Cette année n’a pas encore commencé.')),
             )
           else ...[
             (_) => MonthlyOverview(
-              data: data,
+              data: data.projection,
+              totals: data.totals,
               currency: currency,
               hidden: privacy.hideAmounts,
             ),
             (_) => MonthlyProjection(
-              data: data,
+              data: data.projection,
               currency: currency,
               hidden: privacy.hideAmounts,
             ),

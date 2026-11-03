@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:http/browser_client.dart';
+import 'transport_policy.dart';
 
 class ApiException implements Exception {
   final String code;
@@ -20,6 +21,12 @@ class ApiClient {
   ]) async {
     // Same-origin cookies never enter localStorage or the exported CSV.
     final uri = Uri.base.resolve('/api/$path');
+    if (!isSecureApiOrigin(uri)) {
+      throw const ApiException(
+        'https-required',
+        'Une connexion HTTPS est requise pour accéder à MySold à distance.',
+      );
+    }
     final headers = {
       'Content-Type': 'application/json',
       'X-MySold-Request': '1',

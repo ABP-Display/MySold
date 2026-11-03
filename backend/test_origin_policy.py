@@ -19,7 +19,14 @@ class OriginPolicyTests(unittest.TestCase):
     def test_multiple_origins_whitespace_and_config_trailing_slash(self):
         configured = ' https://finances.example.test/ , http://192.168.1.20:28085 , '
         self.assertTrue(is_allowed_origin('https://finances.example.test', configured))
-        self.assertTrue(is_allowed_origin('http://192.168.1.20:28085', configured))
+        self.assertFalse(is_allowed_origin('http://192.168.1.20:28085', configured))
+
+    def test_remote_http_is_rejected_even_when_allowlisted(self):
+        for origin in ('http://example.test', 'http://192.0.2.1:28085',
+                       'http://localhost.evil.test', 'http://127.0.0.2:28085'):
+            self.assertFalse(is_allowed_origin(origin, origin))
+        for origin in ('http://127.0.0.1:28085', 'http://[::1]:28085'):
+            self.assertTrue(is_allowed_origin(origin, origin))
 
     def test_scheme_port_and_hostname_must_match(self):
         for origin in ('http://mysold.ydoxide.fr', 'https://mysold.ydoxide.fr:444',

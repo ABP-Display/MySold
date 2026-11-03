@@ -39,6 +39,7 @@ class InstallationTests(unittest.TestCase):
         config['name'] = self.project
         services = config['services']
         services['api']['build']['context'] = str(ROOT / 'backend')
+        services['keys']['build']['context'] = str(ROOT / 'backend')
         services['web']['build']['context'] = str(ROOT / 'frontend')
         if os.getenv('MYSOLD_TEST_WEB_IMAGE'):
             services['web'].pop('build')
@@ -52,7 +53,7 @@ class InstallationTests(unittest.TestCase):
         # volumes there; the root Linux CI exercises the actual host data folders.
         if os.name == 'nt':
             config['volumes'] = {n: {'labels': {'mysold.installation-test': self.project}}
-                                 for n in ('postgres', 'backups')}
+                                 for n in ('postgres', 'backups', 'keys')}
             for service in services.values():
                 for mount in service.get('volumes', []):
                     mount['source'] = Path(mount['source']).name
@@ -113,6 +114,8 @@ class InstallationTests(unittest.TestCase):
         self.start()
         self.assertEqual(self.request('/api/health'), {'status': 'ok'})
         first_secret = self.secret_fingerprint()
+        first_key = self.compose('exec', '-T', 'api', 'python', '-c',
+                                 'from encryption import read_master; import hashlib; print(hashlib.sha256(read_master()).hexdigest())').stdout
         self.assertEqual(first_secret.decode(), hashlib.sha256(secret.encode()).hexdigest())
         cookies = http.cookiejar.CookieJar()
         client = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(cookies))
@@ -121,6 +124,10 @@ class InstallationTests(unittest.TestCase):
             'email': 'installation@example.test', 'password': password,
             'profile': {'firstName': 'Installation', 'pin': hashlib.sha256(b'123456').hexdigest()},
         }, client)['user']
+        self.request('/api/documents/commit', {'requestId': uuid.uuid4().hex, 'operations': [{
+            'path': 'users/' + user['uid'] + '/accounts/restore-test', 'action': 'set',
+            'data': {'name': 'Private restore fixture', 'balance': 123.45},
+        }]}, client)
         self.compose('exec', '-T', 'db', 'sh', '-ec',
                      'umask 077; pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB" '
                      '-Fc -f /backups/installation.dump; pg_restore --list '
@@ -128,15 +135,25 @@ class InstallationTests(unittest.TestCase):
         self.compose('down')
         self.start('--force-recreate')
         self.assertEqual(first_secret, self.secret_fingerprint())
+        self.assertEqual(first_key, self.compose('exec', '-T', 'api', 'python', '-c',
+                         'from encryption import read_master; import hashlib; print(hashlib.sha256(read_master()).hexdigest())').stdout)
         logged_in = self.request('/api/auth/login', {
             'email': 'installation@example.test', 'password': password}, client)
         self.assertEqual(user['uid'], logged_in['user']['uid'])
         self.assertEqual(configured, (self.directory / '.env').read_text(encoding='utf-8'))
+        # A logical dump restores encrypted values using the original key mount.
+        self.compose('exec', '-T', 'db', 'createdb', '-U', 'budget_owner', 'mysold_restore_test')
+        self.compose('exec', '-T', 'db', 'pg_restore', '-U', 'budget_owner', '-d', 'mysold_restore_test',
+                     '--no-owner', '--no-privileges', '--exit-on-error', '--single-transaction', '/backups/installation.dump')
+        restored = self.compose('exec', '-T', '-e', 'POSTGRES_DB=mysold_restore_test', 'api', 'python', '-c',
+            'from app import connect,migrate,load; migrate(); '
+            'db=connect(); print(load(db, ' + repr(user['uid']) + ', "accounts/restore-test")["balance"]); db.close()')
+        self.assertEqual(restored.stdout.strip(), b'123.45')
         # The normal API suites run against an explicitly separate test database.
         self.compose('exec', '-T', 'db', 'createdb', '-U', 'budget_owner', 'mysold_test')
         self.compose('exec', '-T', '-e', 'POSTGRES_DB=mysold_test', 'api',
                      'python', '-m', 'unittest', '-v',
-                     'test_api', 'test_mfa', 'test_totp', 'test_origin_policy')
+                     'test_api', 'test_mfa', 'test_totp', 'test_origin_policy', 'test_encryption')
 
 
 if __name__ == '__main__':

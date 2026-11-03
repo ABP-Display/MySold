@@ -17,6 +17,8 @@ La licence MySold ne remplace pas les licences des dépendances et des ressource
 - Noto Sans Symbols : SIL Open Font License 1.1, incluse dans
   `frontend/assets/fonts/NotoSansSymbols-LICENSE.txt`, issue du dépôt Google Fonts.
 - Flask, Werkzeug, Psycopg, Gunicorn : licences fournies par leurs distributions.
+- PyCA cryptography : Apache-2.0 OR BSD-3-Clause ; licences et avis inclus dans
+  la distribution Python installée dans l’image API.
 - PostgreSQL, Nginx et images de base : licences et avis de leurs projets.
 
 Les logos et illustrations propres à Sold Up / MySold restent soumis aux droits

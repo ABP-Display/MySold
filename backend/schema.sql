@@ -22,6 +22,16 @@ CREATE INDEX IF NOT EXISTS documents_collection ON documents(user_id, collection
 CREATE INDEX IF NOT EXISTS documents_date ON documents(user_id, collection, (data->'date'->>'value'), path);
 CREATE INDEX IF NOT EXISTS documents_type ON documents(user_id, collection, (data->>'type'));
 CREATE INDEX IF NOT EXISTS documents_fields ON documents USING gin(data);
+ALTER TABLE documents ADD COLUMN IF NOT EXISTS sealed_data bytea;
+CREATE INDEX IF NOT EXISTS documents_plaintext_migration ON documents(user_id,path) WHERE sealed_data IS NULL;
+CREATE TABLE IF NOT EXISTS user_data_keys (
+    user_id text PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+    wrapped_key bytea NOT NULL
+);
+CREATE TABLE IF NOT EXISTS encryption_state (
+    id integer PRIMARY KEY CHECK (id = 1),
+    master_fingerprint text NOT NULL
+);
 CREATE TABLE IF NOT EXISTS requests (
     user_id text NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     id text NOT NULL,

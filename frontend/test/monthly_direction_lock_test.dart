@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mysold/widgets/analytics/monthly_analysis_chart.dart';
-import 'package:mysold/widgets/app_touch_policy.dart';
 import 'package:mysold/widgets/lazy_section_list.dart';
 import 'monthly_analytics_test.dart' show comparisonFixture;
 
@@ -15,7 +14,6 @@ void main() {
       addTearDown(tester.view.resetDevicePixelRatio);
       await tester.pumpWidget(
         MaterialApp(
-          builder: (_, child) => AppTouchPolicy(child: child!),
           home: Scaffold(
             body: LazySectionList(
               gaps: const [16],

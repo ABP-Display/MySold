@@ -10,7 +10,6 @@ import 'package:mysold/widgets/app_select_field.dart';
 import 'package:mysold/widgets/app_design.dart';
 // month_manager.dart
 import 'package:flutter/material.dart';
-import 'package:flutter/gestures.dart';
 import 'package:intl/intl.dart';
 import 'package:mysold/data/local_auth.dart';
 import 'package:provider/provider.dart';
@@ -639,7 +638,6 @@ class _MonthManagerState extends State<MonthManagerScreen> {
     final monthlyAmount = _monthlyTransactionsAmount(filtered, type);
 
     return CustomScrollView(
-      dragStartBehavior: DragStartBehavior.down,
       slivers: [
         SliverToBoxAdapter(
           child: RepaintBoundary(
@@ -689,8 +687,7 @@ class _MonthManagerState extends State<MonthManagerScreen> {
                         ),
                       ),
                       leading: const Icon(Icons.bar_chart_outlined, size: 20),
-                      initiallyExpanded:
-                          MediaQuery.sizeOf(context).width >= 760,
+                      initiallyExpanded: false,
                       children: [
                         MonthGraph(
                           transactions: filtered,

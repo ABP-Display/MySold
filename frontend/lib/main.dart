@@ -1,5 +1,4 @@
 import 'package:mysold/widgets/app_loading_screen.dart';
-import 'package:mysold/widgets/app_touch_policy.dart';
 import 'package:mysold/widgets/lazy_page_stack.dart';
 import 'dart:async';
 
@@ -131,7 +130,7 @@ class _MyAppState extends State<MyApp> {
       navigatorKey: _navigatorKey,
       builder: (context, child) => PwaUpdatePrompt(
         navigatorKey: _navigatorKey,
-        child: AppTouchPolicy(child: child ?? const SizedBox.shrink()),
+        child: child ?? const SizedBox.shrink(),
       ),
       title: 'MySold',
       debugShowCheckedModeBanner: false,

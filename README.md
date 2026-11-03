@@ -525,16 +525,10 @@ sur le graphique et le geste vertical sur la page sont distingués : la directio
 retenue au début du glissement reste
 prioritaire jusqu’au relâchement, malgré les petites dérives du doigt. Un clic
 n’est exécuté qu’au relâchement lorsqu’aucun glissement n’a été reconnu.
-Le défilement tactile est reconnu dès 8 pixels logiques, en conservant les seuils plus fins
-fournis par l’appareil ; les listes principales reprennent la distance parcourue
-depuis le début du geste. Un léger tremblement reste traité comme un clic.
-Les contrôles Material utilisent un retour visuel direct sans vague animée,
-pour ne pas lancer de nouveaux effets pendant le démarrage d’un défilement.
-Un appui prolongé sur un graphique ou une icône ne verrouille pas le glissement :
-les courbes utilisent la même sélection tactile sans capture de geste que les
-autres graphiques. Les info-bulles des boutons restent disponibles à la souris
-et leurs libellés restent accessibles aux lecteurs d’écran, sans intercepter
-les appuis longs sur écran tactile.
+Les seuils tactiles et le démarrage du défilement utilisent les valeurs standards
+de Flutter, comme l’ancienne application. Le graphique du patrimoine annuel
+conserve ses info-bulles natives. Les répartitions du mois sont fermées par défaut
+sur téléphone comme sur ordinateur.
 Les pages masquées reportent aussi leurs nouvelles lectures et agrégations à leur
 réouverture. Aucune lecture des transactions n’est faite pour vérifier les alertes
 budgétaires lorsqu’aucune alerte n’est active.

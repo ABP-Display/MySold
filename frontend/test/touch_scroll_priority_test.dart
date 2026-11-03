@@ -6,7 +6,6 @@ import 'package:mysold/screens/settings/theme_settings.dart';
 import 'package:mysold/widgets/app_selection_button.dart';
 import 'package:mysold/widgets/app_design.dart';
 import 'package:mysold/widgets/graphiques/app_charts.dart';
-import 'package:mysold/widgets/graphiques/chart_info_region.dart';
 
 void main() {
   testWidgets('Mouse hover still shows button help and a tap activates once', (
@@ -38,63 +37,8 @@ void main() {
     await tester.pumpAndSettle();
     expect(clicks, 1);
   });
-  testWidgets(
-    'Chart inspection keeps the existing formatted tooltip during a held horizontal drag',
-    (tester) async {
-      await tester.pumpWidget(
-        MaterialApp(
-          home: Scaffold(
-            body: SizedBox(
-              height: 250,
-              child: AppLineChart(
-                LineChartData(
-                  minX: 0,
-                  maxX: 2,
-                  minY: 0,
-                  maxY: 20,
-                  titlesData: const FlTitlesData(show: false),
-                  lineTouchData: LineTouchData(
-                    touchTooltipData: LineTouchTooltipData(
-                      getTooltipItems: (spots) => [
-                        for (final spot in spots)
-                          LineTooltipItem(
-                            'Date ${spot.x.toInt()}\n${spot.y.toInt()} €',
-                            const TextStyle(),
-                          ),
-                      ],
-                    ),
-                  ),
-                  lineBarsData: [
-                    LineChartBarData(
-                      spots: const [FlSpot(0, 5), FlSpot(1, 10), FlSpot(2, 15)],
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ),
-      );
-      final finger = await tester.startGesture(const Offset(80, 100));
-      await tester.pump(const Duration(milliseconds: 700));
-      expect(find.byKey(const ValueKey('chart-info-card')), findsNothing);
-      await finger.moveTo(const Offset(104, 100));
-      await tester.pump();
-      expect(find.text('Date 0'), findsOneWidget);
-      expect(find.text('5 €'), findsOneWidget);
-      await finger.moveTo(const Offset(720, 100));
-      await tester.pumpAndSettle();
-      expect(find.text('Date 2'), findsOneWidget);
-      expect(find.text('15 €'), findsOneWidget);
-      expect(find.byKey(const ValueKey('chart-info-card')), findsOneWidget);
-      await finger.up();
-      await tester.pumpAndSettle();
-      expect(find.byKey(const ValueKey('chart-info-card')), findsNothing);
-      expect(tester.takeException(), isNull);
-    },
-  );
   for (final kind in ['chart', 'tooltip button', 'selection', 'operation']) {
-    for (final hold in [Duration.zero, const Duration(milliseconds: 700)]) {
+    for (final hold in [Duration.zero, const Duration(milliseconds: 30)]) {
       testWidgets(
         'Scroll starting on $kind after $hold does not activate or lock it',
         (tester) async {

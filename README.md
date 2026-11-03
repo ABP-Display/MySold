@@ -520,8 +520,12 @@ lors d’un retour en arrière. Les pages masquées ne sont pas remises en page 
 la destination visible. Les gestes verticaux sur les graphiques restent réservés
 au défilement et ne recalculent pas les informations de survol à chaque mouvement.
 Poser le doigt seul ne lance aucun calcul du graphique : un tap relâché sélectionne
-une valeur et un glissement horizontal permet de la parcourir. Le défilement
-tactile est reconnu dès 8 pixels logiques, en conservant les seuils plus fins
+une valeur et un glissement horizontal permet de la parcourir. Le geste horizontal
+sur le graphique et le geste vertical sur la page sont distingués : la direction
+retenue au début du glissement reste
+prioritaire jusqu’au relâchement, malgré les petites dérives du doigt. Un clic
+n’est exécuté qu’au relâchement lorsqu’aucun glissement n’a été reconnu.
+Le défilement tactile est reconnu dès 8 pixels logiques, en conservant les seuils plus fins
 fournis par l’appareil ; les listes principales reprennent la distance parcourue
 depuis le début du geste. Un léger tremblement reste traité comme un clic.
 Les contrôles Material utilisent un retour visuel direct sans vague animée,

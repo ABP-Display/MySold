@@ -1,8 +1,8 @@
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 
-/// Observe chart selection without competing with the page's scroll gesture.
-/// A vertical drag belongs to the page and must not rebuild chart tooltips.
+/// The horizontal recognizer competes with the page's vertical recognizer.
+/// Once either direction wins, small finger drift cannot switch ownership.
 class ChartPointerRegion extends StatefulWidget {
   final Widget child;
   final ValueChanged<Offset> onSelect;
@@ -21,11 +21,9 @@ class ChartPointerRegion extends StatefulWidget {
 }
 
 class _ChartPointerRegionState extends State<ChartPointerRegion> {
-  Offset? _origin;
-  int? _pointer;
-  bool _verticalDrag = false;
-  bool _horizontalDrag = false;
+  PointerDeviceKind? _dragKind;
   ScrollPosition? _position;
+  double? _lastPixels;
 
   @override
   void didChangeDependencies() {
@@ -34,13 +32,18 @@ class _ChartPointerRegionState extends State<ChartPointerRegion> {
     if (_position != position) {
       _position?.removeListener(_onScroll);
       _position = position;
+      _lastPixels = position?.pixels;
       _position?.addListener(_onScroll);
     }
   }
 
   void _onScroll() {
-    if (_position?.axis != Axis.vertical) return;
-    if (_pointer != null) _verticalDrag = true;
+    final position = _position;
+    if (position == null ||
+        position.axis != Axis.vertical ||
+        position.pixels == _lastPixels)
+      return;
+    _lastPixels = position.pixels;
     widget.onClear?.call();
   }
 
@@ -53,60 +56,32 @@ class _ChartPointerRegionState extends State<ChartPointerRegion> {
   bool get _scrolling =>
       Scrollable.maybeOf(context)?.position.isScrollingNotifier.value ?? false;
 
-  void _clear() {
-    _origin = null;
-    _pointer = null;
-    _verticalDrag = false;
-    _horizontalDrag = false;
-    widget.onClear?.call();
-  }
-
   @override
   Widget build(BuildContext context) => MouseRegion(
     cursor: widget.cursor,
-    onExit: (_) => _clear(),
+    onExit: (_) => widget.onClear?.call(),
     onHover: (event) {
       if (!_scrolling) widget.onSelect(event.localPosition);
     },
-    child: Listener(
+    child: GestureDetector(
       behavior: HitTestBehavior.opaque,
-      onPointerDown: (event) {
-        _pointer = event.pointer;
-        _origin = event.position;
-        _verticalDrag = false;
-        _horizontalDrag = false;
+      dragStartBehavior: DragStartBehavior.down,
+      onTapUp: (details) => widget.onSelect(details.localPosition),
+      onTapCancel: widget.onClear,
+      onHorizontalDragStart: (details) {
+        _dragKind = details.kind;
+        widget.onSelect(details.localPosition);
       },
-      onPointerMove: (event) {
-        if (_pointer != event.pointer || _origin == null) return;
-        final movement = event.position - _origin!;
-        if (!_verticalDrag && !_horizontalDrag) {
-          final slop =
-              MediaQuery.gestureSettingsOf(context).touchSlop ?? kTouchSlop;
-          if (movement.distance <= slop) return;
-          if (movement.dy.abs() >= movement.dx.abs()) {
-            _verticalDrag = true;
-            widget.onClear?.call();
-          } else {
-            _horizontalDrag = true;
-          }
-        }
-        if (_horizontalDrag && !_verticalDrag) {
-          widget.onSelect(event.localPosition);
-        }
+      onHorizontalDragUpdate: (details) =>
+          widget.onSelect(details.localPosition),
+      onHorizontalDragEnd: (_) {
+        if (_dragKind != PointerDeviceKind.mouse) widget.onClear?.call();
+        _dragKind = null;
       },
-      onPointerUp: (event) {
-        if (_pointer != event.pointer) return;
-        if (!_verticalDrag && !_horizontalDrag) {
-          widget.onSelect(event.localPosition);
-        } else if (_horizontalDrag && event.kind != PointerDeviceKind.mouse) {
-          widget.onClear?.call();
-        }
-        _pointer = null;
-        _origin = null;
-        _verticalDrag = false;
-        _horizontalDrag = false;
+      onHorizontalDragCancel: () {
+        _dragKind = null;
+        widget.onClear?.call();
       },
-      onPointerCancel: (_) => _clear(),
       child: widget.child,
     ),
   );

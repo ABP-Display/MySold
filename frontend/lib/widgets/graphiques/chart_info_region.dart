@@ -28,6 +28,10 @@ class _ChartInfoRegionState extends State<ChartInfoRegion> {
   ChartInfo? _info;
   Offset? _position;
   Size _viewport = Size.zero;
+  Offset? _scrollPointerPosition;
+  int? _scrollPointer;
+  ValueNotifier<bool>? _scrollActivity;
+  bool _nestedHorizontalActive = false;
   bool _refreshScheduled = false;
   @override
   void initState() {
@@ -44,15 +48,35 @@ class _ChartInfoRegionState extends State<ChartInfoRegion> {
     }
     _info = null;
     _position = null;
+    _scrollPointerPosition = null;
+    _scrollPointer = null;
+    _detachScrollActivity();
   }
 
   void _onScroll() {
+    if (_scrollPointerPosition != null) _position = _scrollPointerPosition;
     if (_position == null || _refreshScheduled) return;
     _refreshScheduled = true;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _refreshScheduled = false;
-      if (mounted) _refresh();
+      if (mounted) {
+        if (_scrollPointerPosition != null) _position = _scrollPointerPosition;
+        _refresh();
+      }
     });
+  }
+
+  void _onHorizontalActivity() {
+    if (_scrollActivity?.value != true || _scrollPointerPosition == null)
+      return;
+    _nestedHorizontalActive = true;
+    _show(_scrollPointerPosition!);
+  }
+
+  void _detachScrollActivity() {
+    _scrollActivity?.removeListener(_onHorizontalActivity);
+    _scrollActivity = null;
+    _nestedHorizontalActive = false;
   }
 
   void _refresh() {
@@ -81,6 +105,7 @@ class _ChartInfoRegionState extends State<ChartInfoRegion> {
   @override
   void dispose() {
     widget.changes?.removeListener(_onScroll);
+    _detachScrollActivity();
     super.dispose();
   }
 
@@ -89,10 +114,12 @@ class _ChartInfoRegionState extends State<ChartInfoRegion> {
     builder: (context, constraints) {
       _viewport = constraints.biggest;
       final colors = Theme.of(context).colorScheme;
-      return ChartPointerRegion(
+      final region = ChartPointerRegion(
         cursor: MouseCursor.defer,
         onSelect: _show,
-        onClear: _clear,
+        onClear: () {
+          if (!_nestedHorizontalActive) _clear();
+        },
         child: Stack(
           fit: StackFit.expand,
           children: [
@@ -159,6 +186,41 @@ class _ChartInfoRegionState extends State<ChartInfoRegion> {
               ),
           ],
         ),
+      );
+      if (widget.changes == null) return region;
+      // An inner horizontal ScrollView owns its drag recognizer. Observe its
+      // actual scrolling for tooltip updates instead of competing with it.
+      return Listener(
+        onPointerDown: (event) {
+          _detachScrollActivity();
+          _scrollPointer = event.pointer;
+          _scrollPointerPosition = event.localPosition;
+          final changes = widget.changes;
+          if (changes is ScrollController && changes.hasClients) {
+            _scrollActivity = changes.position.isScrollingNotifier;
+            _scrollActivity!.addListener(_onHorizontalActivity);
+          }
+        },
+        onPointerMove: (event) {
+          if (_scrollPointer == event.pointer) {
+            _scrollPointerPosition = event.localPosition;
+            if (_nestedHorizontalActive) _show(event.localPosition);
+          }
+        },
+        onPointerUp: (event) {
+          if (_scrollPointer != event.pointer) return;
+          _scrollPointerPosition = null;
+          _scrollPointer = null;
+          _detachScrollActivity();
+          _clear();
+        },
+        onPointerCancel: (_) {
+          _scrollPointerPosition = null;
+          _scrollPointer = null;
+          _detachScrollActivity();
+          _clear();
+        },
+        child: region,
       );
     },
   );

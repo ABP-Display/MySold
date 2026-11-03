@@ -527,15 +527,17 @@ prioritaire jusqu’au relâchement, malgré les petites dérives du doigt. Un c
 n’est exécuté qu’au relâchement lorsqu’aucun glissement n’a été reconnu.
 Les seuils tactiles et le démarrage du défilement utilisent les valeurs standards
 de Flutter, comme l’ancienne application. Le graphique du patrimoine annuel
-conserve ses info-bulles natives. Les répartitions du mois sont fermées par défaut
+conserve ses info-bulles natives. Les répartitions du mois sont ouvertes par défaut
 sur téléphone comme sur ordinateur.
 Les pages masquées reportent aussi leurs nouvelles lectures et agrégations à leur
 réouverture. Aucune lecture des transactions n’est faite pour vérifier les alertes
 budgétaires lorsqu’aucune alerte n’est active.
 
-La navigation principale, les onglets du simulateur et les filtres d’opérations
-changent immédiatement de sélection, sans animation de texte, de couleur ou de
-vague au clic. Le survol et
+La navigation principale reprend le `PageView` de SoldUp : glissement horizontal
+entre les quatre pages et animation de 260 ms lors du choix d’une destination.
+Les pages déjà consultées conservent leur état. Sur mobile, le menu inférieur
+repose sur une base arrondie, espacée des bords et de la zone gestuelle système.
+Les onglets du simulateur et les filtres d’opérations changent directement de sélection. Le survol et
 le focus au clavier restent visibles. Les pages déjà ouvertes conservent leur
 état et leur défilement ; revenir sur « Mois » ne reconstruit pas ses graphiques
 si les données sont inchangées. Les sections de « Stats mensuelles » et « Annuel » sont

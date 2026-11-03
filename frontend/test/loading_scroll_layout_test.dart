@@ -76,8 +76,14 @@ void main() {
       final content = tester.getRect(
         find.byKey(const ValueKey('bottom-navigation-content')),
       );
-      expect(content.top - bar.top, closeTo(6, 1));
-      expect(bar.bottom - content.bottom, closeTo(6 + inset, 1));
+      final surface = tester.getRect(
+        find.byKey(const ValueKey('bottom-navigation-surface')),
+      );
+      expect(content.top - surface.top, closeTo(6, 1));
+      expect(surface.bottom - content.bottom, closeTo(6, 1));
+      expect(bar.bottom - surface.bottom, closeTo(12 + inset, 1));
+      expect(surface.left, 12);
+      expect(surface.right, 378);
       final sizes = [
         for (var i = 0; i < 4; i++)
           tester.getSize(find.byKey(ValueKey('destination-$i'))),

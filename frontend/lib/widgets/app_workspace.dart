@@ -255,63 +255,68 @@ class AppWorkspace extends StatelessWidget {
         ),
         bottomNavigationBar: wide
             ? null
-            : Container(
-                decoration: BoxDecoration(
-                  border: Border(
-                    top: BorderSide(color: AppDesign.border(context)),
-                  ),
-                ),
+            : SafeArea(
+                top: false,
                 key: const ValueKey('bottom-navigation'),
-                child: SafeArea(
-                  top: false,
-                  child: Padding(
-                    padding: const EdgeInsets.all(6),
-                    child: SizedBox(
-                      key: const ValueKey('bottom-navigation-content'),
-                      height: math.max(
-                        72,
-                        46 + MediaQuery.textScalerOf(context).scale(12) * 2.3,
-                      ),
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          for (
-                            var index = 0;
-                            index < destinations.length;
-                            index++
-                          )
-                            Expanded(
-                              child: AppSelectionButton(
-                                key: ValueKey('destination-$index'),
-                                selected: selectedIndex == index,
-                                outlined: false,
-                                minHeight: 68,
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 4,
-                                  vertical: 8,
-                                ),
-                                onPressed: () => onSelected(index),
-                                child: Column(
-                                  mainAxisSize: MainAxisSize.min,
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Icon(destinations[index].icon, size: 22),
-                                    const SizedBox(height: 4),
-                                    Text(
-                                      context.tr(destinations[index].label),
-                                      maxLines: 2,
-                                      overflow: TextOverflow.ellipsis,
-                                      textAlign: TextAlign.center,
-                                      style: const TextStyle(
-                                        fontSize: 12,
-                                        height: 1.15,
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(12, 6, 12, 12),
+                  child: Container(
+                    key: const ValueKey('bottom-navigation-surface'),
+                    clipBehavior: Clip.antiAlias,
+                    decoration: BoxDecoration(
+                      color: colors.surface,
+                      borderRadius: BorderRadius.circular(24),
+                      border: Border.all(color: AppDesign.border(context)),
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.all(6),
+                      child: SizedBox(
+                        key: const ValueKey('bottom-navigation-content'),
+                        height: math.max(
+                          72,
+                          46 + MediaQuery.textScalerOf(context).scale(12) * 2.3,
+                        ),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            for (
+                              var index = 0;
+                              index < destinations.length;
+                              index++
+                            )
+                              Expanded(
+                                child: AppSelectionButton(
+                                  key: ValueKey('destination-$index'),
+                                  selected: selectedIndex == index,
+                                  outlined: false,
+                                  minHeight: 68,
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 4,
+                                    vertical: 8,
+                                  ),
+                                  onPressed: () => onSelected(index),
+                                  child: Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Icon(destinations[index].icon, size: 22),
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        context.tr(destinations[index].label),
+                                        maxLines: 2,
+                                        overflow: TextOverflow.ellipsis,
+                                        textAlign: TextAlign.center,
+                                        style: const TextStyle(
+                                          fontSize: 12,
+                                          height: 1.15,
+                                        ),
                                       ),
-                                    ),
-                                  ],
+                                    ],
+                                  ),
                                 ),
                               ),
-                            ),
-                        ],
+                          ],
+                        ),
                       ),
                     ),
                   ),

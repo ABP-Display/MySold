@@ -687,7 +687,7 @@ class _MonthManagerState extends State<MonthManagerScreen> {
                         ),
                       ),
                       leading: const Icon(Icons.bar_chart_outlined, size: 20),
-                      initiallyExpanded: false,
+                      initiallyExpanded: true,
                       children: [
                         MonthGraph(
                           transactions: filtered,

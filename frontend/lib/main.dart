@@ -1,5 +1,5 @@
 import 'package:mysold/widgets/app_loading_screen.dart';
-import 'package:mysold/widgets/lazy_page_stack.dart';
+import 'package:mysold/widgets/retained_page_view.dart';
 import 'dart:async';
 
 import 'package:flutter/foundation.dart' show kIsWeb;
@@ -231,6 +231,7 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
+  final _pageController = PageController();
   int _selectedIndex = 0;
   bool _wasInBackground = false;
   bool _isLocking = false;
@@ -355,7 +356,13 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   }
 
   void _goToPage(int index) {
-    if (index != _selectedIndex) setState(() => _selectedIndex = index);
+    if (_pageController.hasClients) {
+      _pageController.animateToPage(
+        index,
+        duration: const Duration(milliseconds: 260),
+        curve: Curves.easeInOut,
+      );
+    }
   }
 
   @override
@@ -380,7 +387,14 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                 onSelected: _goToPage,
                 hidden: privacy.hideAmounts,
                 onPrivacy: () => privacy.setHideAmounts(!privacy.hideAmounts),
-                child: LazyPageStack(index: _selectedIndex, children: _pages),
+                child: RetainedPageView(
+                  controller: _pageController,
+                  onPageChanged: (index) {
+                    if (mounted && index != _selectedIndex)
+                      setState(() => _selectedIndex = index);
+                  },
+                  children: _pages,
+                ),
               ),
             ),
           ),
@@ -394,6 +408,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    _pageController.dispose();
     _privacy?.removeListener(_syncShakePreference);
     _shakeService.stop();
     super.dispose();

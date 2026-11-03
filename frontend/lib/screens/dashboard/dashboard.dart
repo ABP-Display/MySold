@@ -158,7 +158,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             sections: [
               (_) => PageIntro(
                 eyebrow: context.tr('PATRIMOINE'),
-                title: context.tr('Annuel'),
+                title: context.tr('Stats annuelles'),
                 subtitle: context.tr(
                   'Une vue d’ensemble de vos comptes et de votre année.',
                 ),

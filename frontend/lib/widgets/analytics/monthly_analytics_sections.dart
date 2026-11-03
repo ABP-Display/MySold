@@ -107,7 +107,9 @@ class MonthlyOverview extends StatelessWidget {
       ])
         AppMetricCard(
           label: context.tr(item.$1),
-          value: _money(context, item.$2, currency, hidden),
+          value: data.isFuture
+              ? '—'
+              : _money(context, item.$2, currency, hidden),
           icon: item.$3,
           color: hidden ? _muted(context) : item.$4,
         ),
@@ -153,7 +155,11 @@ class MonthlyProjection extends StatelessWidget {
     title: 'Projection fin de mois',
     icon: Icons.auto_graph,
     subtitle:
-        '${DateFormat.yMMMM(Localizations.localeOf(context).toString()).format(data.month)} · ${context.tr(data.isCurrent ? 'Dépenses estimées au rythme actuel, revenus reçus et investissements inchangés.' : 'Mois terminé : résultat réel.')}',
+        '${DateFormat.yMMMM(Localizations.localeOf(context).toString()).format(data.month)} · ${context.tr(data.isFuture
+            ? 'Cette période n’a pas encore commencé.'
+            : data.isCurrent
+            ? 'Dépenses estimées au rythme actuel, revenus reçus et investissements inchangés.'
+            : 'Mois terminé : résultat réel.')}',
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -161,7 +167,9 @@ class MonthlyProjection extends StatelessWidget {
           children: [
             AppMetricCard(
               label: context.tr('Reste du mois'),
-              value: _money(context, data.current.available, currency, hidden),
+              value: data.isFuture
+                  ? '—'
+                  : _money(context, data.current.available, currency, hidden),
               icon: Icons.payments_outlined,
               color: Theme.of(context).colorScheme.primary,
             ),

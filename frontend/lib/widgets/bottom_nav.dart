@@ -21,7 +21,7 @@ class BottomNavBar extends StatelessWidget {
         ),
         BottomNavigationBarItem(
           icon: Icon(Icons.pie_chart),
-          label: 'Annuel',
+          label: 'Stats annuelles',
         ),
       ],
     );

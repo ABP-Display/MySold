@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/gestures.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:mysold/models/monthly_analytics.dart';
-import 'package:mysold/models/stats_year.dart';
+import 'package:mysold/models/month_comparison.dart';
 import 'package:mysold/screens/settings/theme_settings.dart';
 import 'package:mysold/widgets/analytics/monthly_analytics_sections.dart';
 import 'package:mysold/widgets/analytics/monthly_analysis_chart.dart';
@@ -35,18 +36,27 @@ MonthlyAnalytics fixture({bool full = false}) => MonthlyAnalytics.build(
   ],
 );
 
-StatsYear yearFixture() => StatsYear.build(
-  year: 2026,
-  now: DateTime(2026, 11, 15),
-  transactions: [
+MonthComparison comparisonFixture() {
+  final ops = [
     operation('income', 2000, DateTime(2026, 11, 1), type: 'income'),
-    operation('expense', 200, DateTime(2026, 11, 2)),
-    operation('loss', 310, DateTime(2026, 1, 2)),
-    operation('investment', 300, DateTime(2026, 11, 3), type: 'investment'),
+    operation('expense', 2500, DateTime(2026, 11, 2)),
+    operation('invest', 300, DateTime(2026, 11, 3), type: 'investment'),
     operation('transfer', 400, DateTime(2026, 11, 4), type: 'transfer'),
-    operation('old-expense', 180, DateTime(2026, 10, 2)),
-  ],
-);
+    operation('old', 180, DateTime(2026, 10, 2)),
+  ];
+  return MonthComparison(
+    MonthlyAnalytics.build(
+      month: DateTime(2026, 11),
+      now: DateTime(2026, 11, 15),
+      transactions: ops,
+    ),
+    MonthlyAnalytics.build(
+      month: DateTime(2026, 10),
+      now: DateTime(2026, 11, 15),
+      transactions: ops,
+    ),
+  );
+}
 
 void main() {
   test(
@@ -175,7 +185,7 @@ void main() {
                             hidden: false,
                           ),
                           MonthlyAnalysisChart(
-                            data: yearFixture(),
+                            data: comparisonFixture(),
                             currency: '€',
                             hidden: false,
                             onSameDay: (_) {},
@@ -196,14 +206,14 @@ void main() {
     }
   }
   testWidgets(
-    'Five series, monthly totals and daily averages use the common annual chart',
+    'Five series switch between daily amounts and running totals for two months',
     (tester) async {
       await tester.pumpWidget(
         MaterialApp(
           home: Scaffold(
             body: SingleChildScrollView(
               child: MonthlyAnalysisChart(
-                data: yearFixture(),
+                data: comparisonFixture(),
                 currency: '€',
                 hidden: false,
                 onSameDay: (_) {},
@@ -219,19 +229,16 @@ void main() {
         await tester.tap(control);
         await tester.pumpAndSettle();
         final chart = tester.widget<LineChart>(find.byType(LineChart));
-        expect(chart.data.lineBarsData.first.spots.length, 11);
-        expect(chart.data.lineBarsData.last.dashArray, isNotEmpty);
+        expect(chart.data.lineBarsData.last.spots.length, 15);
+        expect(chart.data.lineBarsData.first.dashArray, isNotEmpty);
       }
       final total = tester.widget<LineChart>(find.byType(LineChart));
-      expect(total.data.lineBarsData.first.spots[10].y, 400);
+      expect(total.data.lineBarsData.last.spots.last.y, 400);
       await tester.ensureVisible(find.byKey(const ValueKey('analysis-daily')));
       await tester.tap(find.byKey(const ValueKey('analysis-daily')));
       await tester.pumpAndSettle();
       final average = tester.widget<LineChart>(find.byType(LineChart));
-      expect(
-        average.data.lineBarsData.first.spots[10].y,
-        closeTo(400 / 15, .0001),
-      );
+      expect(average.data.lineBarsData.last.spots[3].y, 400);
       await tester.ensureVisible(
         find.byKey(const ValueKey('analysis-remaining')),
       );
@@ -258,7 +265,7 @@ void main() {
         home: Scaffold(
           body: SingleChildScrollView(
             child: MonthlyAnalysisChart(
-              data: yearFixture(),
+              data: comparisonFixture(),
               currency: '€',
               hidden: false,
               onSameDay: (value) => selected = value,
@@ -288,6 +295,75 @@ void main() {
     expect(selected, true);
     expect(tester.takeException(), isNull);
   });
+  testWidgets(
+    'Hover and touch select days directly; the fixed readout stays outside the plot',
+    (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: SingleChildScrollView(
+              child: MonthlyAnalysisChart(
+                data: comparisonFixture(),
+                currency: '€',
+                hidden: false,
+                onSameDay: (_) {},
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      final plot = find.byKey(const ValueKey('monthly-analysis-plot'));
+      await tester.ensureVisible(plot);
+      await tester.pumpAndSettle();
+      final bounds = tester.getRect(plot);
+      final mouse = await tester.createGesture(kind: PointerDeviceKind.mouse);
+      await mouse.addPointer(
+        location: Offset(bounds.left + 48, bounds.top + 50),
+      );
+      await mouse.moveTo(Offset(bounds.left + 48, bounds.top + 55));
+      await tester.pumpAndSettle();
+      expect(
+        tester
+            .widget<Text>(
+              find.byKey(const ValueKey('monthly-analysis-selected-day')),
+            )
+            .data,
+        contains('Jour 1'),
+      );
+      await mouse.removePointer();
+      await tester.tapAt(Offset(bounds.right - 18, bounds.top + 50));
+      await tester.pumpAndSettle();
+      expect(
+        tester
+            .widget<Text>(
+              find.byKey(const ValueKey('monthly-analysis-selected-day')),
+            )
+            .data,
+        contains('Jour 15'),
+      );
+      expect(
+        tester
+            .getTopLeft(find.byKey(const ValueKey('monthly-analysis-detail')))
+            .dy,
+        greaterThan(tester.getBottomLeft(plot).dy),
+      );
+      Focus.of(tester.element(find.byType(LineChart))).requestFocus();
+      await tester.pump();
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowLeft);
+      await tester.pumpAndSettle();
+      expect(
+        tester
+            .widget<Text>(
+              find.byKey(const ValueKey('monthly-analysis-selected-day')),
+            )
+            .data,
+        contains('Jour 14'),
+      );
+      expect(find.byType(Slider), findsNothing);
+      expect(tester.takeException(), isNull);
+    },
+  );
   testWidgets('Touch and mouse wheel still scroll the page across the chart', (
     tester,
   ) async {
@@ -300,7 +376,7 @@ void main() {
             controller: scroll,
             children: [
               MonthlyAnalysisChart(
-                data: yearFixture(),
+                data: comparisonFixture(),
                 currency: '€',
                 hidden: false,
                 onSameDay: (_) {},
@@ -340,7 +416,7 @@ void main() {
         home: Scaffold(
           body: SingleChildScrollView(
             child: MonthlyAnalysisChart(
-              data: yearFixture(),
+              data: comparisonFixture(),
               currency: '€',
               hidden: true,
               onSameDay: (_) {},
@@ -352,10 +428,48 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.byType(PrivacyChartMask), findsOneWidget);
     expect(find.byType(LineChart), findsNothing);
-    expect(find.byKey(const ValueKey('annual-flow-detail')), findsNothing);
+    expect(find.byKey(const ValueKey('monthly-analysis-detail')), findsNothing);
     expect(find.textContaining('2,000'), findsNothing);
     expect(tester.takeException(), isNull);
   });
+  testWidgets(
+    'Future months show unavailable summaries and no fabricated comparison delta',
+    (tester) async {
+      final future = MonthlyAnalytics.build(
+        month: DateTime(2027, 1),
+        now: DateTime(2026, 11, 15),
+        transactions: [],
+      );
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: SingleChildScrollView(
+              child: Column(
+                children: [
+                  MonthlyOverview(data: future, currency: '€', hidden: false),
+                  MonthlyProjection(data: future, currency: '€', hidden: false),
+                  MonthlyAnalysisChart(
+                    data: MonthComparison(future, fixture()),
+                    currency: '€',
+                    hidden: false,
+                    onSameDay: (_) {},
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('—'), findsWidgets);
+      expect(find.text('Écart : —'), findsNWidgets(6));
+      expect(
+        find.text('Une des périodes n’a pas encore commencé.'),
+        findsOneWidget,
+      );
+      expect(tester.takeException(), isNull);
+    },
+  );
   testWidgets('Month choice is its own accessible button in the lazy header', (
     tester,
   ) async {

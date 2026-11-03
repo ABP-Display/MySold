@@ -242,7 +242,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   List<_HomeNavItem> get _navItems => const [
     _HomeNavItem(labelKey: 'Mois', icon: Icons.calendar_month_outlined),
     _HomeNavItem(labelKey: 'Stats mensuelles', icon: Icons.query_stats_rounded),
-    _HomeNavItem(labelKey: 'Annuel', icon: Icons.dashboard_outlined),
+    _HomeNavItem(labelKey: 'Stats annuelles', icon: Icons.dashboard_outlined),
     _HomeNavItem(labelKey: 'Profil', icon: Icons.person_outline),
   ];
 

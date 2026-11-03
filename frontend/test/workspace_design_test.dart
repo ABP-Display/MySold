@@ -35,8 +35,11 @@ void main() {
                     selectedIndex: selected,
                     destinations: const [
                       WorkspaceDestination('Mois', Icons.calendar_month),
-                      WorkspaceDestination('Stats mensuelles', Icons.query_stats),
-                      WorkspaceDestination('Annuel', Icons.dashboard),
+                      WorkspaceDestination(
+                        'Stats mensuelles',
+                        Icons.query_stats,
+                      ),
+                      WorkspaceDestination('Stats annuelles', Icons.dashboard),
                       WorkspaceDestination('Profil', Icons.person),
                     ],
                     onSelected: (value) => setState(() => selected = value),

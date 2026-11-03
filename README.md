@@ -449,28 +449,33 @@ même origine. Un simple `flutter run` sans proxy vers l’API ne suffit pas.
 
 ## Statistiques et vue annuelle
 
-**Stats mensuelles** propose un sélecteur d’année, quatre résumés annuels,
-la projection du mois en cours (ou le résultat de décembre pour une année passée),
-puis un graphique sur **les douze mois**, sans défilement horizontal. Cinq postes
-sont disponibles : revenus, dépenses, investissements, transferts et reste.
-La référence M−1 apparaît en pointillés, avec le mois réel précisé dans le détail.
+**Stats mensuelles** résume le mois sélectionné (mois en cours par défaut) :
+quatre cartes, projection de fin de mois, puis comparaison entre deux mois.
+Le sélecteur en haut change le mois analysé et ses quatre résumés. Dans la
+comparaison, les deux mois sont sélectionnables directement avec leur année ;
+la référence suit M−1 jusqu’au choix d’une référence personnalisée. Un bouton
+permet ensuite de revenir à M−1.
 
-Les deux groupes de filtres sont centrés et symétriques : **Mois complets / À date
-égale** et **Cumulé / Par jour**. Cumulé affiche le total de chaque mois ; Par
-jour affiche sa moyenne quotidienne. À date égale arrête le mois en cours et sa
-référence M−1 au même nombre de jours, borné à la durée du mois précédent ; les
-mois terminés restent complets. Les mois futurs n’affichent pas de zéro fictif.
-Le survol, le toucher et le clavier sélectionnent directement un mois, dont les
-montants et le nombre d’opérations, tous types confondus, restent sous le tracé.
+Cinq postes sont disponibles : revenus, dépenses, investissements, transferts
+et reste. Les cartes comparatives affichent les montants et écarts sur les
+périodes comparées. **Mois complets** conserve les journées disponibles de chaque
+mois ; **À date égale** borne les deux périodes au même nombre de jours, limité
+par le mois le plus court ou les jours écoulés du mois en cours. **Cumulé** trace
+le total progressif ; **Par jour** trace le montant réel de chaque journée.
+Les opérations futures sont exclues des montants observés.
 
-Une seule lecture porte sur l’année choisie et décembre de l’année précédente,
-puis les calculs sont conservés en mémoire jusqu’au changement des données.
-Changer de série ou de mode ne relit pas la base. Aucun instantané annuel ni
-calcul d’évolution des soldes n’est stocké.
+Le survol, le toucher et les flèches du clavier sélectionnent un jour. Les valeurs,
+écarts et nombres d’opérations, tous types confondus, restent sous le graphique,
+sans curseur séparé ni défilement horizontal. Les résumés et la projection ne
+changent pas avec les filtres du comparatif.
 
-**Annuel** regroupe les synthèses et graphiques de l'année sélectionnée.
+Seuls les deux mois choisis sont lus avec les index de date, puis conservés dans
+un cache borné à six mois. Changer de série ou de filtre ne relit pas la base.
+Aucun instantané annuel ni calcul d’évolution des soldes n’est stocké.
+
+**Stats annuelles** regroupe les synthèses et graphiques de l’année sélectionnée.
 Les comptes et catégories se consultent dans **Profil**. Les références de
-solde annuelles et leurs calculs par compte/catégorie sont retirés.
+solde annuelles et leurs calculs par compte/catégorie restent retirés.
 
 ## Polices et performances web
 

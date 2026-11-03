@@ -4,6 +4,91 @@ String? monthlyAnalyticsText(String key, String language) {
 }
 
 const _texts = <String, List<String>>{
+  "Stats annuelles": [
+    "Annual stats",
+    "Estadísticas anuales",
+    "Jahresstatistik",
+    "Statistiche annuali",
+    "年次統計",
+  ],
+  "Votre mois, résumé et comparé.": [
+    "Your month, summarized and compared.",
+    "Tu mes, resumido y comparado.",
+    "Dein Monat, zusammengefasst und verglichen.",
+    "Il tuo mese, riassunto e confrontato.",
+    "選択した月の概要と比較。",
+  ],
+  "Comparaison entre deux mois": [
+    "Compare two months",
+    "Comparación entre dos meses",
+    "Vergleich zweier Monate",
+    "Confronto tra due mesi",
+    "2か月の比較",
+  ],
+  "Mois analysé": [
+    "Selected month",
+    "Mes analizado",
+    "Ausgewählter Monat",
+    "Mese analizzato",
+    "分析する月",
+  ],
+  "Mois de référence": [
+    "Reference month",
+    "Mes de referencia",
+    "Referenzmonat",
+    "Mese di riferimento",
+    "比較対象の月",
+  ],
+  "Revenir à M−1": [
+    "Reset to previous month",
+    "Volver al mes anterior",
+    "Zum Vormonat zurückkehren",
+    "Torna al mese precedente",
+    "前月に戻す",
+  ],
+  "Les deux mois sont comparés sur le même nombre de jours.": [
+    "Both months are compared over the same number of days.",
+    "Ambos meses se comparan sobre el mismo número de días.",
+    "Beide Monate werden über dieselbe Anzahl Tage verglichen.",
+    "I due mesi sono confrontati sullo stesso numero di giorni.",
+    "両方の月を同じ日数で比較します。",
+  ],
+  "Chaque mois utilise ses journées disponibles ; le mois en cours reste incomplet.": [
+    "Each month uses its available days; the current month remains incomplete.",
+    "Cada mes usa sus días disponibles; el mes actual sigue incompleto.",
+    "Jeder Monat nutzt seine verfügbaren Tage; der aktuelle Monat ist noch unvollständig.",
+    "Ogni mese usa i giorni disponibili; il mese corrente è incompleto.",
+    "各月の経過した日を表示します。今月は途中までです。",
+  ],
+  "Cumulé : total progressif. Par jour : montant de chaque journée.": [
+    "Cumulative: running total. Daily: amount for each day.",
+    "Acumulado: total progresivo. Por día: importe de cada día.",
+    "Kumuliert: laufende Summe. Pro Tag: Betrag je Tag.",
+    "Cumulato: totale progressivo. Per giorno: importo di ogni giorno.",
+    "累計：その日までの合計。日別：各日の金額。",
+  ],
+  "Une des périodes n’a pas encore commencé.": [
+    "One period has not started yet.",
+    "Uno de los períodos aún no ha comenzado.",
+    "Einer der Zeiträume hat noch nicht begonnen.",
+    "Uno dei periodi non è ancora iniziato.",
+    "一方の期間はまだ始まっていません。",
+  ],
+  "Cette période n’a pas encore commencé.": [
+    "This period has not started yet.",
+    "Este período aún no ha comenzado.",
+    "Dieser Zeitraum hat noch nicht begonnen.",
+    "Questo periodo non è ancora iniziato.",
+    "この期間はまだ始まっていません。",
+  ],
+  "Impossible de charger les statistiques.": [
+    "Unable to load statistics.",
+    "No se pueden cargar las estadísticas.",
+    "Statistik konnte nicht geladen werden.",
+    "Impossibile caricare le statistiche.",
+    "統計を読み込めません。",
+  ],
+
   "Tous les mois de votre année, comparés à M−1.": [
     "Every month of your year, compared with M−1.",
     "Todos los meses del año, comparados con M−1.",

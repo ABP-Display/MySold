@@ -1,3 +1,4 @@
+import 'package:mysold/widgets/active_page_builder.dart';
 import 'package:mysold/widgets/app_loading_screen.dart';
 import 'package:mysold/services/budget_service.dart';
 import 'package:mysold/widgets/lazy_section_list.dart';
@@ -6,6 +7,7 @@ import 'package:mysold/widgets/graphiques/annual_flow_chart.dart';
 import 'package:mysold/widgets/app_design.dart';
 
 import 'package:mysold/data/document_store.dart';
+import 'package:mysold/data/bounded_async_cache.dart';
 import 'package:mysold/data/local_auth.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
@@ -27,7 +29,7 @@ class DashboardScreen extends StatefulWidget {
 }
 
 class _DashboardScreenState extends State<DashboardScreen> {
-  final Map<int, Future<_AnnualDashboardData>> _yearCache = {};
+  final _yearCache = BoundedAsyncCache<int, _AnnualDashboardData>(capacity: 3);
   int _selectedYear = DateTime.now().year;
   int? _lastFinancialDataVersion;
   int? _lastReferenceDataVersion;
@@ -35,7 +37,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     ..._MonthlyChartSeries.values,
   };
   Future<_AnnualDashboardData> _loadYearData(int year) {
-    return _yearCache.putIfAbsent(year, () => _fetchYearData(year));
+    return _yearCache.load(year, () => _fetchYearData(year));
   }
 
   Future<_AnnualDashboardData> _fetchYearData(int year) async {
@@ -123,7 +125,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) => ActivePageBuilder(builder: _buildPage);
+
+  Widget _buildPage(BuildContext context) {
     final currency = context.watch<CurrencyProvider>().currency;
     final privacy = context.watch<PrivacyProvider>();
     final userData = context.watch<UserDataProvider>();

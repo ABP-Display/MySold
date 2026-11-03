@@ -96,8 +96,9 @@ class BudgetAlertService {
   }
 
   Future<List<BudgetAlertResult>> checkCurrentMonthAlerts() async {
-    final stats = await getCurrentMonthStats();
     final alerts = await getAlerts();
+    if (!alerts.any((alert) => alert.isEnabled)) return const [];
+    final stats = await getCurrentMonthStats();
     final triggered = <BudgetAlertResult>[];
 
     for (var i = 0; i < alerts.length; i++) {

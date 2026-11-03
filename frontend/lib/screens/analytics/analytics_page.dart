@@ -1,9 +1,10 @@
+import 'package:mysold/widgets/active_page_builder.dart';
+import 'package:mysold/data/bounded_async_cache.dart';
 import 'package:mysold/widgets/app_loading_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:mysold/data/document_store.dart';
-import 'package:mysold/data/local_auth.dart';
 import 'package:mysold/l10n/app_localizations.dart';
 import 'package:mysold/models/monthly_analytics.dart';
 import 'package:mysold/models/month_comparison.dart';
@@ -33,7 +34,7 @@ class _AnalyticsPageState extends State<AnalyticsPage>
   DateTime _selected = _month(DateTime.now()),
       _calendar = _month(DateTime.now());
   late DateTime _reference = _prior(_selected);
-  final _cache = <DateTime, Future<_MonthSource>>{};
+  final _cache = BoundedAsyncCache<DateTime, _MonthSource>(capacity: 6);
   Future<List<_MonthSource>>? _pair;
   bool _followPrevious = true;
   // Keep chart preferences while a newly selected month is loading.
@@ -69,38 +70,24 @@ class _AnalyticsPageState extends State<AnalyticsPage>
   }
 
   Future<_MonthSource> _load(DateTime month) {
-    final cached = _cache[month];
-    if (cached != null) return cached;
-    if (_cache.length >= 6) _cache.remove(_cache.keys.first);
-    return _cache[month] = () async {
-      final uid = LocalAuth.instance.currentUser?.uid;
-      if (uid == null) return _MonthSource(month, const []);
-      final snapshot = await DocumentStore.instance
-          .collection('users')
-          .doc(uid)
-          .collection('transactions')
-          .where('date', isGreaterThanOrEqualTo: Timestamp.fromDate(month))
-          .where(
-            'date',
-            isLessThan: Timestamp.fromDate(
-              DateTime(month.year, month.month + 1),
-            ),
-          )
-          .orderBy('date')
-          .get();
+    return _cache.load(month, () async {
+      final transactions = await context
+          .read<UserDataProvider>()
+          .getMonthTransactions(month);
       return _MonthSource(
         month,
-        snapshot.docs.map((doc) {
-          final data = doc.data();
-          return MonthlyOperation(
-            id: doc.id,
-            type: data['type'] as String? ?? '',
-            amount: (data['amount'] as num).toDouble(),
-            date: (data['date'] as Timestamp).toDate(),
-          );
-        }).toList(),
+        transactions
+            .map(
+              (transaction) => MonthlyOperation(
+                id: transaction.id ?? '',
+                type: transaction.type,
+                amount: transaction.amount,
+                date: transaction.date,
+              ),
+            )
+            .toList(),
       );
-    }();
+    });
   }
 
   Future<List<_MonthSource>> _sources() =>
@@ -140,6 +127,7 @@ class _AnalyticsPageState extends State<AnalyticsPage>
   });
   Future<void> _refresh() async {
     DocumentStore.instance.clear();
+    context.read<UserDataProvider>().markFinancialDataChanged();
     setState(() {
       _cache.clear();
       _pair = null;
@@ -148,7 +136,9 @@ class _AnalyticsPageState extends State<AnalyticsPage>
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) => ActivePageBuilder(builder: _buildPage);
+
+  Widget _buildPage(BuildContext context) {
     final user = context.watch<UserDataProvider>();
     final hidden = context.watch<PrivacyProvider>().hideAmounts;
     final currency = context.watch<CurrencyProvider>().currency;

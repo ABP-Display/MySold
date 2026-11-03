@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:math';
 import 'api_client.dart';
+import 'bounded_async_cache.dart';
 
 // A local document API preserves the screens and the portable CSV schema.
 // Every read/write goes to our own server, never to a third-party SDK.
@@ -84,8 +85,9 @@ class DocumentStore {
   static final instance = DocumentStore._();
   DocumentStore._();
   final _changes = StreamController<void>.broadcast();
-  final Map<String, Future<Map<String, dynamic>>> _cache = {};
+  final _cache = BoundedAsyncCache<String, Map<String, dynamic>>(capacity: 48);
   int _generation = 0;
+  int get generation => _generation;
   void clear() {
     _cache.clear();
     _generation++;
@@ -100,14 +102,7 @@ class DocumentStore {
 
   Future<Map<String, dynamic>> read(String route, Map<String, dynamic> body) {
     final key = '$route:${jsonEncode(body)}';
-    return _cache.putIfAbsent(key, () async {
-      try {
-        return await ApiClient.instance.request(route, body);
-      } catch (_) {
-        _cache.remove(key);
-        rethrow;
-      }
-    });
+    return _cache.load(key, () => ApiClient.instance.request(route, body));
   }
 
   Future<void> commit(List<Map<String, dynamic>> operations) async {

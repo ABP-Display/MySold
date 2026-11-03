@@ -1,4 +1,6 @@
+import 'package:mysold/widgets/active_page_builder.dart';
 import 'package:mysold/widgets/app_loading_screen.dart';
+import 'package:mysold/widgets/scroll_item_retention.dart';
 import 'package:mysold/widgets/page_activity_listener.dart';
 import 'package:mysold/widgets/cached_page_stack.dart';
 import 'package:mysold/widgets/month_page_header.dart';
@@ -20,7 +22,6 @@ import 'package:mysold/screens/month/month_graph.dart';
 import 'package:mysold/widgets/transactions/tile/transaction_tile.dart';
 import 'package:mysold/widgets/transactions/tile/transfer_tile.dart';
 import 'package:mysold/widgets/transactions/tile/investment_tile.dart';
-import 'package:mysold/services/budget_service.dart';
 import 'package:mysold/screens/settings/currency_provider.dart';
 import 'package:mysold/screens/settings/privacy_provider.dart';
 import 'package:mysold/services/budget_alert_service.dart';
@@ -40,8 +41,6 @@ class _MonthManagerState extends State<MonthManagerScreen> {
   bool _isLoadingTransactions = true;
   Object? _transactionsError;
   final user = LocalAuth.instance.currentUser;
-  BudgetService? _firestoreService;
-  final Map<String, Future<List<TransactionModel>>> _monthCache = {};
   bool _initialLoadNotified = false;
   Map<String, Map<String, dynamic>> _categories = {};
   Map<String, String> _accountIds = {};
@@ -69,7 +68,6 @@ class _MonthManagerState extends State<MonthManagerScreen> {
       _notifyInitialLoad();
       return;
     }
-    _firestoreService = BudgetService(userId: currentUser.uid);
     _loadTransactionsForSelectedMonth(showLoader: true);
   }
 
@@ -84,8 +82,7 @@ class _MonthManagerState extends State<MonthManagerScreen> {
     bool forceRefresh = false,
     bool showLoader = false,
   }) async {
-    final service = _firestoreService;
-    if (service == null) return;
+    if (user == null) return;
     final month = _monthStart(_currentMonth);
     final request = ++_transactionLoad;
 
@@ -97,9 +94,9 @@ class _MonthManagerState extends State<MonthManagerScreen> {
     }
 
     try {
-      final transactions = forceRefresh
-          ? await _loadFreshTransactionsForMonth(service, month)
-          : await _getTransactionsForMonth(month);
+      final transactions = await context
+          .read<UserDataProvider>()
+          .getMonthTransactions(month);
 
       if (!mounted || request != _transactionLoad) return;
       setState(() {
@@ -130,16 +127,6 @@ class _MonthManagerState extends State<MonthManagerScreen> {
     });
   }
 
-  Future<List<TransactionModel>> _loadFreshTransactionsForMonth(
-    BudgetService service,
-    DateTime month,
-  ) async {
-    final key = _monthKey(month);
-    final freshFuture = service.getTransactionsForMonth(month);
-    _monthCache[key] = freshFuture;
-    return freshFuture;
-  }
-
   Future<void> _checkBudgetAlerts() async {
     final currentUser = user;
     if (currentUser == null) return;
@@ -163,28 +150,7 @@ class _MonthManagerState extends State<MonthManagerScreen> {
     );
   }
 
-  Future<List<TransactionModel>> _getTransactionsForMonth(DateTime month) {
-    final service = _firestoreService;
-    if (service == null) return Future.value([]);
-
-    final normalizedMonth = _monthStart(month);
-    final key = _monthKey(normalizedMonth);
-
-    if (_monthCache.length >= 6 && !_monthCache.containsKey(key)) {
-      _monthCache.remove(_monthCache.keys.first);
-    }
-    return _monthCache.putIfAbsent(
-      key,
-      () => service.getTransactionsForMonth(normalizedMonth),
-    );
-  }
-
   DateTime _monthStart(DateTime date) => DateTime(date.year, date.month, 1);
-
-  String _monthKey(DateTime date) {
-    final month = date.month.toString().padLeft(2, '0');
-    return '${date.year}-$month';
-  }
 
   Future<void> _loadReferenceData({bool forceRefresh = false}) async {
     final references = context.read<UserDataProvider>();
@@ -835,41 +801,44 @@ class _MonthManagerState extends State<MonthManagerScreen> {
               itemCount: filtered.length,
               itemBuilder: (_, i) {
                 final t = filtered[i];
-                return Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 4,
+                return RetainedScrollItem(
+                  key: ValueKey(t.id ?? i),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 4,
+                    ),
+                    child: () {
+                      if (t.type == 'transfer') {
+                        return TransferTransactionTile(
+                          t: t,
+                          accounts: _accountIds,
+                          investments: _investmentIds,
+                          onChanged: () {
+                            _refresh(forceRefresh: true);
+                          },
+                        );
+                      } else if (t.type == 'investment') {
+                        return InvestmentTransactionTile(
+                          t: t,
+                          accounts: _accountIds,
+                          investments: _investmentIds,
+                          onChanged: () {
+                            _refresh(forceRefresh: true);
+                          },
+                        );
+                      } else {
+                        return TransactionTile(
+                          t: t,
+                          categories: _categories,
+                          accounts: _accountIds,
+                          onChanged: () {
+                            _refresh(forceRefresh: true);
+                          },
+                        );
+                      }
+                    }(),
                   ),
-                  child: () {
-                    if (t.type == 'transfer') {
-                      return TransferTransactionTile(
-                        t: t,
-                        accounts: _accountIds,
-                        investments: _investmentIds,
-                        onChanged: () {
-                          _refresh(forceRefresh: true);
-                        },
-                      );
-                    } else if (t.type == 'investment') {
-                      return InvestmentTransactionTile(
-                        t: t,
-                        accounts: _accountIds,
-                        investments: _investmentIds,
-                        onChanged: () {
-                          _refresh(forceRefresh: true);
-                        },
-                      );
-                    } else {
-                      return TransactionTile(
-                        t: t,
-                        categories: _categories,
-                        accounts: _accountIds,
-                        onChanged: () {
-                          _refresh(forceRefresh: true);
-                        },
-                      );
-                    }
-                  }(),
                 );
               },
             ),
@@ -879,7 +848,9 @@ class _MonthManagerState extends State<MonthManagerScreen> {
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) => ActivePageBuilder(builder: _buildPage);
+
+  Widget _buildPage(BuildContext context) {
     final references = context.watch<UserDataProvider>();
     final financialVersion = references.financialDataVersion;
     if (_lastFinancialDataVersion != null &&
@@ -889,7 +860,6 @@ class _MonthManagerState extends State<MonthManagerScreen> {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         _reloadScheduled = false;
         if (!mounted) return;
-        _monthCache.clear();
         _loadTransactionsForSelectedMonth(forceRefresh: true);
       });
     }
@@ -915,34 +885,52 @@ class _MonthManagerState extends State<MonthManagerScreen> {
           onRefresh: () => _refresh(forceRefresh: true),
         ),
         body: _transactionsError != null
-            ? Center(child: Text('${_t('Erreur')} : $_transactionsError'))
+            ? Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(24),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text('${_t('Erreur')} : $_transactionsError'),
+                      const SizedBox(height: 16),
+                      FilledButton.icon(
+                        onPressed: () => _refresh(forceRefresh: true),
+                        icon: const Icon(Icons.refresh),
+                        label: Text(_t('Réessayer')),
+                      ),
+                    ],
+                  ),
+                ),
+              )
             : _isLoadingTransactions
             ? const AppLoadingScreen()
-            : CachedPageStack(
-                index: _selectedIndex,
-                itemCount: 4,
-                revision: (
-                  transactions: _transactions,
-                  month: (_currentMonth.year, _currentMonth.month),
-                  references: references.referenceDataVersion,
-                  filters: (
-                    _searchQuery,
-                    _selectedCategoryId,
-                    _selectedAccountId,
-                    _minAmount,
-                    _maxAmount,
-                    _sortField,
-                    _sortAscending,
+            : ScrollItemRetention(
+                child: CachedPageStack(
+                  index: _selectedIndex,
+                  itemCount: 4,
+                  revision: (
+                    transactions: _transactions,
+                    month: (_currentMonth.year, _currentMonth.month),
+                    references: references.referenceDataVersion,
+                    filters: (
+                      _searchQuery,
+                      _selectedCategoryId,
+                      _selectedAccountId,
+                      _minAmount,
+                      _maxAmount,
+                      _sortField,
+                      _sortAscending,
+                    ),
+                    currency: context.watch<CurrencyProvider>().currency,
+                    hidden: context.watch<PrivacyProvider>().hideAmounts,
+                    theme: Theme.of(context),
+                    locale: Localizations.localeOf(context),
                   ),
-                  currency: context.watch<CurrencyProvider>().currency,
-                  hidden: context.watch<PrivacyProvider>().hideAmounts,
-                  theme: Theme.of(context),
-                  locale: Localizations.localeOf(context),
-                ),
-                itemBuilder: (_, index) => _buildTabContent(
-                  _transactions,
-                  ['expense', 'income', 'investment', 'transfer'][index],
-                  monthLabel,
+                  itemBuilder: (_, index) => _buildTabContent(
+                    _transactions,
+                    ['expense', 'income', 'investment', 'transfer'][index],
+                    monthLabel,
+                  ),
                 ),
               ),
       ),

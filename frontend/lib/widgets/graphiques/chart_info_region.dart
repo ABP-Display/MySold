@@ -1,5 +1,5 @@
 import 'dart:math' as math;
-import 'package:flutter/gestures.dart';
+import 'chart_pointer_region.dart';
 import 'package:flutter/material.dart';
 
 class ChartInfo {
@@ -28,7 +28,6 @@ class _ChartInfoRegionState extends State<ChartInfoRegion> {
   ChartInfo? _info;
   Offset? _position;
   Size _viewport = Size.zero;
-  int? _pointer;
   bool _refreshScheduled = false;
   @override
   void initState() {
@@ -45,7 +44,6 @@ class _ChartInfoRegionState extends State<ChartInfoRegion> {
     }
     _info = null;
     _position = null;
-    _pointer = null;
   }
 
   void _onScroll() {
@@ -77,7 +75,6 @@ class _ChartInfoRegionState extends State<ChartInfoRegion> {
 
   void _clear() {
     _position = null;
-    _pointer = null;
     _refresh();
   }
 
@@ -92,91 +89,75 @@ class _ChartInfoRegionState extends State<ChartInfoRegion> {
     builder: (context, constraints) {
       _viewport = constraints.biggest;
       final colors = Theme.of(context).colorScheme;
-      return MouseRegion(
-        onExit: (_) => _clear(),
-        child: Listener(
-          behavior: HitTestBehavior.translucent,
-          onPointerHover: (event) => _show(event.localPosition),
-          onPointerDown: (event) {
-            _pointer = event.pointer;
-            _show(event.localPosition);
-          },
-          onPointerMove: (event) {
-            if (_pointer == event.pointer) _show(event.localPosition);
-          },
-          onPointerUp: (event) {
-            if (_pointer == event.pointer) {
-              _pointer = null;
-              if (event.kind != PointerDeviceKind.mouse) _clear();
-            }
-          },
-          onPointerCancel: (_) => _clear(),
-          child: Stack(
-            fit: StackFit.expand,
-            children: [
-              RepaintBoundary(child: widget.child),
-              if (_info != null)
-                Positioned(
-                  top: 8,
-                  left: 8,
-                  right: 8,
-                  child: IgnorePointer(
-                    child: Align(
-                      alignment: Alignment.topCenter,
-                      child: ConstrainedBox(
-                        constraints: BoxConstraints(
-                          maxWidth: 280,
-                          maxHeight: math.max(0, _viewport.height - 16),
-                        ),
-                        child: Material(
-                          key: const ValueKey('chart-info-card'),
-                          color: colors.surfaceContainerHigh,
-                          surfaceTintColor: Colors.transparent,
-                          elevation: 6,
-                          shadowColor: Colors.black.withValues(alpha: 0.3),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10),
-                            side: BorderSide(
-                              color: colors.outline.withValues(alpha: 0.65),
-                            ),
+      return ChartPointerRegion(
+        cursor: MouseCursor.defer,
+        onSelect: _show,
+        onClear: _clear,
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            RepaintBoundary(child: widget.child),
+            if (_info != null)
+              Positioned(
+                top: 8,
+                left: 8,
+                right: 8,
+                child: IgnorePointer(
+                  child: Align(
+                    alignment: Alignment.topCenter,
+                    child: ConstrainedBox(
+                      constraints: BoxConstraints(
+                        maxWidth: 280,
+                        maxHeight: math.max(0, _viewport.height - 16),
+                      ),
+                      child: Material(
+                        key: const ValueKey('chart-info-card'),
+                        color: colors.surfaceContainerHigh,
+                        surfaceTintColor: Colors.transparent,
+                        elevation: 6,
+                        shadowColor: Colors.black.withValues(alpha: 0.3),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                          side: BorderSide(
+                            color: colors.outline.withValues(alpha: 0.65),
                           ),
-                          child: SingleChildScrollView(
-                            padding: const EdgeInsets.all(12),
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  _info!.title,
-                                  maxLines: 2,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: TextStyle(
-                                    color: colors.onSurface,
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w600,
-                                  ),
+                        ),
+                        child: SingleChildScrollView(
+                          padding: const EdgeInsets.all(12),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                _info!.title,
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  color: colors.onSurface,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
                                 ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  _info!.detail,
-                                  maxLines: 3,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: TextStyle(
-                                    color: colors.onSurface,
-                                    fontSize: 12,
-                                    height: 1.4,
-                                  ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                _info!.detail,
+                                maxLines: 3,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  color: colors.onSurface,
+                                  fontSize: 12,
+                                  height: 1.4,
                                 ),
-                              ],
-                            ),
+                              ),
+                            ],
                           ),
                         ),
                       ),
                     ),
                   ),
                 ),
-            ],
-          ),
+              ),
+          ],
         ),
       );
     },

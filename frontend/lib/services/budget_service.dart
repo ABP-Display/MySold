@@ -826,7 +826,7 @@ class BudgetService {
           .toList();
     } catch (e, stack) {
       AppLogger.error('Monthly transactions query failed', error: e, stackTrace: stack);
-      return [];
+      rethrow;
     }
   }
 

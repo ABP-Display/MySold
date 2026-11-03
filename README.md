@@ -498,11 +498,25 @@ cette préférence est activée sur l’appareil. Le chargement initial de « Mo
 porte uniquement sur le mois affiché, avec un cache borné à six mois consultés,
 sans lecture systématique de l’année entière.
 
+Ce cache de transactions est partagé entre « Mois » et « Stats mensuelles »,
+y compris pour les requêtes en cours. Les écritures et les changements de session
+l’invalident ; les lectures en échec peuvent être réessayées. Le cache des réponses
+API est limité à 48 requêtes et celui des agrégats annuels à trois années.
+
 Les sections de statistiques déjà visitées conservent leur état lorsqu’elles
 sortent de la zone visible ; revenir vers un graphique ne le recrée pas. Le
 haut de la liste des transactions est isolé du défilement par une frontière de
 rendu. Les boutons du menu mobile ont la même hauteur et leur contenu est centré,
 avec la zone gestuelle système conservée sous le menu.
+
+La liste des transactions conserve au maximum 48 lignes déjà construites, en plus
+des lignes nécessaires à la zone de défilement, pour limiter les reconstructions
+lors d’un retour en arrière. Les pages masquées ne sont pas remises en page avec
+la destination visible. Les gestes verticaux sur les graphiques restent réservés
+au défilement et ne recalculent pas les informations de survol à chaque mouvement.
+Les pages masquées reportent aussi leurs nouvelles lectures et agrégations à leur
+réouverture. Aucune lecture des transactions n’est faite pour vérifier les alertes
+budgétaires lorsqu’aucune alerte n’est active.
 
 La navigation principale, les onglets du simulateur et les filtres d’opérations
 changent immédiatement de sélection, sans animation de texte, de couleur ou de

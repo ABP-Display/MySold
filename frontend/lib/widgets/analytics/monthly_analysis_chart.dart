@@ -1,3 +1,4 @@
+import 'package:mysold/widgets/graphiques/chart_pointer_region.dart';
 import 'dart:math' as math;
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
@@ -557,13 +558,9 @@ class _MonthlyAnalysisChartState extends State<MonthlyAnalysisChart> {
                 );
               }
 
-              return MouseRegion(
-                cursor: SystemMouseCursors.precise,
-                onHover: (event) => select(event.localPosition),
-                child: Listener(
-                  behavior: HitTestBehavior.opaque,
-                  onPointerDown: (event) => select(event.localPosition),
-                  onPointerMove: (event) => select(event.localPosition),
+              return RepaintBoundary(
+                child: ChartPointerRegion(
+                  onSelect: select,
                   child: Padding(
                     padding: const EdgeInsets.only(right: 16),
                     child: AppLineChart(

@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
+import 'package:mysold/data/bounded_async_cache.dart';
+import 'package:mysold/data/document_store.dart';
+import 'package:mysold/models/transaction_model.dart';
 
 import 'package:mysold/services/budget_service.dart';
 
@@ -16,6 +19,29 @@ class UserDataProvider extends ChangeNotifier {
   Map<String, Map<String, dynamic>> _categories = {};
   int _financialDataVersion = 0;
   int _referenceDataVersion = 0;
+  final _monthTransactions =
+      BoundedAsyncCache<
+        ({String user, DateTime month}),
+        List<TransactionModel>
+      >(capacity: 6);
+  int? _transactionGeneration;
+
+  Future<List<TransactionModel>> getMonthTransactions(DateTime date) {
+    final uid = _userId;
+    if (uid == null) return Future.value(const []);
+    final generation = DocumentStore.instance.generation;
+    if (_transactionGeneration != generation) {
+      _monthTransactions.clear();
+      _transactionGeneration = generation;
+    }
+    final month = DateTime(date.year, date.month);
+    return _monthTransactions.load((user: uid, month: month), () async {
+      final transactions = await BudgetService(
+        userId: uid,
+      ).getTransactionsForMonth(month);
+      return List.unmodifiable(transactions);
+    });
+  }
 
   Map<String, String> get accounts => Map.unmodifiable(_accounts);
   Map<String, String> get manualAccounts => Map.unmodifiable(_manualAccounts);
@@ -45,6 +71,9 @@ class UserDataProvider extends ChangeNotifier {
     if (_userId == userId) return;
 
     _userId = userId;
+    _monthTransactions.clear();
+    _financialDataVersion++;
+    _referenceDataVersion++;
     _lastReferenceLoad = null;
     _referenceLoadFuture = null;
     _accounts = {};
@@ -59,7 +88,8 @@ class UserDataProvider extends ChangeNotifier {
     if (userId == null) return Future.value();
 
     final loadedAt = _lastReferenceLoad;
-    final isFresh = loadedAt != null &&
+    final isFresh =
+        loadedAt != null &&
         DateTime.now().difference(loadedAt) < _cacheDuration;
 
     if (!forceRefresh && isFresh) return Future.value();
@@ -68,27 +98,28 @@ class UserDataProvider extends ChangeNotifier {
     }
 
     final service = BudgetService(userId: userId);
-    _referenceLoadFuture = () async {
-      final accountsFuture = service.getAccounts();
-      final manualAccountsFuture = service.getManualAccounts();
-      final investmentsFuture = service.getInvestments();
-      final categoriesFuture = service.getCategoriesAsMap();
+    _referenceLoadFuture =
+        () async {
+          final accountsFuture = service.getAccounts();
+          final manualAccountsFuture = service.getManualAccounts();
+          final investmentsFuture = service.getInvestments();
+          final categoriesFuture = service.getCategoriesAsMap();
 
-      final accounts = await accountsFuture;
-      final manualAccounts = await manualAccountsFuture;
-      final investments = await investmentsFuture;
-      final categories = await categoriesFuture;
+          final accounts = await accountsFuture;
+          final manualAccounts = await manualAccountsFuture;
+          final investments = await investmentsFuture;
+          final categories = await categoriesFuture;
 
-      _accounts = accounts;
-      _manualAccounts = manualAccounts;
-      _investments = investments;
-      _categories = categories;
-      _lastReferenceLoad = DateTime.now();
-      _referenceDataVersion++;
-      _notifySafely();
-    }().whenComplete(() {
-      _referenceLoadFuture = null;
-    });
+          _accounts = accounts;
+          _manualAccounts = manualAccounts;
+          _investments = investments;
+          _categories = categories;
+          _lastReferenceLoad = DateTime.now();
+          _referenceDataVersion++;
+          _notifySafely();
+        }().whenComplete(() {
+          _referenceLoadFuture = null;
+        });
 
     return _referenceLoadFuture!;
   }
@@ -132,6 +163,7 @@ class UserDataProvider extends ChangeNotifier {
   }
 
   void markFinancialDataChanged() {
+    _monthTransactions.clear();
     _financialDataVersion++;
     _notifySafely();
   }

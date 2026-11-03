@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mysold/widgets/lazy_page_stack.dart';
 
@@ -43,6 +44,51 @@ class _ProbeState extends State<_Probe> with SingleTickerProviderStateMixin {
 }
 
 void main() {
+  testWidgets('Resizing only lays out the visible retained destination', (
+    tester,
+  ) async {
+    final layouts = [0, 0, 0];
+    var selected = 0;
+    var width = 600.0;
+    late StateSetter update;
+    final pages = [
+      for (var i = 0; i < 3; i++)
+        _LayoutCounter(() => layouts[i]++, child: Text('Visible $i')),
+    ];
+    await tester.pumpWidget(
+      MaterialApp(
+        home: StatefulBuilder(
+          builder: (_, setState) {
+            update = setState;
+            return Center(
+              child: SizedBox(
+                width: width,
+                height: 400,
+                child: LazyPageStack(index: selected, children: pages),
+              ),
+            );
+          },
+        ),
+      ),
+    );
+    for (var i = 1; i < 3; i++) {
+      update(() => selected = i);
+      await tester.pump();
+    }
+    final before = List<int>.of(layouts);
+    update(() => width = 450);
+    await tester.pump();
+    expect(layouts[0], before[0]);
+    expect(layouts[1], before[1]);
+    expect(layouts[2], greaterThan(before[2]));
+    update(() => selected = 0);
+    await tester.pump();
+    expect(tester.getSize(find.byType(_LayoutCounter)), const Size(450, 400));
+    expect(find.text('Visible 0'), findsOneWidget);
+    expect(find.text('Visible 2'), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('Retained destinations keep independent scroll positions', (
     tester,
   ) async {
@@ -143,4 +189,22 @@ void main() {
       await tester.pumpWidget(const SizedBox());
     },
   );
+}
+
+class _LayoutCounter extends SingleChildRenderObjectWidget {
+  final VoidCallback onLayout;
+  const _LayoutCounter(this.onLayout, {required super.child});
+  @override
+  RenderObject createRenderObject(BuildContext context) =>
+      _CountLayouts(onLayout);
+}
+
+class _CountLayouts extends RenderProxyBox {
+  final VoidCallback onLayout;
+  _CountLayouts(this.onLayout);
+  @override
+  void performLayout() {
+    onLayout();
+    super.performLayout();
+  }
 }

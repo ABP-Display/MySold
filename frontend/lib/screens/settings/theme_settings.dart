@@ -217,6 +217,11 @@ class AppThemes {
         elevation: 4,
         shape: shape,
       ),
+      // A held touch may become a scroll. Tooltips must not win that gesture.
+      // Mouse hover and the tooltip's accessibility label remain available.
+      tooltipTheme: const TooltipThemeData(
+        triggerMode: TooltipTriggerMode.manual,
+      ),
       menuTheme: MenuThemeData(
         style: MenuStyle(
           backgroundColor: WidgetStatePropertyAll(surface),

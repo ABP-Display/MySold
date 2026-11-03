@@ -514,6 +514,11 @@ des lignes nécessaires à la zone de défilement, pour limiter les reconstructi
 lors d’un retour en arrière. Les pages masquées ne sont pas remises en page avec
 la destination visible. Les gestes verticaux sur les graphiques restent réservés
 au défilement et ne recalculent pas les informations de survol à chaque mouvement.
+Un appui prolongé sur un graphique ou une icône ne verrouille pas le glissement :
+les courbes utilisent la même sélection tactile sans capture de geste que les
+autres graphiques. Les info-bulles des boutons restent disponibles à la souris
+et leurs libellés restent accessibles aux lecteurs d’écran, sans intercepter
+les appuis longs sur écran tactile.
 Les pages masquées reportent aussi leurs nouvelles lectures et agrégations à leur
 réouverture. Aucune lecture des transactions n’est faite pour vérifier les alertes
 budgétaires lorsqu’aucune alerte n’est active.

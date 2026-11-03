@@ -24,6 +24,31 @@ class _ChartPointerRegionState extends State<ChartPointerRegion> {
   Offset? _origin;
   int? _pointer;
   bool _verticalDrag = false;
+  bool _horizontalDrag = false;
+  ScrollPosition? _position;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final position = Scrollable.maybeOf(context)?.position;
+    if (_position != position) {
+      _position?.removeListener(_onScroll);
+      _position = position;
+      _position?.addListener(_onScroll);
+    }
+  }
+
+  void _onScroll() {
+    if (_position?.axis != Axis.vertical) return;
+    if (_pointer != null) _verticalDrag = true;
+    widget.onClear?.call();
+  }
+
+  @override
+  void dispose() {
+    _position?.removeListener(_onScroll);
+    super.dispose();
+  }
 
   bool get _scrolling =>
       Scrollable.maybeOf(context)?.position.isScrollingNotifier.value ?? false;
@@ -32,6 +57,7 @@ class _ChartPointerRegionState extends State<ChartPointerRegion> {
     _origin = null;
     _pointer = null;
     _verticalDrag = false;
+    _horizontalDrag = false;
     widget.onClear?.call();
   }
 
@@ -48,26 +74,37 @@ class _ChartPointerRegionState extends State<ChartPointerRegion> {
         _pointer = event.pointer;
         _origin = event.position;
         _verticalDrag = false;
-        if (!_scrolling) widget.onSelect(event.localPosition);
+        _horizontalDrag = false;
       },
       onPointerMove: (event) {
         if (_pointer != event.pointer || _origin == null) return;
         final movement = event.position - _origin!;
-        if (!_verticalDrag &&
-            movement.dy.abs() > kTouchSlop &&
-            movement.dy.abs() > movement.dx.abs()) {
-          _verticalDrag = true;
-          widget.onClear?.call();
+        if (!_verticalDrag && !_horizontalDrag) {
+          final slop =
+              MediaQuery.gestureSettingsOf(context).touchSlop ?? kTouchSlop;
+          if (movement.distance <= slop) return;
+          if (movement.dy.abs() >= movement.dx.abs()) {
+            _verticalDrag = true;
+            widget.onClear?.call();
+          } else {
+            _horizontalDrag = true;
+          }
         }
-        if (!_verticalDrag) {
+        if (_horizontalDrag && !_verticalDrag) {
           widget.onSelect(event.localPosition);
         }
       },
       onPointerUp: (event) {
         if (_pointer != event.pointer) return;
+        if (!_verticalDrag && !_horizontalDrag) {
+          widget.onSelect(event.localPosition);
+        } else if (_horizontalDrag && event.kind != PointerDeviceKind.mouse) {
+          widget.onClear?.call();
+        }
         _pointer = null;
         _origin = null;
-        if (event.kind != PointerDeviceKind.mouse) _clear();
+        _verticalDrag = false;
+        _horizontalDrag = false;
       },
       onPointerCancel: (_) => _clear(),
       child: widget.child,

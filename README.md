@@ -497,6 +497,11 @@ l’attente précédant la première image Flutter. Le mouvement est réduit lor
 cette préférence est activée sur l’appareil. Le chargement initial de « Mois »
 porte uniquement sur le mois affiché, avec un cache borné à six mois consultés,
 sans lecture systématique de l’année entière.
+L’écran noir avec logo est réservé au démarrage et au déverrouillage. Lors de la
+navigation, les données déjà chargées sont affichées immédiatement, y compris
+pour un mois ou une année récupérés du cache. Une première lecture non disponible
+garde le titre et le sélecteur visibles avec une progression discrète. Un retour
+au premier plan ne vide pas les statistiques du mois restées valides.
 
 Ce cache de transactions est partagé entre « Mois » et « Stats mensuelles »,
 y compris pour les requêtes en cours. Les écritures et les changements de session
@@ -514,6 +519,13 @@ des lignes nécessaires à la zone de défilement, pour limiter les reconstructi
 lors d’un retour en arrière. Les pages masquées ne sont pas remises en page avec
 la destination visible. Les gestes verticaux sur les graphiques restent réservés
 au défilement et ne recalculent pas les informations de survol à chaque mouvement.
+Poser le doigt seul ne lance aucun calcul du graphique : un tap relâché sélectionne
+une valeur et un glissement horizontal permet de la parcourir. Le défilement
+tactile est reconnu dès 8 pixels logiques, en conservant les seuils plus fins
+fournis par l’appareil ; les listes principales reprennent la distance parcourue
+depuis le début du geste. Un léger tremblement reste traité comme un clic.
+Les contrôles Material utilisent un retour visuel direct sans vague animée,
+pour ne pas lancer de nouveaux effets pendant le démarrage d’un défilement.
 Un appui prolongé sur un graphique ou une icône ne verrouille pas le glissement :
 les courbes utilisent la même sélection tactile sans capture de geste que les
 autres graphiques. Les info-bulles des boutons restent disponibles à la souris

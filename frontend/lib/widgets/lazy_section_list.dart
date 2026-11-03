@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/gestures.dart';
 
 /// Defer constructing chart data and panel widgets until the scroll viewport
 /// needs them, rather than eagerly calling every section from the page build.
@@ -15,6 +16,7 @@ class LazySectionList extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => ListView.separated(
+    dragStartBehavior: DragStartBehavior.down,
     padding: padding,
     itemCount: sections.length,
     itemBuilder: (context, index) =>

@@ -138,6 +138,7 @@ class AppThemes {
         );
 
     final base = ThemeData(
+      splashFactory: NoSplash.splashFactory,
       pageTransitionsTheme: AppPageTransitions.theme,
       fontFamily: AppTypography.family,
       fontFamilyFallback: AppTypography.fallback,
@@ -254,7 +255,7 @@ class AppThemes {
           minimumSize: const Size(44, 44),
           shape: buttonShape,
           textStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
-        ),
+        ).copyWith(animationDuration: Duration.zero),
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
@@ -263,7 +264,7 @@ class AppThemes {
           elevation: 0,
           minimumSize: const Size(44, 44),
           shape: buttonShape,
-        ),
+        ).copyWith(animationDuration: Duration.zero),
       ),
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
@@ -271,7 +272,13 @@ class AppThemes {
           minimumSize: const Size(44, 44),
           side: BorderSide(color: outline.withValues(alpha: 0.50)),
           shape: buttonShape,
-        ),
+        ).copyWith(animationDuration: Duration.zero),
+      ),
+      textButtonTheme: const TextButtonThemeData(
+        style: ButtonStyle(animationDuration: Duration.zero),
+      ),
+      iconButtonTheme: const IconButtonThemeData(
+        style: ButtonStyle(animationDuration: Duration.zero),
       ),
       floatingActionButtonTheme: FloatingActionButtonThemeData(
         backgroundColor: primary,

@@ -145,6 +145,7 @@ void main() {
         final finger = await tester.startGesture(
           Offset(region.right - 5, region.center.dy),
         );
+        await finger.moveBy(const Offset(-24, 0));
         await tester.pump();
         Rect tooltip() =>
             tester.getRect(find.byKey(const ValueKey('chart-info-card')));

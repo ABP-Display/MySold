@@ -41,7 +41,7 @@ void main() {
       final initialPaints = paints;
       final finger = await tester.startGesture(const Offset(30, 150));
       await tester.pumpAndSettle();
-      for (var x = 40.0; x < 340; x += 40) {
+      for (var x = 60.0; x < 340; x += 40) {
         await finger.moveTo(Offset(x, 150));
         await tester.pumpAndSettle();
         expect(find.byKey(const ValueKey('chart-info-card')), findsOneWidget);

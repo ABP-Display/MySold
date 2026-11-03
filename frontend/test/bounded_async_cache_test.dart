@@ -4,6 +4,29 @@ import 'package:mysold/data/bounded_async_cache.dart';
 
 void main() {
   test(
+    'Ready values are synchronous; invalidation and late reads cannot restore stale content',
+    () async {
+      final cache = BoundedAsyncCache<int, int>(capacity: 2);
+      final pending = Completer<int>();
+      final first = cache.load(1, () => pending.future);
+      expect(cache.peek(1), isNull);
+      pending.complete(42);
+      await first;
+      expect(cache.peek(1), 42);
+      final late = Completer<int>();
+      final old = cache.load(2, () => late.future);
+      cache.store(2, 20);
+      late.complete(99);
+      await old;
+      expect(cache.peek(2), 20);
+      cache.store(3, 30);
+      expect(cache.peek(1), isNull);
+      cache.clear();
+      expect(cache.peek(2), isNull);
+      expect(cache.peek(3), isNull);
+    },
+  );
+  test(
     'Concurrent consumers share one read; recent results survive eviction',
     () async {
       final cache = BoundedAsyncCache<int, int>(capacity: 2);

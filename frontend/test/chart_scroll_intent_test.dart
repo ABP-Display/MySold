@@ -24,12 +24,12 @@ void main() {
       );
       final gesture = await tester.startGesture(const Offset(200, 350));
       await tester.pump();
-      expect(selections.length, 1);
+      expect(selections.length, 0);
       await gesture.moveBy(const Offset(0, -60));
       await tester.pump();
       await gesture.moveBy(const Offset(0, -80));
       await tester.pump();
-      expect(selections.length, 1);
+      expect(selections.length, 0);
       expect(
         tester.state<ScrollableState>(find.byType(Scrollable)).position.pixels,
         greaterThan(0),
@@ -41,7 +41,7 @@ void main() {
       final horizontal = await tester.startGesture(const Offset(60, 200));
       await horizontal.moveBy(const Offset(80, 0));
       await tester.pump();
-      expect(selections.length, greaterThan(2));
+      expect(selections.length, greaterThan(0));
       await horizontal.up();
       await tester.pumpAndSettle();
       expect(tester.takeException(), isNull);

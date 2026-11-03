@@ -77,6 +77,9 @@ void main() {
       );
       final finger = await tester.startGesture(const Offset(80, 100));
       await tester.pump(const Duration(milliseconds: 700));
+      expect(find.byKey(const ValueKey('chart-info-card')), findsNothing);
+      await finger.moveTo(const Offset(104, 100));
+      await tester.pump();
       expect(find.text('Date 0'), findsOneWidget);
       expect(find.text('5 €'), findsOneWidget);
       await finger.moveTo(const Offset(720, 100));

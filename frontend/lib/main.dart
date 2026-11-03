@@ -1,4 +1,5 @@
 import 'package:mysold/widgets/app_loading_screen.dart';
+import 'package:mysold/widgets/app_touch_policy.dart';
 import 'package:mysold/widgets/lazy_page_stack.dart';
 import 'dart:async';
 
@@ -119,6 +120,8 @@ class MyApp extends StatefulWidget {
 
 class _MyAppState extends State<MyApp> {
   final _navigatorKey = GlobalKey<NavigatorState>();
+  // Theme/locale rebuilds must not resubscribe and remount an unlocked session.
+  late final _authChanges = LocalAuth.instance.authStateChanges();
   @override
   Widget build(BuildContext context) {
     final themeProvider = context.watch<ThemeProvider>();
@@ -128,7 +131,7 @@ class _MyAppState extends State<MyApp> {
       navigatorKey: _navigatorKey,
       builder: (context, child) => PwaUpdatePrompt(
         navigatorKey: _navigatorKey,
-        child: child ?? const SizedBox.shrink(),
+        child: AppTouchPolicy(child: child ?? const SizedBox.shrink()),
       ),
       title: 'MySold',
       debugShowCheckedModeBanner: false,
@@ -142,9 +145,10 @@ class _MyAppState extends State<MyApp> {
         GlobalCupertinoLocalizations.delegate,
       ],
       home: StreamBuilder<User?>(
-        stream: LocalAuth.instance.authStateChanges(),
+        stream: _authChanges,
         builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
+          if (snapshot.connectionState == ConnectionState.waiting &&
+              !snapshot.hasData) {
             return const AppLoadingScreen();
           }
 

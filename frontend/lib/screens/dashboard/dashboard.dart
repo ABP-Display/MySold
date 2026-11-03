@@ -1,5 +1,5 @@
 import 'package:mysold/widgets/active_page_builder.dart';
-import 'package:mysold/widgets/app_loading_screen.dart';
+import 'package:mysold/widgets/page_pending_content.dart';
 import 'package:mysold/services/budget_service.dart';
 import 'package:mysold/widgets/lazy_section_list.dart';
 import 'package:mysold/widgets/graphiques/app_charts.dart';
@@ -141,11 +141,42 @@ class _DashboardScreenState extends State<DashboardScreen> {
       _lastReferenceDataVersion = referenceDataVersion;
     }
 
+    Widget header() => PageIntro(
+      eyebrow: context.tr('PATRIMOINE'),
+      title: context.tr('Stats annuelles'),
+      subtitle: context.tr(
+        'Une vue d’ensemble de vos comptes et de votre année.',
+      ),
+      action: Container(
+        decoration: AppDesign.panel(context),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            IconButton(
+              tooltip: context.tr('Année précédente'),
+              onPressed: () => _changeYear(-1),
+              icon: const Icon(Icons.chevron_left),
+            ),
+            Text(
+              '$_selectedYear',
+              style: const TextStyle(fontWeight: FontWeight.w600),
+            ),
+            IconButton(
+              tooltip: context.tr('Année suivante'),
+              onPressed: () => _changeYear(1),
+              icon: const Icon(Icons.chevron_right),
+            ),
+          ],
+        ),
+      ),
+    );
     return FutureBuilder<_AnnualDashboardData>(
+      key: ValueKey(_selectedYear),
+      initialData: _yearCache.peek(_selectedYear),
       future: _loadYearData(_selectedYear),
       builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const AppLoadingScreen();
+        if (!snapshot.hasData && !snapshot.hasError) {
+          return PagePendingContent(header: header());
         }
 
         if (snapshot.hasError) {
@@ -161,35 +192,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           child: LazySectionList(
             gaps: const [0, 16, 18, 18, 18],
             sections: [
-              (_) => PageIntro(
-                eyebrow: context.tr('PATRIMOINE'),
-                title: context.tr('Stats annuelles'),
-                subtitle: context.tr(
-                  'Une vue d’ensemble de vos comptes et de votre année.',
-                ),
-                action: Container(
-                  decoration: AppDesign.panel(context),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      IconButton(
-                        tooltip: context.tr('Année précédente'),
-                        onPressed: () => _changeYear(-1),
-                        icon: const Icon(Icons.chevron_left),
-                      ),
-                      Text(
-                        '$_selectedYear',
-                        style: const TextStyle(fontWeight: FontWeight.w600),
-                      ),
-                      IconButton(
-                        tooltip: context.tr('Année suivante'),
-                        onPressed: () => _changeYear(1),
-                        icon: const Icon(Icons.chevron_right),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
+              (_) => header(),
               (_) => _buildHeader(data, currency, privacy),
               (_) => _buildSummaryGrid(data, currency, privacy),
               (_) => _buildWealthEvolution(data, currency, privacy),

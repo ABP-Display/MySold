@@ -26,14 +26,28 @@ class UserDataProvider extends ChangeNotifier {
       >(capacity: 6);
   int? _transactionGeneration;
 
-  Future<List<TransactionModel>> getMonthTransactions(DateTime date) {
-    final uid = _userId;
-    if (uid == null) return Future.value(const []);
+  void _syncTransactionCache() {
     final generation = DocumentStore.instance.generation;
     if (_transactionGeneration != generation) {
       _monthTransactions.clear();
       _transactionGeneration = generation;
     }
+  }
+
+  List<TransactionModel>? cachedMonthTransactions(DateTime date) {
+    _syncTransactionCache();
+    final uid = _userId;
+    if (uid == null) return null;
+    return _monthTransactions.peek((
+      user: uid,
+      month: DateTime(date.year, date.month),
+    ));
+  }
+
+  Future<List<TransactionModel>> getMonthTransactions(DateTime date) {
+    final uid = _userId;
+    if (uid == null) return Future.value(const []);
+    _syncTransactionCache();
     final month = DateTime(date.year, date.month);
     return _monthTransactions.load((user: uid, month: month), () async {
       final transactions = await BudgetService(

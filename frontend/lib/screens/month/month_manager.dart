@@ -1,5 +1,5 @@
 import 'package:mysold/widgets/active_page_builder.dart';
-import 'package:mysold/widgets/app_loading_screen.dart';
+import 'package:mysold/widgets/page_pending_content.dart';
 import 'package:mysold/widgets/scroll_item_retention.dart';
 import 'package:mysold/widgets/page_activity_listener.dart';
 import 'package:mysold/widgets/cached_page_stack.dart';
@@ -10,6 +10,7 @@ import 'package:mysold/widgets/app_select_field.dart';
 import 'package:mysold/widgets/app_design.dart';
 // month_manager.dart
 import 'package:flutter/material.dart';
+import 'package:flutter/gestures.dart';
 import 'package:intl/intl.dart';
 import 'package:mysold/data/local_auth.dart';
 import 'package:provider/provider.dart';
@@ -85,8 +86,10 @@ class _MonthManagerState extends State<MonthManagerScreen> {
     if (user == null) return;
     final month = _monthStart(_currentMonth);
     final request = ++_transactionLoad;
+    final references = context.read<UserDataProvider>();
+    final cached = references.cachedMonthTransactions(month);
 
-    if (showLoader && mounted) {
+    if (showLoader && cached == null && mounted) {
       setState(() {
         _isLoadingTransactions = true;
         _transactionsError = null;
@@ -94,9 +97,8 @@ class _MonthManagerState extends State<MonthManagerScreen> {
     }
 
     try {
-      final transactions = await context
-          .read<UserDataProvider>()
-          .getMonthTransactions(month);
+      final transactions =
+          cached ?? await references.getMonthTransactions(month);
 
       if (!mounted || request != _transactionLoad) return;
       setState(() {
@@ -612,6 +614,22 @@ class _MonthManagerState extends State<MonthManagerScreen> {
     );
   }
 
+  Widget _buildMonthHeader(String monthLabel) => MonthPageHeader(
+    eyebrow: _t('VOTRE BUDGET'),
+    title: _t('Budget mensuel'),
+    subtitle: _t('Vos opérations, simplement.'),
+    monthLabel: monthLabel,
+    compactMonthLabel: DateFormat(
+      'MMM yyyy',
+      Localizations.localeOf(context).toString(),
+    ).format(_currentMonth),
+    previousLabel: _t('Mois précédent'),
+    nextLabel: _t('Mois suivant'),
+    onPrevious: _prevMonth,
+    onNext: _nextMonth,
+    onChoose: _chooseMonth,
+  );
+
   Widget _buildTabContent(
     List<TransactionModel> txs,
     String type,
@@ -621,6 +639,7 @@ class _MonthManagerState extends State<MonthManagerScreen> {
     final monthlyAmount = _monthlyTransactionsAmount(filtered, type);
 
     return CustomScrollView(
+      dragStartBehavior: DragStartBehavior.down,
       slivers: [
         SliverToBoxAdapter(
           child: RepaintBoundary(
@@ -628,21 +647,7 @@ class _MonthManagerState extends State<MonthManagerScreen> {
               children: [
                 Padding(
                   padding: const EdgeInsets.fromLTRB(16, 20, 16, 4),
-                  child: MonthPageHeader(
-                    eyebrow: _t('VOTRE BUDGET'),
-                    title: _t('Budget mensuel'),
-                    subtitle: _t('Vos opérations, simplement.'),
-                    monthLabel: monthLabel,
-                    compactMonthLabel: DateFormat(
-                      'MMM yyyy',
-                      Localizations.localeOf(context).toString(),
-                    ).format(_currentMonth),
-                    previousLabel: _t('Mois précédent'),
-                    nextLabel: _t('Mois suivant'),
-                    onPrevious: _prevMonth,
-                    onNext: _nextMonth,
-                    onChoose: _chooseMonth,
-                  ),
+                  child: _buildMonthHeader(monthLabel),
                 ),
                 Padding(
                   padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
@@ -903,7 +908,7 @@ class _MonthManagerState extends State<MonthManagerScreen> {
                 ),
               )
             : _isLoadingTransactions
-            ? const AppLoadingScreen()
+            ? PagePendingContent(header: _buildMonthHeader(monthLabel))
             : ScrollItemRetention(
                 child: CachedPageStack(
                   index: _selectedIndex,

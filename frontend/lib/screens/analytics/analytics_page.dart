@@ -1,6 +1,6 @@
 import 'package:mysold/widgets/active_page_builder.dart';
 import 'package:mysold/data/bounded_async_cache.dart';
-import 'package:mysold/widgets/app_loading_screen.dart';
+import 'package:mysold/widgets/page_pending_content.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
@@ -8,6 +8,7 @@ import 'package:mysold/data/document_store.dart';
 import 'package:mysold/l10n/app_localizations.dart';
 import 'package:mysold/models/monthly_analytics.dart';
 import 'package:mysold/models/month_comparison.dart';
+import 'package:mysold/models/transaction_model.dart';
 import 'package:mysold/providers/user_data_provider.dart';
 import 'package:mysold/screens/settings/currency_provider.dart';
 import 'package:mysold/screens/settings/privacy_provider.dart';
@@ -63,9 +64,8 @@ class _AnalyticsPageState extends State<AnalyticsPage>
         _selected = current;
         if (_followPrevious) _reference = _prior(current);
       }
+      if (_calendar != current) _pair = null;
       _calendar = current;
-      _cache.clear();
-      _pair = null;
     });
   }
 
@@ -74,20 +74,20 @@ class _AnalyticsPageState extends State<AnalyticsPage>
       final transactions = await context
           .read<UserDataProvider>()
           .getMonthTransactions(month);
-      return _MonthSource(
-        month,
-        transactions
-            .map(
-              (transaction) => MonthlyOperation(
-                id: transaction.id ?? '',
-                type: transaction.type,
-                amount: transaction.amount,
-                date: transaction.date,
-              ),
-            )
-            .toList(),
-      );
+      return _MonthSource.fromTransactions(month, transactions);
     });
+  }
+
+  _MonthSource? _readySource(DateTime month) {
+    final ready = _cache.peek(month);
+    if (ready != null) return ready;
+    final transactions = context
+        .read<UserDataProvider>()
+        .cachedMonthTransactions(month);
+    if (transactions == null) return null;
+    final source = _MonthSource.fromTransactions(month, transactions);
+    _cache.store(month, source);
+    return source;
   }
 
   Future<List<_MonthSource>> _sources() =>
@@ -160,12 +160,17 @@ class _AnalyticsPageState extends State<AnalyticsPage>
       onNext: () => _selectMonth(DateTime(_selected.year, _selected.month + 1)),
       onChoose: () => _chooseMonth(),
     );
+    final selected = _readySource(_selected),
+        reference = _readySource(_reference);
     return FutureBuilder<List<_MonthSource>>(
+      key: ValueKey((_selected, _reference)),
+      initialData: selected != null && reference != null
+          ? [selected, reference]
+          : null,
       future: _sources(),
       builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting ||
-            !snapshot.hasData) {
-          if (!snapshot.hasError) return const AppLoadingScreen();
+        if (!snapshot.hasData) {
+          if (!snapshot.hasError) return PagePendingContent(header: header());
           return ListView(
             padding: const EdgeInsets.all(20),
             children: [
@@ -220,6 +225,22 @@ class _MonthSource {
   MonthlyAnalytics? _data;
   DateTime? _day;
   _MonthSource(this.month, this.transactions);
+  factory _MonthSource.fromTransactions(
+    DateTime month,
+    List<TransactionModel> transactions,
+  ) => _MonthSource(
+    month,
+    transactions
+        .map(
+          (transaction) => MonthlyOperation(
+            id: transaction.id ?? '',
+            type: transaction.type,
+            amount: transaction.amount,
+            date: transaction.date,
+          ),
+        )
+        .toList(),
+  );
   MonthlyAnalytics derive(DateTime now) {
     final day = DateTime(now.year, now.month, now.day);
     if (_data == null || _day != day) {

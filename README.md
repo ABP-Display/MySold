@@ -449,25 +449,23 @@ même origine. Un simple `flutter run` sans proxy vers l’API ne suffit pas.
 
 ## Statistiques et vue annuelle
 
-**Stats mensuelles** résume le mois sélectionné (mois en cours par défaut) :
-quatre cartes, projection de fin de mois, puis comparaison entre deux mois.
-Le sélecteur en haut change le mois analysé et ses quatre résumés. Dans la
-comparaison, les deux mois sont sélectionnables directement avec leur année ;
-la référence suit M−1 jusqu’au choix d’une référence personnalisée. Un bouton
+**Stats mensuelles** résume le mois sélectionné en haut de page (mois en cours
+par défaut) : quatre cartes, projection de fin de mois, puis comparaison avec un
+mois de référence. Seul ce mois de référence possède un second sélecteur avec
+son année ; il suit M−1 jusqu’au choix d’une référence personnalisée. Un bouton
 permet ensuite de revenir à M−1.
 
 Cinq postes sont disponibles : revenus, dépenses, investissements, transferts
-et reste. Les cartes comparatives affichent les montants et écarts sur les
-périodes comparées. **Mois complets** conserve les journées disponibles de chaque
-mois ; **À date égale** borne les deux périodes au même nombre de jours, limité
-par le mois le plus court ou les jours écoulés du mois en cours. **Cumulé** trace
-le total progressif ; **Par jour** trace le montant réel de chaque journée.
-Les opérations futures sont exclues des montants observés.
+et reste. Les cartes affichent les montants et écarts sur les journées disponibles
+de chacun des deux mois ; le mois en cours reste incomplet. Le filtre « À date
+égale » est retiré. **Cumulé** trace le total progressif ; **Par jour** trace le
+montant réel de chaque journée. Les opérations futures sont exclues des montants
+observés.
 
 Le survol, le toucher et les flèches du clavier sélectionnent un jour. Les valeurs,
 écarts et nombres d’opérations, tous types confondus, restent sous le graphique,
 sans curseur séparé ni défilement horizontal. Les résumés et la projection ne
-changent pas avec les filtres du comparatif.
+changent pas avec le mode de lecture du comparatif.
 
 Seuls les deux mois choisis sont lus avec les index de date, puis conservés dans
 un cache borné à six mois. Changer de série ou de filtre ne relit pas la base.
@@ -492,6 +490,19 @@ par la variante Chromium. Le moteur est légèrement plus volumineux ; Nginx
 compresse les scripts et fichiers WebAssembly avec gzip lorsque le navigateur
 l’accepte. Après une modification, reconstruire et numéroter la PWA avec les
 commandes ci-dessus (ou reconstruire l’image Docker), puis appliquer sa mise à jour.
+
+Le démarrage et le chargement après le PIN affichent un fond noir, le logo
+et un indicateur animé, y compris avec un thème clair. Le fond HTML couvre aussi
+l’attente précédant la première image Flutter. Le mouvement est réduit lorsque
+cette préférence est activée sur l’appareil. Le chargement initial de « Mois »
+porte uniquement sur le mois affiché, avec un cache borné à six mois consultés,
+sans lecture systématique de l’année entière.
+
+Les sections de statistiques déjà visitées conservent leur état lorsqu’elles
+sortent de la zone visible ; revenir vers un graphique ne le recrée pas. Le
+haut de la liste des transactions est isolé du défilement par une frontière de
+rendu. Les boutons du menu mobile ont la même hauteur et leur contenu est centré,
+avec la zone gestuelle système conservée sous le menu.
 
 La navigation principale, les onglets du simulateur et les filtres d’opérations
 changent immédiatement de sélection, sans animation de texte, de couleur ou de

@@ -1,3 +1,4 @@
+import 'dart:math' as math;
 import 'package:mysold/widgets/app_selection_button.dart';
 import 'package:flutter/material.dart';
 import 'package:mysold/l10n/app_localizations.dart';
@@ -265,36 +266,38 @@ class AppWorkspace extends StatelessWidget {
                   top: false,
                   child: Padding(
                     padding: const EdgeInsets.all(6),
-                    child: Row(
-                      children: [
-                        for (
-                          var index = 0;
-                          index < destinations.length;
-                          index++
-                        )
-                          Expanded(
-                            child: AppSelectionButton(
-                              key: ValueKey('destination-$index'),
-                              selected: selectedIndex == index,
-                              outlined: false,
-                              minHeight: 68,
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 4,
-                                vertical: 8,
-                              ),
-                              onPressed: () => onSelected(index),
-                              child: Column(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Icon(destinations[index].icon, size: 22),
-                                  const SizedBox(height: 4),
-                                  SizedBox(
-                                    height:
-                                        MediaQuery.textScalerOf(
-                                          context,
-                                        ).scale(12) *
-                                        2.3,
-                                    child: Text(
+                    child: SizedBox(
+                      key: const ValueKey('bottom-navigation-content'),
+                      height: math.max(
+                        72,
+                        46 + MediaQuery.textScalerOf(context).scale(12) * 2.3,
+                      ),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          for (
+                            var index = 0;
+                            index < destinations.length;
+                            index++
+                          )
+                            Expanded(
+                              child: AppSelectionButton(
+                                key: ValueKey('destination-$index'),
+                                selected: selectedIndex == index,
+                                outlined: false,
+                                minHeight: 68,
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 4,
+                                  vertical: 8,
+                                ),
+                                onPressed: () => onSelected(index),
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(destinations[index].icon, size: 22),
+                                    const SizedBox(height: 4),
+                                    Text(
                                       context.tr(destinations[index].label),
                                       maxLines: 2,
                                       overflow: TextOverflow.ellipsis,
@@ -304,12 +307,12 @@ class AppWorkspace extends StatelessWidget {
                                         height: 1.15,
                                       ),
                                     ),
-                                  ),
-                                ],
+                                  ],
+                                ),
                               ),
                             ),
-                          ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
                 ),

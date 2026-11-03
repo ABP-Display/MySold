@@ -29,3 +29,13 @@ test('Engine fallback fonts are shipped locally with their licenses', () => {
     assert.match(fs.readFileSync(path.join(directory, `${family}-LICENSE.txt`), 'utf8'), /SIL OPEN FONT LICENSE/);
   }
 });
+
+test('The startup cover is removed only after Flutter paints its first frame', () => {
+  const source = fs.readFileSync(path.join(__dirname, '../web/flutter_bootstrap.js'), 'utf8')
+    .replace('{{flutter_js}}', '').replace('{{flutter_build_config}}', '');
+  let remove = 0, firstFrame, options;
+  vm.runInNewContext(source, {_flutter: {loader: {load() {}}},
+    window: {addEventListener(name, fn, opts) {assert.equal(name, 'flutter-first-frame'); firstFrame=fn; options=opts;}},
+    document: {getElementById(id) {assert.equal(id,'mysold-startup'); return {remove() {remove++;}};}}});
+  assert.equal(remove,0); assert.equal(options.once,true); firstFrame(); assert.equal(remove,1);
+});

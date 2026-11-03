@@ -1,21 +1,16 @@
-import 'dart:math' as math;
 import 'monthly_analytics.dart';
 
 /// Compare two independently loaded months. Summary/projection keep the full
-/// observed month; only this comparison is truncated by the equal-date filter.
+/// observed month; both periods retain all their observed days.
 class MonthComparison {
   final MonthlyAnalytics selected, reference;
-  final bool sameDayComparison;
-  const MonthComparison(this.selected, this.reference, {bool sameDay = true})
-    : sameDayComparison = sameDay;
+  const MonthComparison(this.selected, this.reference);
 
   DateTime get month => selected.month;
   DateTime get previousMonth => reference.month;
   bool get canCompare => !selected.isFuture && !reference.isFuture;
-  bool get equalDates => sameDayComparison && canCompare;
-  int get _commonDays => math.min(selected.elapsedDays, reference.elapsedDays);
-  int get elapsedDays => equalDates ? _commonDays : selected.elapsedDays;
-  int get previousDays => equalDates ? _commonDays : reference.elapsedDays;
+  int get elapsedDays => selected.elapsedDays;
+  int get previousDays => reference.elapsedDays;
   List<int> get dailyCount => selected.dailyCount.take(elapsedDays).toList();
   List<int> get previousDailyCount =>
       reference.dailyCount.take(previousDays).toList();

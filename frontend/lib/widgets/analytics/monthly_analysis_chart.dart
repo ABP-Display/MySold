@@ -29,10 +29,9 @@ const _icons = {
 
 class MonthlyAnalysisChart extends StatefulWidget {
   final MonthComparison data;
-  final VoidCallback? onChooseMonth, onChooseReference, onResetReference;
+  final VoidCallback? onChooseReference, onResetReference;
   final String currency;
   final bool hidden;
-  final ValueChanged<bool> onSameDay;
   final MonthlySeries initialSeries;
   final bool initialCumulative;
   final ValueChanged<MonthlySeries>? onSeriesChanged;
@@ -42,12 +41,10 @@ class MonthlyAnalysisChart extends StatefulWidget {
     required this.data,
     required this.currency,
     required this.hidden,
-    required this.onSameDay,
     this.initialSeries = MonthlySeries.expense,
     this.initialCumulative = true,
     this.onSeriesChanged,
     this.onCumulativeChanged,
-    this.onChooseMonth,
     this.onChooseReference,
     this.onResetReference,
   });
@@ -238,35 +235,16 @@ class _MonthlyAnalysisChartState extends State<MonthlyAnalysisChart> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          LayoutBuilder(
-            builder: (context, bounds) {
-              final first = _monthChoice(
-                'Mois analysé',
-                data.month,
-                widget.onChooseMonth,
-                const ValueKey('comparison-month-current'),
-              );
-              final second = _monthChoice(
+          Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 480),
+              child: _monthChoice(
                 'Mois de référence',
                 data.previousMonth,
                 widget.onChooseReference,
                 const ValueKey('comparison-month-reference'),
-              );
-              if (bounds.maxWidth < 600 ||
-                  MediaQuery.textScalerOf(context).scale(14) > 21) {
-                return Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [first, const SizedBox(height: 12), second],
-                );
-              }
-              return Row(
-                children: [
-                  Expanded(child: first),
-                  const SizedBox(width: 16),
-                  Expanded(child: second),
-                ],
-              );
-            },
+              ),
+            ),
           ),
           if (widget.onResetReference != null)
             Align(
@@ -280,54 +258,21 @@ class _MonthlyAnalysisChartState extends State<MonthlyAnalysisChart> {
           const SizedBox(height: 20),
           Center(
             child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 860),
-              child: LayoutBuilder(
-                builder: (context, bounds) {
-                  final period = _pair(
-                    'Période comparée',
-                    _option(
-                      'Mois complets',
-                      !data.equalDates,
-                      () => widget.onSameDay(false),
-                      key: const ValueKey('comparison-full-month'),
-                    ),
-                    _option(
-                      'À date égale',
-                      data.equalDates,
-                      () => widget.onSameDay(true),
-                      enabled: data.canCompare,
-                      key: const ValueKey('comparison-same-day'),
-                    ),
-                  );
-                  final reading = _pair(
-                    'Lecture du graphique',
-                    _option(
-                      'Cumulé',
-                      _cumulative,
-                      () => _chooseReading(true),
-                      key: const ValueKey('analysis-cumulative'),
-                    ),
-                    _option(
-                      'Par jour',
-                      !_cumulative,
-                      () => _chooseReading(false),
-                      key: const ValueKey('analysis-daily'),
-                    ),
-                  );
-                  if (bounds.maxWidth < 680 ||
-                      MediaQuery.textScalerOf(context).scale(14) > 21)
-                    return Column(
-                      children: [period, const SizedBox(height: 16), reading],
-                    );
-                  return Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Expanded(child: period),
-                      const SizedBox(width: 20),
-                      Expanded(child: reading),
-                    ],
-                  );
-                },
+              constraints: const BoxConstraints(maxWidth: 480),
+              child: _pair(
+                'Lecture du graphique',
+                _option(
+                  'Cumulé',
+                  _cumulative,
+                  () => _chooseReading(true),
+                  key: const ValueKey('analysis-cumulative'),
+                ),
+                _option(
+                  'Par jour',
+                  !_cumulative,
+                  () => _chooseReading(false),
+                  key: const ValueKey('analysis-daily'),
+                ),
               ),
             ),
           ),
@@ -336,8 +281,6 @@ class _MonthlyAnalysisChartState extends State<MonthlyAnalysisChart> {
             context.tr(
               !data.canCompare
                   ? 'Une des périodes n’a pas encore commencé.'
-                  : data.equalDates
-                  ? 'Les deux mois sont comparés sur le même nombre de jours.'
                   : 'Chaque mois utilise ses journées disponibles ; le mois en cours reste incomplet.',
             ),
             textAlign: TextAlign.center,

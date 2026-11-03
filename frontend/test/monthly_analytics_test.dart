@@ -188,7 +188,6 @@ void main() {
                             data: comparisonFixture(),
                             currency: '€',
                             hidden: false,
-                            onSameDay: (_) {},
                           ),
                         ],
                       ),
@@ -216,7 +215,6 @@ void main() {
                 data: comparisonFixture(),
                 currency: '€',
                 hidden: false,
-                onSameDay: (_) {},
               ),
             ),
           ),
@@ -268,19 +266,14 @@ void main() {
               data: comparisonFixture(),
               currency: '€',
               hidden: false,
-              onSameDay: (value) => selected = value,
+              onCumulativeChanged: (value) => selected = value,
             ),
           ),
         ),
       ),
     );
     await tester.pumpAndSettle();
-    final keys = [
-      'comparison-full-month',
-      'comparison-same-day',
-      'analysis-cumulative',
-      'analysis-daily',
-    ];
+    final keys = ['analysis-cumulative', 'analysis-daily'];
     final boxes = [
       for (final key in keys) tester.getRect(find.byKey(ValueKey(key))),
     ];
@@ -289,10 +282,15 @@ void main() {
       expect(box.top, closeTo(boxes.first.top, .01));
     }
     expect((boxes.first.left + boxes.last.right) / 2, closeTo(720, 1));
-    await tester.tap(find.byKey(const ValueKey('comparison-full-month')));
+    await tester.tap(find.byKey(const ValueKey('analysis-daily')));
     expect(selected, false);
-    await tester.tap(find.byKey(const ValueKey('comparison-same-day')));
+    await tester.tap(find.byKey(const ValueKey('analysis-cumulative')));
     expect(selected, true);
+    expect(
+      find.byKey(const ValueKey('comparison-month-current')),
+      findsNothing,
+    );
+    expect(find.text('À date égale'), findsNothing);
     expect(tester.takeException(), isNull);
   });
   testWidgets(
@@ -306,7 +304,6 @@ void main() {
                 data: comparisonFixture(),
                 currency: '€',
                 hidden: false,
-                onSameDay: (_) {},
               ),
             ),
           ),
@@ -340,7 +337,7 @@ void main() {
               find.byKey(const ValueKey('monthly-analysis-selected-day')),
             )
             .data,
-        contains('Jour 15'),
+        contains('Jour 31'),
       );
       expect(
         tester
@@ -358,7 +355,7 @@ void main() {
               find.byKey(const ValueKey('monthly-analysis-selected-day')),
             )
             .data,
-        contains('Jour 14'),
+        contains('Jour 30'),
       );
       expect(find.byType(Slider), findsNothing);
       expect(tester.takeException(), isNull);
@@ -379,7 +376,6 @@ void main() {
                 data: comparisonFixture(),
                 currency: '€',
                 hidden: false,
-                onSameDay: (_) {},
               ),
               const SizedBox(height: 1500),
             ],
@@ -419,7 +415,6 @@ void main() {
               data: comparisonFixture(),
               currency: '€',
               hidden: true,
-              onSameDay: (_) {},
             ),
           ),
         ),
@@ -452,7 +447,6 @@ void main() {
                     data: MonthComparison(future, fixture()),
                     currency: '€',
                     hidden: false,
-                    onSameDay: (_) {},
                   ),
                 ],
               ),

@@ -1,3 +1,4 @@
+import 'package:mysold/widgets/app_loading_screen.dart';
 import 'package:mysold/widgets/lazy_page_stack.dart';
 import 'dart:async';
 
@@ -144,9 +145,7 @@ class _MyAppState extends State<MyApp> {
         stream: LocalAuth.instance.authStateChanges(),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Scaffold(
-              body: Center(child: CircularProgressIndicator()),
-            );
+            return const AppLoadingScreen();
           }
 
           return snapshot.data == null
@@ -212,9 +211,7 @@ class _UserPreferencesLoaderState extends State<UserPreferencesLoader> {
       future: _loadPreferencesFuture,
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Scaffold(
-            body: Center(child: CircularProgressIndicator()),
-          );
+          return const AppLoadingScreen();
         }
 
         return widget.child;
@@ -238,6 +235,16 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   final _shakeService = ShakePrivacyService();
   PrivacyProvider? _privacy;
   bool _shakeListening = false;
+  bool _initialDataReady = false;
+  late final _pages = <Widget>[
+    MonthManagerScreen(onInitialLoad: _showWorkspace),
+    const AnalyticsPage(),
+    const DashboardScreen(),
+    const ProfilePage(),
+  ];
+  void _showWorkspace() {
+    if (mounted && !_initialDataReady) setState(() => _initialDataReady = true);
+  }
 
   List<_HomeNavItem> get _navItems => const [
     _HomeNavItem(labelKey: 'Mois', icon: Icons.calendar_month_outlined),
@@ -351,23 +358,33 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   @override
   Widget build(BuildContext context) {
     final privacy = context.watch<PrivacyProvider>();
-    return AppWorkspace(
-      selectedIndex: _selectedIndex,
-      destinations: _navItems
-          .map((item) => WorkspaceDestination(item.labelKey, item.icon))
-          .toList(),
-      onSelected: _goToPage,
-      hidden: privacy.hideAmounts,
-      onPrivacy: () => privacy.setHideAmounts(!privacy.hideAmounts),
-      child: LazyPageStack(
-        index: _selectedIndex,
-        children: const [
-          MonthManagerScreen(),
-          AnalyticsPage(),
-          DashboardScreen(),
-          ProfilePage(),
-        ],
-      ),
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        ExcludeSemantics(
+          excluding: !_initialDataReady,
+          child: ExcludeFocus(
+            excluding: !_initialDataReady,
+            child: TickerMode(
+              enabled: _initialDataReady,
+              child: AppWorkspace(
+                selectedIndex: _selectedIndex,
+                destinations: _navItems
+                    .map(
+                      (item) => WorkspaceDestination(item.labelKey, item.icon),
+                    )
+                    .toList(),
+                onSelected: _goToPage,
+                hidden: privacy.hideAmounts,
+                onPrivacy: () => privacy.setHideAmounts(!privacy.hideAmounts),
+                child: LazyPageStack(index: _selectedIndex, children: _pages),
+              ),
+            ),
+          ),
+        ),
+        if (!_initialDataReady)
+          const Positioned.fill(child: AppLoadingScreen()),
+      ],
     );
   }
 

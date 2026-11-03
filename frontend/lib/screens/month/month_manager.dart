@@ -1,3 +1,4 @@
+import 'package:mysold/widgets/app_loading_screen.dart';
 import 'package:mysold/widgets/page_activity_listener.dart';
 import 'package:mysold/widgets/cached_page_stack.dart';
 import 'package:mysold/widgets/month_page_header.dart';
@@ -26,7 +27,8 @@ import 'package:mysold/services/budget_alert_service.dart';
 import 'package:mysold/services/local_notification_service.dart';
 
 class MonthManagerScreen extends StatefulWidget {
-  const MonthManagerScreen({super.key});
+  final VoidCallback? onInitialLoad;
+  const MonthManagerScreen({super.key, this.onInitialLoad});
 
   @override
   State<MonthManagerScreen> createState() => _MonthManagerState();
@@ -40,7 +42,7 @@ class _MonthManagerState extends State<MonthManagerScreen> {
   final user = LocalAuth.instance.currentUser;
   BudgetService? _firestoreService;
   final Map<String, Future<List<TransactionModel>>> _monthCache = {};
-  Future<void>? _recentMonthsPreloadFuture;
+  bool _initialLoadNotified = false;
   Map<String, Map<String, dynamic>> _categories = {};
   Map<String, String> _accountIds = {};
   Map<String, String> _investmentIds = {};
@@ -64,6 +66,7 @@ class _MonthManagerState extends State<MonthManagerScreen> {
     final currentUser = user;
     if (currentUser == null) {
       _isLoadingTransactions = false;
+      _notifyInitialLoad();
       return;
     }
     _firestoreService = BudgetService(userId: currentUser.uid);
@@ -105,6 +108,7 @@ class _MonthManagerState extends State<MonthManagerScreen> {
         _transactionsError = null;
       });
 
+      _notifyInitialLoad();
       if (forceRefresh) {
         await _checkBudgetAlerts();
       }
@@ -114,7 +118,16 @@ class _MonthManagerState extends State<MonthManagerScreen> {
         _isLoadingTransactions = false;
         _transactionsError = e;
       });
+      _notifyInitialLoad();
     }
+  }
+
+  void _notifyInitialLoad() {
+    if (_initialLoadNotified) return;
+    _initialLoadNotified = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) widget.onInitialLoad?.call();
+    });
   }
 
   Future<List<TransactionModel>> _loadFreshTransactionsForMonth(
@@ -157,50 +170,13 @@ class _MonthManagerState extends State<MonthManagerScreen> {
     final normalizedMonth = _monthStart(month);
     final key = _monthKey(normalizedMonth);
 
-    if (_isInRecentWindow(normalizedMonth)) {
-      _recentMonthsPreloadFuture ??= _preloadRecentMonths();
-      return _recentMonthsPreloadFuture!.then((_) {
-        return _monthCache.putIfAbsent(
-          key,
-          () => service.getTransactionsForMonth(normalizedMonth),
-        );
-      });
+    if (_monthCache.length >= 6 && !_monthCache.containsKey(key)) {
+      _monthCache.remove(_monthCache.keys.first);
     }
-
     return _monthCache.putIfAbsent(
       key,
       () => service.getTransactionsForMonth(normalizedMonth),
     );
-  }
-
-  Future<void> _preloadRecentMonths() async {
-    final service = _firestoreService;
-    if (service == null) return;
-
-    final currentMonth = _monthStart(DateTime.now());
-    final oldestMonth = DateTime(currentMonth.year, currentMonth.month - 11, 1);
-    final rangeEnd = DateTime(currentMonth.year, currentMonth.month + 1, 1);
-
-    final grouped = <String, List<TransactionModel>>{};
-    for (var i = 0; i < 12; i++) {
-      final month = DateTime(oldestMonth.year, oldestMonth.month + i, 1);
-      grouped[_monthKey(month)] = [];
-    }
-
-    final transactions = await service.getTransactionsBetween(
-      start: oldestMonth,
-      end: rangeEnd,
-      descending: true,
-    );
-
-    for (final transaction in transactions) {
-      final key = _monthKey(transaction.date);
-      grouped[key]?.add(transaction);
-    }
-
-    for (final entry in grouped.entries) {
-      _monthCache.putIfAbsent(entry.key, () => Future.value(entry.value));
-    }
   }
 
   DateTime _monthStart(DateTime date) => DateTime(date.year, date.month, 1);
@@ -208,12 +184,6 @@ class _MonthManagerState extends State<MonthManagerScreen> {
   String _monthKey(DateTime date) {
     final month = date.month.toString().padLeft(2, '0');
     return '${date.year}-$month';
-  }
-
-  bool _isInRecentWindow(DateTime month) {
-    final currentMonth = _monthStart(DateTime.now());
-    final oldestMonth = DateTime(currentMonth.year, currentMonth.month - 11, 1);
-    return !month.isBefore(oldestMonth) && !month.isAfter(currentMonth);
   }
 
   Future<void> _loadReferenceData({bool forceRefresh = false}) async {
@@ -687,157 +657,160 @@ class _MonthManagerState extends State<MonthManagerScreen> {
     return CustomScrollView(
       slivers: [
         SliverToBoxAdapter(
-          child: Column(
-            children: [
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 20, 16, 4),
-                child: MonthPageHeader(
-                  eyebrow: _t('VOTRE BUDGET'),
-                  title: _t('Budget mensuel'),
-                  subtitle: _t('Vos opérations, simplement.'),
-                  monthLabel: monthLabel,
-                  compactMonthLabel: DateFormat(
-                    'MMM yyyy',
-                    Localizations.localeOf(context).toString(),
-                  ).format(_currentMonth),
-                  previousLabel: _t('Mois précédent'),
-                  nextLabel: _t('Mois suivant'),
-                  onPrevious: _prevMonth,
-                  onNext: _nextMonth,
-                  onChoose: _chooseMonth,
+          child: RepaintBoundary(
+            child: Column(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 20, 16, 4),
+                  child: MonthPageHeader(
+                    eyebrow: _t('VOTRE BUDGET'),
+                    title: _t('Budget mensuel'),
+                    subtitle: _t('Vos opérations, simplement.'),
+                    monthLabel: monthLabel,
+                    compactMonthLabel: DateFormat(
+                      'MMM yyyy',
+                      Localizations.localeOf(context).toString(),
+                    ).format(_currentMonth),
+                    previousLabel: _t('Mois précédent'),
+                    nextLabel: _t('Mois suivant'),
+                    onPrevious: _prevMonth,
+                    onNext: _nextMonth,
+                    onChoose: _chooseMonth,
+                  ),
                 ),
-              ),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-                child: AppChoiceTabs(
-                  labels: [
-                    'expense',
-                    'income',
-                    'investment',
-                    'transfer',
-                  ].map(_typeLabel).toList(),
-                  icons: const [
-                    Icons.money_off_outlined,
-                    Icons.attach_money,
-                    Icons.trending_up_outlined,
-                    Icons.sync_alt,
-                  ],
-                  selectedIndex: _selectedIndex,
-                  onSelected: (index) {
-                    if (index == _selectedIndex) return;
-                    setState(() {
-                      _selectedIndex = index;
-                      _selectedCategoryId = null;
-                    });
-                  },
-                ),
-              ),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: AppPanel(
-                  padding: EdgeInsets.zero,
-                  child: ExpansionTile(
-                    shape: const Border(),
-                    collapsedShape: const Border(),
-                    title: Text(
-                      _t('Répartition du mois'),
-                      style: const TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    leading: const Icon(Icons.bar_chart_outlined, size: 20),
-                    initiallyExpanded: MediaQuery.sizeOf(context).width >= 760,
-                    children: [
-                      MonthGraph(
-                        transactions: filtered,
-                        categories: _categories,
-                        accountIds: _accountIds,
-                        investmentIds: _investmentIds,
-                        type: type,
-                      ),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                  child: AppChoiceTabs(
+                    labels: [
+                      'expense',
+                      'income',
+                      'investment',
+                      'transfer',
+                    ].map(_typeLabel).toList(),
+                    icons: const [
+                      Icons.money_off_outlined,
+                      Icons.attach_money,
+                      Icons.trending_up_outlined,
+                      Icons.sync_alt,
                     ],
+                    selectedIndex: _selectedIndex,
+                    onSelected: (index) {
+                      if (index == _selectedIndex) return;
+                      setState(() {
+                        _selectedIndex = index;
+                        _selectedCategoryId = null;
+                      });
+                    },
                   ),
                 ),
-              ),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
-                child: TextField(
-                  controller: _searchController,
-                  textInputAction: TextInputAction.search,
-                  decoration: InputDecoration(
-                    hintText: _t('Rechercher une transaction'),
-                    prefixIcon: const Icon(Icons.search_rounded),
-                    suffixIcon: _searchQuery.isEmpty
-                        ? null
-                        : IconButton(
-                            tooltip: _t('Effacer'),
-                            icon: const Icon(Icons.close_rounded),
-                            onPressed: () {
-                              setState(() {
-                                _searchController.clear();
-                                _searchQuery = '';
-                              });
-                            },
-                          ),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                  ),
-                  onChanged: (value) => setState(() => _searchQuery = value),
-                ),
-              ),
-              _buildActiveFilterChips(),
-              Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16.0,
-                  vertical: 8,
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Expanded(
-                      child: Text(
-                        '${_t('Transactions mensuelles')} (${filtered.length})',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: AppPanel(
+                    padding: EdgeInsets.zero,
+                    child: ExpansionTile(
+                      shape: const Border(),
+                      collapsedShape: const Border(),
+                      title: Text(
+                        _t('Répartition du mois'),
                         style: const TextStyle(
-                          fontSize: 16,
+                          fontSize: 13,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
-                    ),
-                    if (monthlyAmount.isNotEmpty) ...[
-                      const SizedBox(width: 10),
-                      Text(
-                        monthlyAmount,
-                        style: TextStyle(
-                          color: _monthlyAmountColor(type),
-                          fontSize: 15,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ],
-                    Row(
+                      leading: const Icon(Icons.bar_chart_outlined, size: 20),
+                      initiallyExpanded:
+                          MediaQuery.sizeOf(context).width >= 760,
                       children: [
-                        // Bouton filtre catégorie
-                        IconButton(
-                          icon: Icon(
-                            _hasActiveFilters
-                                ? Icons.tune_rounded
-                                : Icons.tune_outlined,
-                            size: 20,
-                          ),
-                          tooltip: _t('Filtrer et trier'),
-                          onPressed: _openFilterSheet,
+                        MonthGraph(
+                          transactions: filtered,
+                          categories: _categories,
+                          accountIds: _accountIds,
+                          investmentIds: _investmentIds,
+                          type: type,
                         ),
                       ],
                     ),
-                  ],
+                  ),
                 ),
-              ),
-              const Divider(height: 1),
-            ],
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+                  child: TextField(
+                    controller: _searchController,
+                    textInputAction: TextInputAction.search,
+                    decoration: InputDecoration(
+                      hintText: _t('Rechercher une transaction'),
+                      prefixIcon: const Icon(Icons.search_rounded),
+                      suffixIcon: _searchQuery.isEmpty
+                          ? null
+                          : IconButton(
+                              tooltip: _t('Effacer'),
+                              icon: const Icon(Icons.close_rounded),
+                              onPressed: () {
+                                setState(() {
+                                  _searchController.clear();
+                                  _searchQuery = '';
+                                });
+                              },
+                            ),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                    ),
+                    onChanged: (value) => setState(() => _searchQuery = value),
+                  ),
+                ),
+                _buildActiveFilterChips(),
+                Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16.0,
+                    vertical: 8,
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Expanded(
+                        child: Text(
+                          '${_t('Transactions mensuelles')} (${filtered.length})',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                      if (monthlyAmount.isNotEmpty) ...[
+                        const SizedBox(width: 10),
+                        Text(
+                          monthlyAmount,
+                          style: TextStyle(
+                            color: _monthlyAmountColor(type),
+                            fontSize: 15,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                      Row(
+                        children: [
+                          // Bouton filtre catégorie
+                          IconButton(
+                            icon: Icon(
+                              _hasActiveFilters
+                                  ? Icons.tune_rounded
+                                  : Icons.tune_outlined,
+                              size: 20,
+                            ),
+                            tooltip: _t('Filtrer et trier'),
+                            onPressed: _openFilterSheet,
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                const Divider(height: 1),
+              ],
+            ),
           ),
         ),
         if (filtered.isEmpty)
@@ -917,7 +890,6 @@ class _MonthManagerState extends State<MonthManagerScreen> {
         _reloadScheduled = false;
         if (!mounted) return;
         _monthCache.clear();
-        _recentMonthsPreloadFuture = null;
         _loadTransactionsForSelectedMonth(forceRefresh: true);
       });
     }
@@ -944,8 +916,8 @@ class _MonthManagerState extends State<MonthManagerScreen> {
         ),
         body: _transactionsError != null
             ? Center(child: Text('${_t('Erreur')} : $_transactionsError'))
-            : _isLoadingTransactions && _transactions.isEmpty
-            ? const Center(child: CircularProgressIndicator())
+            : _isLoadingTransactions
+            ? const AppLoadingScreen()
             : CachedPageStack(
                 index: _selectedIndex,
                 itemCount: 4,

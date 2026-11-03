@@ -17,7 +17,28 @@ class LazySectionList extends StatelessWidget {
   Widget build(BuildContext context) => ListView.separated(
     padding: padding,
     itemCount: sections.length,
-    itemBuilder: (context, index) => sections[index](context),
+    itemBuilder: (context, index) =>
+        _RetainedSection(key: ValueKey(index), builder: sections[index]),
     separatorBuilder: (context, index) => SizedBox(height: gaps[index]),
   );
+}
+
+/// Only visited sections are kept. Returning to a chart does not construct its
+/// render tree again; sections outside the viewport neither paint nor lay out.
+class _RetainedSection extends StatefulWidget {
+  final WidgetBuilder builder;
+  const _RetainedSection({super.key, required this.builder});
+  @override
+  State<_RetainedSection> createState() => _RetainedSectionState();
+}
+
+class _RetainedSectionState extends State<_RetainedSection>
+    with AutomaticKeepAliveClientMixin {
+  @override
+  bool get wantKeepAlive => true;
+  @override
+  Widget build(BuildContext context) {
+    super.build(context);
+    return widget.builder(context);
+  }
 }

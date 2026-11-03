@@ -1,3 +1,4 @@
+import 'package:mysold/widgets/app_loading_screen.dart';
 import 'package:mysold/services/budget_service.dart';
 import 'package:mysold/widgets/lazy_section_list.dart';
 import 'package:mysold/widgets/graphiques/app_charts.dart';
@@ -140,7 +141,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       future: _loadYearData(_selectedYear),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
+          return const AppLoadingScreen();
         }
 
         if (snapshot.hasError) {

@@ -4,6 +4,13 @@ String? monthlyAnalyticsText(String key, String language) {
 }
 
 const _texts = <String, List<String>>{
+  'Chargement de vos données…': [
+    'Loading your data…',
+    'Cargando tus datos…',
+    'Deine Daten werden geladen…',
+    'Caricamento dei dati…',
+    'データを読み込んでいます…',
+  ],
   "Stats annuelles": [
     "Annual stats",
     "Estadísticas anuales",

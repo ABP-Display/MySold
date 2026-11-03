@@ -1,3 +1,4 @@
+import 'package:mysold/widgets/app_loading_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
@@ -34,7 +35,7 @@ class _AnalyticsPageState extends State<AnalyticsPage>
   late DateTime _reference = _prior(_selected);
   final _cache = <DateTime, Future<_MonthSource>>{};
   Future<List<_MonthSource>>? _pair;
-  bool _sameDay = true, _followPrevious = true;
+  bool _followPrevious = true;
   // Keep chart preferences while a newly selected month is loading.
   MonthlySeries _series = MonthlySeries.expense;
   bool _cumulative = true;
@@ -174,6 +175,7 @@ class _AnalyticsPageState extends State<AnalyticsPage>
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting ||
             !snapshot.hasData) {
+          if (!snapshot.hasError) return const AppLoadingScreen();
           return ListView(
             padding: const EdgeInsets.all(20),
             children: [
@@ -184,20 +186,14 @@ class _AnalyticsPageState extends State<AnalyticsPage>
                   onPressed: _refresh,
                   child: Text(context.tr('Réessayer')),
                 ),
-              ] else
-                const Center(
-                  child: Padding(
-                    padding: EdgeInsets.all(32),
-                    child: CircularProgressIndicator(),
-                  ),
-                ),
+              ],
             ],
           );
         }
         final now = DateTime.now(),
             first = snapshot.data![0].derive(now),
             second = snapshot.data![1].derive(now);
-        final comparison = MonthComparison(first, second, sameDay: _sameDay);
+        final comparison = MonthComparison(first, second);
         final sections = <WidgetBuilder>[
           (_) => header(),
           (_) =>
@@ -211,12 +207,10 @@ class _AnalyticsPageState extends State<AnalyticsPage>
             data: comparison,
             currency: currency,
             hidden: hidden,
-            onSameDay: (value) => setState(() => _sameDay = value),
             initialSeries: _series,
             initialCumulative: _cumulative,
             onSeriesChanged: (value) => _series = value,
             onCumulativeChanged: (value) => _cumulative = value,
-            onChooseMonth: () => _chooseMonth(),
             onChooseReference: () => _chooseMonth(reference: true),
             onResetReference: _followPrevious ? null : _previousMonth,
           ),

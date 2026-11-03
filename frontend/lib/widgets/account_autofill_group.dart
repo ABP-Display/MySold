@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'credential_autofill.dart';
 
 /// Keep the account identifier in the same native form as a confirmation secret.
 /// The identifier stays in the autofill and accessibility forms without a
@@ -37,16 +38,18 @@ class _AccountAutofillGroupState extends State<AccountAutofillGroup> {
   }
 
   @override
-  Widget build(BuildContext context) => AutofillGroup(
-    onDisposeAction: AutofillContextAction.cancel,
-    child: Form(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          AutofillIdentifier(controller: _username),
-          widget.child,
-        ],
+  Widget build(BuildContext context) => CredentialAutofillScope(
+    child: AutofillGroup(
+      onDisposeAction: AutofillContextAction.cancel,
+      child: Form(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            AutofillIdentifier(controller: _username),
+            widget.child,
+          ],
+        ),
       ),
     ),
   );
@@ -78,21 +81,26 @@ class _AutofillIdentifierState extends State<AutofillIdentifier> {
     child: Opacity(
       opacity: 0,
       alwaysIncludeSemantics: true,
-      child: TextField(
+      child: CredentialAutofillField(
         controller: widget.controller,
-        focusNode: _focus,
-        canRequestFocus: false,
-        readOnly: true,
-        keyboardType: TextInputType.emailAddress,
-        autofillHints: const [AutofillHints.username],
-        autocorrect: false,
-        enableSuggestions: false,
-        style: const TextStyle(fontSize: 1, height: 1),
-        decoration: const InputDecoration(
-          isCollapsed: true,
-          border: InputBorder.none,
-          contentPadding: EdgeInsets.zero,
-          hintText: 'Identifiant du compte',
+        name: 'username',
+        autocomplete: 'username',
+        child: TextField(
+          controller: widget.controller,
+          focusNode: _focus,
+          canRequestFocus: false,
+          readOnly: true,
+          keyboardType: TextInputType.emailAddress,
+          autofillHints: const [AutofillHints.username],
+          autocorrect: false,
+          enableSuggestions: false,
+          style: const TextStyle(fontSize: 1, height: 1),
+          decoration: const InputDecoration(
+            isCollapsed: true,
+            border: InputBorder.none,
+            contentPadding: EdgeInsets.zero,
+            hintText: 'Identifiant du compte',
+          ),
         ),
       ),
     ),

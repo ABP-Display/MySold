@@ -9,6 +9,7 @@ import 'package:mysold/register_page.dart';
 import 'package:mysold/widgets/auth_layout.dart';
 import 'package:mysold/data/local_auth.dart';
 import 'package:mysold/data/api_client.dart';
+import 'package:mysold/widgets/credential_autofill.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -53,6 +54,7 @@ class _LoginPageState extends State<LoginPage> {
   );
 
   Future<void> _signIn() async {
+    CredentialAutofillScope.sync();
     if (loading || !_form.currentState!.validate()) return;
     FocusManager.instance.primaryFocus?.unfocus();
     setState(() {
@@ -175,200 +177,220 @@ class _LoginPageState extends State<LoginPage> {
             ),
           ),
           const SizedBox(height: 28),
-          AutofillGroup(
-            onDisposeAction: AutofillContextAction.cancel,
-            child: Form(
-              key: _form,
-              autovalidateMode: AutovalidateMode.onUserInteraction,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  if (_challenge != null) ...[
-                    TextFormField(
-                      key: const ValueKey('mfa-code'),
-                      controller: _mfaCode,
-                      enabled: !loading,
-                      autofocus: true,
-                      keyboardType: _recoveryMode
-                          ? TextInputType.text
-                          : TextInputType.number,
-                      autofillHints: _recoveryMode
-                          ? null
-                          : const [AutofillHints.oneTimeCode],
-                      autocorrect: false,
-                      enableSuggestions: false,
-                      inputFormatters: _recoveryMode
-                          ? null
-                          : [
-                              FilteringTextInputFormatter.digitsOnly,
-                              LengthLimitingTextInputFormatter(6),
-                            ],
-                      textInputAction: TextInputAction.done,
-                      onFieldSubmitted: (_) => _signIn(),
-                      validator: (value) {
-                        final code = value?.trim() ?? '';
-                        if (_recoveryMode) {
-                          return RegExp(
-                                r'^[0-9a-fA-F]{20}$',
-                              ).hasMatch(code.replaceAll(RegExp(r'[- ]'), ''))
-                              ? null
-                              : context.tr(
-                                  'Saisissez un code de secours valide.',
-                                );
-                        }
-                        return RegExp(r'^[0-9]{6}$').hasMatch(code)
+          CredentialAutofillScope(
+            child: AutofillGroup(
+              onDisposeAction: AutofillContextAction.cancel,
+              child: Form(
+                key: _form,
+                autovalidateMode: AutovalidateMode.onUserInteraction,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    if (_challenge != null) ...[
+                      TextFormField(
+                        key: const ValueKey('mfa-code'),
+                        controller: _mfaCode,
+                        enabled: !loading,
+                        autofocus: true,
+                        keyboardType: _recoveryMode
+                            ? TextInputType.text
+                            : TextInputType.number,
+                        autofillHints: _recoveryMode
                             ? null
-                            : context.tr('Saisissez un code à 6 chiffres.');
-                      },
-                      decoration: InputDecoration(
-                        labelText: context.tr(
-                          _recoveryMode
-                              ? 'Code de secours'
-                              : 'Code à 6 chiffres',
-                        ),
-                        prefixIcon: const Icon(Icons.verified_user_outlined),
-                      ),
-                    ),
-                    TextButton(
-                      onPressed: loading
-                          ? null
-                          : () => setState(() {
-                              _recoveryMode = !_recoveryMode;
-                              _mfaCode.clear();
-                            }),
-                      child: Text(
-                        context.tr(
-                          _recoveryMode
-                              ? 'Utiliser l’authentificateur'
-                              : 'Utiliser un code de secours',
-                        ),
-                      ),
-                    ),
-                    TextButton(
-                      onPressed: loading
-                          ? null
-                          : () => setState(() {
-                              _challenge = null;
-                              _recoveryMode = false;
-                              _mfaCode.clear();
-                              _error = null;
-                            }),
-                      child: Text(context.tr('Revenir à la connexion')),
-                    ),
-                  ] else ...[
-                    TextFormField(
-                      controller: emailController,
-                      enabled: !loading,
-                      keyboardType: TextInputType.emailAddress,
-                      autofillHints: const [AutofillHints.username],
-                      autocorrect: false,
-                      textInputAction: TextInputAction.next,
-                      validator: (value) =>
-                          value == null ||
-                              !RegExp(
-                                r'^[^\s@]+@[^\s@]+\.[^\s@]+$',
-                              ).hasMatch(value.trim())
-                          ? context.tr('Adresse email invalide.')
-                          : null,
-                      decoration: InputDecoration(
-                        labelText: context.tr('Adresse e-mail'),
-                        prefixIcon: const Icon(Icons.mail_outline, size: 19),
-                      ),
-                    ),
-                    const SizedBox(height: 18),
-                    TextFormField(
-                      controller: passwordController,
-                      enabled: !loading,
-                      obscureText: obscurePassword,
-                      autofillHints: const [AutofillHints.password],
-                      autocorrect: false,
-                      enableSuggestions: false,
-                      textInputAction: TextInputAction.done,
-                      onFieldSubmitted: (_) => _signIn(),
-                      validator: (value) => value == null || value.isEmpty
-                          ? context.tr('Ce champ est requis.')
-                          : null,
-                      decoration: InputDecoration(
-                        labelText: context.tr('Mot de passe'),
-                        prefixIcon: const Icon(Icons.lock_outline, size: 19),
-                        suffixIcon: IconButton(
-                          tooltip: context.tr(
-                            obscurePassword ? 'Afficher' : 'Masquer',
-                          ),
-                          onPressed: loading
+                            : const [AutofillHints.oneTimeCode],
+                        autocorrect: false,
+                        enableSuggestions: false,
+                        inputFormatters: _recoveryMode
+                            ? null
+                            : [
+                                FilteringTextInputFormatter.digitsOnly,
+                                LengthLimitingTextInputFormatter(6),
+                              ],
+                        textInputAction: TextInputAction.done,
+                        onFieldSubmitted: (_) => _signIn(),
+                        validator: (value) {
+                          final code = value?.trim() ?? '';
+                          if (_recoveryMode) {
+                            return RegExp(
+                                  r'^[0-9a-fA-F]{20}$',
+                                ).hasMatch(code.replaceAll(RegExp(r'[- ]'), ''))
+                                ? null
+                                : context.tr(
+                                    'Saisissez un code de secours valide.',
+                                  );
+                          }
+                          return RegExp(r'^[0-9]{6}$').hasMatch(code)
                               ? null
-                              : () => setState(
-                                  () => obscurePassword = !obscurePassword,
-                                ),
-                          icon: Icon(
-                            obscurePassword
-                                ? Icons.visibility_off_outlined
-                                : Icons.visibility_outlined,
-                            size: 20,
+                              : context.tr('Saisissez un code à 6 chiffres.');
+                        },
+                        decoration: InputDecoration(
+                          labelText: context.tr(
+                            _recoveryMode
+                                ? 'Code de secours'
+                                : 'Code à 6 chiffres',
+                          ),
+                          prefixIcon: const Icon(Icons.verified_user_outlined),
+                        ),
+                      ),
+                      TextButton(
+                        onPressed: loading
+                            ? null
+                            : () => setState(() {
+                                _recoveryMode = !_recoveryMode;
+                                _mfaCode.clear();
+                              }),
+                        child: Text(
+                          context.tr(
+                            _recoveryMode
+                                ? 'Utiliser l’authentificateur'
+                                : 'Utiliser un code de secours',
                           ),
                         ),
                       ),
-                    ),
-                    const SizedBox(height: 6),
-                    Align(
-                      alignment: Alignment.centerRight,
-                      child: TextButton(
-                        onPressed: loading ? null : _openPasswordResetDialog,
-                        child: Text(context.tr('Mot de passe oublie ?')),
+                      TextButton(
+                        onPressed: loading
+                            ? null
+                            : () => setState(() {
+                                _challenge = null;
+                                _recoveryMode = false;
+                                _mfaCode.clear();
+                                _error = null;
+                              }),
+                        child: Text(context.tr('Revenir à la connexion')),
+                      ),
+                    ] else ...[
+                      CredentialAutofillField(
+                        controller: emailController,
+                        name: 'username',
+                        autocomplete: 'username',
+                        obscure: false,
+                        child: TextFormField(
+                          controller: emailController,
+                          enabled: !loading,
+                          keyboardType: TextInputType.emailAddress,
+                          autofillHints: const [AutofillHints.username],
+                          autocorrect: false,
+                          textInputAction: TextInputAction.next,
+                          validator: (value) =>
+                              value == null ||
+                                  !RegExp(
+                                    r'^[^\s@]+@[^\s@]+\.[^\s@]+$',
+                                  ).hasMatch(value.trim())
+                              ? context.tr('Adresse email invalide.')
+                              : null,
+                          decoration: InputDecoration(
+                            labelText: context.tr('Adresse e-mail'),
+                            prefixIcon: const Icon(
+                              Icons.mail_outline,
+                              size: 19,
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 18),
+                      CredentialAutofillField(
+                        controller: passwordController,
+                        name: 'password',
+                        autocomplete: 'current-password',
+                        obscure: obscurePassword,
+                        child: TextFormField(
+                          controller: passwordController,
+                          enabled: !loading,
+                          obscureText: obscurePassword,
+                          autofillHints: const [AutofillHints.password],
+                          autocorrect: false,
+                          enableSuggestions: false,
+                          textInputAction: TextInputAction.done,
+                          onFieldSubmitted: (_) => _signIn(),
+                          validator: (value) => value == null || value.isEmpty
+                              ? context.tr('Ce champ est requis.')
+                              : null,
+                          decoration: InputDecoration(
+                            labelText: context.tr('Mot de passe'),
+                            prefixIcon: const Icon(
+                              Icons.lock_outline,
+                              size: 19,
+                            ),
+                            suffixIcon: IconButton(
+                              tooltip: context.tr(
+                                obscurePassword ? 'Afficher' : 'Masquer',
+                              ),
+                              onPressed: loading
+                                  ? null
+                                  : () => setState(
+                                      () => obscurePassword = !obscurePassword,
+                                    ),
+                              icon: Icon(
+                                obscurePassword
+                                    ? Icons.visibility_off_outlined
+                                    : Icons.visibility_outlined,
+                                size: 20,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Align(
+                        alignment: Alignment.centerRight,
+                        child: TextButton(
+                          onPressed: loading ? null : _openPasswordResetDialog,
+                          child: Text(context.tr('Mot de passe oublie ?')),
+                        ),
+                      ),
+                    ],
+                    if (_error != null) ...[
+                      const SizedBox(height: 6),
+                      Semantics(
+                        liveRegion: true,
+                        child: Text(
+                          _error!,
+                          style: TextStyle(
+                            color: Theme.of(context).colorScheme.error,
+                            height: 1.5,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 14),
+                    ],
+                    const SizedBox(height: 8),
+                    FilledButton(
+                      onPressed: loading ? null : _signIn,
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          if (loading) ...[
+                            const SizedBox(
+                              width: 18,
+                              height: 18,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: AuthPalette.background,
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                          ],
+                          Flexible(
+                            child: Text(
+                              context.tr(
+                                loading
+                                    ? 'Connexion...'
+                                    : _challenge == null
+                                    ? 'Se connecter'
+                                    : 'Vérifier le code',
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                          ),
+                          if (!loading) ...[
+                            const SizedBox(width: 10),
+                            const Icon(Icons.arrow_forward, size: 18),
+                          ],
+                        ],
                       ),
                     ),
                   ],
-                  if (_error != null) ...[
-                    const SizedBox(height: 6),
-                    Semantics(
-                      liveRegion: true,
-                      child: Text(
-                        _error!,
-                        style: TextStyle(
-                          color: Theme.of(context).colorScheme.error,
-                          height: 1.5,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 14),
-                  ],
-                  const SizedBox(height: 8),
-                  FilledButton(
-                    onPressed: loading ? null : _signIn,
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        if (loading) ...[
-                          const SizedBox(
-                            width: 18,
-                            height: 18,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              color: AuthPalette.background,
-                            ),
-                          ),
-                          const SizedBox(width: 10),
-                        ],
-                        Flexible(
-                          child: Text(
-                            context.tr(
-                              loading
-                                  ? 'Connexion...'
-                                  : _challenge == null
-                                  ? 'Se connecter'
-                                  : 'Vérifier le code',
-                            ),
-                            textAlign: TextAlign.center,
-                          ),
-                        ),
-                        if (!loading) ...[
-                          const SizedBox(width: 10),
-                          const Icon(Icons.arrow_forward, size: 18),
-                        ],
-                      ],
-                    ),
-                  ),
-                ],
+                ),
               ),
             ),
           ),

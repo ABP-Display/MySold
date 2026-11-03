@@ -1,3 +1,4 @@
+import 'package:mysold/widgets/credential_autofill.dart';
 import 'package:mysold/widgets/app_design.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -32,6 +33,7 @@ class _MfaSettingsPageState extends State<MfaSettingsPage> {
   }
 
   Future<void> _run(Future<void> Function() action) async {
+    CredentialAutofillScope.sync();
     setState(() {
       _busy = true;
       _error = null;
@@ -284,16 +286,22 @@ class _MfaSettingsPageState extends State<MfaSettingsPage> {
                     ),
                     const SizedBox(height: 18),
                   ],
-                  TextField(
+                  CredentialAutofillField(
                     controller: _password,
-                    enabled: !_busy,
-                    obscureText: true,
-                    autofillHints: const [AutofillHints.password],
-                    autocorrect: false,
-                    enableSuggestions: false,
-                    decoration: InputDecoration(
-                      labelText: context.tr('Mot de passe actuel'),
-                      border: const OutlineInputBorder(),
+                    name: 'password',
+                    autocomplete: 'current-password',
+                    obscure: true,
+                    child: TextField(
+                      controller: _password,
+                      enabled: !_busy,
+                      obscureText: true,
+                      autofillHints: const [AutofillHints.password],
+                      autocorrect: false,
+                      enableSuggestions: false,
+                      decoration: InputDecoration(
+                        labelText: context.tr('Mot de passe actuel'),
+                        border: const OutlineInputBorder(),
+                      ),
                     ),
                   ),
                   if (_enabled || _secret != null) ...[

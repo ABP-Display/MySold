@@ -17,6 +17,7 @@ import 'package:mysold/services/auth_service.dart';
 import 'package:mysold/widgets/auth_layout.dart';
 import 'package:mysold/widgets/mfa_enrollment.dart';
 import 'package:mysold/widgets/account_autofill_group.dart';
+import 'package:mysold/widgets/credential_autofill.dart';
 
 class Register extends StatefulWidget {
   final MfaRequest? mfaRequest;
@@ -82,6 +83,7 @@ class _RegisterFlowState extends State<Register> {
   }
 
   void _continue() {
+    CredentialAutofillScope.sync();
     if (_busy || !_forms[_step].currentState!.validate()) return;
     if (_step < 2) {
       _changeStep(_step + 1);
@@ -91,6 +93,7 @@ class _RegisterFlowState extends State<Register> {
   }
 
   Future<void> _register() async {
+    CredentialAutofillScope.sync();
     if (_busy) return;
     setState(() {
       _busy = true;
@@ -183,176 +186,178 @@ class _RegisterFlowState extends State<Register> {
     ];
     return Padding(
       padding: EdgeInsets.all(compact ? 22 : 40),
-      child: AutofillGroup(
-        onDisposeAction: AutofillContextAction.cancel,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            if (compact) ...[const AuthBrand(), const SizedBox(height: 28)],
-            _progress(),
-            const SizedBox(height: 30),
-            Align(
-              alignment: Alignment.centerLeft,
-              child: Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: AuthPalette.tint,
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                child: Icon(
-                  [
-                    Icons.person_outline,
-                    Icons.lock_outline,
-                    Icons.tune,
-                    Icons.verified_user_outlined,
-                  ][_step],
-                  color: AuthPalette.accent,
-                  size: 24,
-                ),
-              ),
-            ),
-            const SizedBox(height: 16),
-            Text(
-              context.tr(titles[_step]),
-              style: const TextStyle(
-                color: AuthPalette.text,
-                fontSize: 27,
-                fontWeight: FontWeight.w600,
-                letterSpacing: -0.8,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              context.tr(descriptions[_step]),
-              style: const TextStyle(
-                color: AuthPalette.muted,
-                fontSize: 13,
-                height: 1.5,
-              ),
-            ),
-            const SizedBox(height: 26),
-            if (_step == 3)
-              MfaEnrollment(
-                request: widget.mfaRequest,
-                password: _password.text,
-                onEnabled: () {
-                  _password.clear();
-                  _confirmation.clear();
-                },
-                onFinished: _finishRegistration,
-              )
-            else ...[
-              // Keep credentials mounted together until registration succeeds.
-              // Flutter can then expose a stable native form with its username
-              // on every step, including while the preferences are displayed.
-              for (var index = 0; index < 3; index++)
-                if (_visitedSteps.contains(index))
-                  Offstage(
-                    offstage: _step != index,
-                    child: TickerMode(
-                      enabled: _step == index,
-                      child: Form(
-                        key: _forms[index],
-                        autovalidateMode: AutovalidateMode.onUserInteraction,
-                        child: AbsorbPointer(
-                          absorbing: _busy,
-                          child: switch (index) {
-                            0 => _profileFields(),
-                            1 => _securityFields(),
-                            _ => _preferences(),
-                          },
-                        ),
-                      ),
-                    ),
-                  )
-                else
-                  const SizedBox.shrink(),
-              if (_error != null) ...[
-                const SizedBox(height: 16),
-                Semantics(
-                  liveRegion: true,
-                  child: Text(
-                    _error!,
-                    style: TextStyle(
-                      color: Theme.of(context).colorScheme.error,
-                      height: 1.5,
-                    ),
+      child: CredentialAutofillScope(
+        child: AutofillGroup(
+          onDisposeAction: AutofillContextAction.cancel,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (compact) ...[const AuthBrand(), const SizedBox(height: 28)],
+              _progress(),
+              const SizedBox(height: 30),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: AuthPalette.tint,
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: Icon(
+                    [
+                      Icons.person_outline,
+                      Icons.lock_outline,
+                      Icons.tune,
+                      Icons.verified_user_outlined,
+                    ][_step],
+                    color: AuthPalette.accent,
+                    size: 24,
                   ),
                 ),
-              ],
-              const SizedBox(height: 28),
-              FilledButton(
-                onPressed: _busy ? null : _continue,
-                style: FilledButton.styleFrom(
-                  backgroundColor: AuthPalette.accent,
-                  foregroundColor: AuthPalette.background,
-                  minimumSize: const Size.fromHeight(48),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
-                  ),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                context.tr(titles[_step]),
+                style: const TextStyle(
+                  color: AuthPalette.text,
+                  fontSize: 27,
+                  fontWeight: FontWeight.w600,
+                  letterSpacing: -0.8,
                 ),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 12),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      if (_busy) ...[
-                        const SizedBox(
-                          width: 18,
-                          height: 18,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: AuthPalette.background,
+              ),
+              const SizedBox(height: 8),
+              Text(
+                context.tr(descriptions[_step]),
+                style: const TextStyle(
+                  color: AuthPalette.muted,
+                  fontSize: 13,
+                  height: 1.5,
+                ),
+              ),
+              const SizedBox(height: 26),
+              if (_step == 3)
+                MfaEnrollment(
+                  request: widget.mfaRequest,
+                  password: _password.text,
+                  onEnabled: () {
+                    _password.clear();
+                    _confirmation.clear();
+                  },
+                  onFinished: _finishRegistration,
+                )
+              else ...[
+                // Keep credentials mounted together until registration succeeds.
+                // Flutter can then expose a stable native form with its username
+                // on every step, including while the preferences are displayed.
+                for (var index = 0; index < 3; index++)
+                  if (_visitedSteps.contains(index))
+                    Offstage(
+                      offstage: _step != index,
+                      child: TickerMode(
+                        enabled: _step == index,
+                        child: Form(
+                          key: _forms[index],
+                          autovalidateMode: AutovalidateMode.onUserInteraction,
+                          child: AbsorbPointer(
+                            absorbing: _busy,
+                            child: switch (index) {
+                              0 => _profileFields(),
+                              1 => _securityFields(),
+                              _ => _preferences(),
+                            },
                           ),
                         ),
-                        const SizedBox(width: 10),
-                      ],
-                      Flexible(
-                        child: Text(
-                          context.tr(
-                            _busy
-                                ? 'Création en cours…'
-                                : _step == 2
-                                ? 'Créer mon compte'
-                                : 'Continuer',
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
                       ),
-                      if (!_busy) ...[
-                        const SizedBox(width: 10),
-                        const Icon(Icons.arrow_forward, size: 18),
-                      ],
-                    ],
-                  ),
-                ),
-              ),
-              if (_step > 0)
-                TextButton(
-                  onPressed: _busy ? null : () => _changeStep(_step - 1),
-                  child: Text(context.tr('Retour')),
-                ),
-              const SizedBox(height: 18),
-              Wrap(
-                alignment: WrapAlignment.center,
-                crossAxisAlignment: WrapCrossAlignment.center,
-                children: [
-                  Text(
-                    context.tr('Déjà un compte ?'),
-                    style: const TextStyle(
-                      color: AuthPalette.muted,
-                      fontSize: 13,
+                    )
+                  else
+                    const SizedBox.shrink(),
+                if (_error != null) ...[
+                  const SizedBox(height: 16),
+                  Semantics(
+                    liveRegion: true,
+                    child: Text(
+                      _error!,
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.error,
+                        height: 1.5,
+                      ),
                     ),
-                  ),
-                  TextButton(
-                    onPressed: _busy ? null : _goToLogin,
-                    child: Text(context.tr('Se connecter')),
                   ),
                 ],
-              ),
+                const SizedBox(height: 28),
+                FilledButton(
+                  onPressed: _busy ? null : _continue,
+                  style: FilledButton.styleFrom(
+                    backgroundColor: AuthPalette.accent,
+                    foregroundColor: AuthPalette.background,
+                    minimumSize: const Size.fromHeight(48),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        if (_busy) ...[
+                          const SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: AuthPalette.background,
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                        ],
+                        Flexible(
+                          child: Text(
+                            context.tr(
+                              _busy
+                                  ? 'Création en cours…'
+                                  : _step == 2
+                                  ? 'Créer mon compte'
+                                  : 'Continuer',
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                        ),
+                        if (!_busy) ...[
+                          const SizedBox(width: 10),
+                          const Icon(Icons.arrow_forward, size: 18),
+                        ],
+                      ],
+                    ),
+                  ),
+                ),
+                if (_step > 0)
+                  TextButton(
+                    onPressed: _busy ? null : () => _changeStep(_step - 1),
+                    child: Text(context.tr('Retour')),
+                  ),
+                const SizedBox(height: 18),
+                Wrap(
+                  alignment: WrapAlignment.center,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  children: [
+                    Text(
+                      context.tr('Déjà un compte ?'),
+                      style: const TextStyle(
+                        color: AuthPalette.muted,
+                        fontSize: 13,
+                      ),
+                    ),
+                    TextButton(
+                      onPressed: _busy ? null : _goToLogin,
+                      child: Text(context.tr('Se connecter')),
+                    ),
+                  ],
+                ),
+              ],
             ],
-          ],
+          ),
         ),
       ),
     );
@@ -400,6 +405,30 @@ class _RegisterFlowState extends State<Register> {
       ? context.tr('Ce champ est requis.')
       : null;
 
+  Widget _credentialField(
+    TextEditingController controller,
+    Iterable<String>? hints,
+    bool obscure,
+    Widget child,
+  ) {
+    final hint = hints?.firstOrNull;
+    if (hint != AutofillHints.username && hint != AutofillHints.newPassword)
+      return child;
+    return CredentialAutofillField(
+      controller: controller,
+      name: hint == AutofillHints.username
+          ? 'username'
+          : controller == _confirmation
+          ? 'confirm-password'
+          : 'new-password',
+      autocomplete: hint == AutofillHints.username
+          ? 'username'
+          : 'new-password',
+      obscure: obscure,
+      child: child,
+    );
+  }
+
   Widget _field(
     TextEditingController controller,
     String label,
@@ -414,35 +443,40 @@ class _RegisterFlowState extends State<Register> {
     int? maxLength,
   }) => Padding(
     padding: const EdgeInsets.only(bottom: 16),
-    child: TextFormField(
-      controller: controller,
-      keyboardType: keyboard,
-      autofillHints: autofill,
-      obscureText: obscure,
-      autocorrect: toggle == null && keyboard == TextInputType.name,
-      enableSuggestions: toggle == null,
-      textInputAction: TextInputAction.next,
-      inputFormatters: formatters,
-      maxLength: maxLength,
-      validator: validator ?? _required,
-      decoration: InputDecoration(
-        labelText: context.tr(label),
-        prefixIcon: Icon(icon, size: 19),
-        helperText: helper == null ? null : context.tr(helper),
-        helperMaxLines: 3,
-        counterText: '',
-        suffixIcon: toggle == null
-            ? null
-            : IconButton(
-                tooltip: context.tr(obscure ? 'Afficher' : 'Masquer'),
-                onPressed: toggle,
-                icon: Icon(
-                  obscure
-                      ? Icons.visibility_off_outlined
-                      : Icons.visibility_outlined,
-                  size: 20,
+    child: _credentialField(
+      controller,
+      autofill,
+      obscure,
+      TextFormField(
+        controller: controller,
+        keyboardType: keyboard,
+        autofillHints: autofill,
+        obscureText: obscure,
+        autocorrect: toggle == null && keyboard == TextInputType.name,
+        enableSuggestions: toggle == null,
+        textInputAction: TextInputAction.next,
+        inputFormatters: formatters,
+        maxLength: maxLength,
+        validator: validator ?? _required,
+        decoration: InputDecoration(
+          labelText: context.tr(label),
+          prefixIcon: Icon(icon, size: 19),
+          helperText: helper == null ? null : context.tr(helper),
+          helperMaxLines: 3,
+          counterText: '',
+          suffixIcon: toggle == null
+              ? null
+              : IconButton(
+                  tooltip: context.tr(obscure ? 'Afficher' : 'Masquer'),
+                  onPressed: toggle,
+                  icon: Icon(
+                    obscure
+                        ? Icons.visibility_off_outlined
+                        : Icons.visibility_outlined,
+                    size: 20,
+                  ),
                 ),
-              ),
+        ),
       ),
     ),
   );
@@ -482,7 +516,7 @@ class _RegisterFlowState extends State<Register> {
         'Adresse e-mail',
         Icons.mail_outline,
         keyboard: TextInputType.emailAddress,
-        autofill: [AutofillHints.email],
+        autofill: [AutofillHints.username],
         validator: (value) {
           if (value == null ||
               !RegExp(r'^[^\s@]+@[^\s@]+\.[^\s@]+$').hasMatch(value.trim()) ||

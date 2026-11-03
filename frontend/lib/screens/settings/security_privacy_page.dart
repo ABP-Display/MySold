@@ -1,3 +1,4 @@
+import 'package:mysold/widgets/credential_autofill.dart';
 import 'package:mysold/screens/settings/mfa_settings_page.dart';
 import 'package:mysold/widgets/app_design.dart';
 import 'dart:convert';
@@ -998,20 +999,27 @@ class _SecurityPrivacyPageState extends State<SecurityPrivacyPage> {
           title: Text(dialogContext.tr('Verification du compte')),
           content: AccountAutofillGroup(
             username: LocalAuth.instance.currentUser?.email ?? '',
-            child: TextField(
+            child: CredentialAutofillField(
               controller: passwordCtrl,
-              autofocus: true,
-              obscureText: true,
-              autofillHints: const [AutofillHints.password],
-              autocorrect: false,
-              enableSuggestions: false,
-              decoration: InputDecoration(
-                labelText: dialogContext.tr('Mot de passe'),
-                prefixIcon: const Icon(Icons.lock_outline),
+              name: 'password',
+              autocomplete: 'current-password',
+              obscure: true,
+              child: TextField(
+                controller: passwordCtrl,
+                autofocus: true,
+                obscureText: true,
+                autofillHints: const [AutofillHints.password],
+                autocorrect: false,
+                enableSuggestions: false,
+                decoration: InputDecoration(
+                  labelText: dialogContext.tr('Mot de passe'),
+                  prefixIcon: const Icon(Icons.lock_outline),
+                ),
+                onSubmitted: (_) {
+                  CredentialAutofillScope.sync();
+                  Navigator.pop(dialogContext, passwordCtrl.text);
+                },
               ),
-              onSubmitted: (_) {
-                Navigator.pop(dialogContext, passwordCtrl.text);
-              },
             ),
           ),
           actions: [
@@ -1020,7 +1028,10 @@ class _SecurityPrivacyPageState extends State<SecurityPrivacyPage> {
               child: Text(dialogContext.tr('Annuler')),
             ),
             FilledButton(
-              onPressed: () => Navigator.pop(dialogContext, passwordCtrl.text),
+              onPressed: () {
+                CredentialAutofillScope.sync();
+                Navigator.pop(dialogContext, passwordCtrl.text);
+              },
               child: Text(dialogContext.tr('Confirmer')),
             ),
           ],

@@ -122,21 +122,26 @@ void main() {
       final before = scope.autofillClients
           .map((client) => client.autofillId)
           .toSet();
-      final identifier = scope.autofillClients.singleWhere(
+      final identifiers = scope.autofillClients.where(
         (client) => client
             .textInputConfiguration
             .autofillConfiguration
             .autofillHints
             .contains(AutofillHints.username),
       );
-      expect(
-        identifier
-            .textInputConfiguration
-            .autofillConfiguration
-            .currentEditingValue
-            .text,
-        'alice@example.test',
-      );
+      // The retained profile e-mail and the read-only security-step identifier
+      // intentionally share the username hint and the same account value.
+      expect(identifiers, hasLength(2));
+      for (final identifier in identifiers) {
+        expect(
+          identifier
+              .textInputConfiguration
+              .autofillConfiguration
+              .currentEditingValue
+              .text,
+          'alice@example.test',
+        );
+      }
       expect(
         scope.autofillClients.where(
           (client) => client

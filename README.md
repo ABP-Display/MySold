@@ -503,6 +503,23 @@ groupe d’autofill jusqu’à la création du compte. Les formulaires de confir
 contiennent aussi l’identifiant du compte, y compris lorsque l’accessibilité est
 activée. Les confirmations PIN ne demandent pas d’enregistrement du mot de passe.
 
+La connexion, l’inscription et les confirmations du mot de passe utilisent des
+champs identifiés avec `name`, un `id` stable et les indications HTML standard
+`username`, `current-password` ou `new-password`. Le remplissage des champs sans
+focus est transmis aux contrôleurs Flutter via les événements `input`/`change` ;
+une dernière synchronisation précède la validation, y compris si le gestionnaire
+ne déclenche pas d’événement. L’identifiant est associé aux mots de passe dans
+le même formulaire. Le PIN et les codes 2AF restent distincts des identifiants.
+
+Cette compatibilité commune vise les gestionnaires intégrés et les extensions,
+dont Bitwarden. Les tests simulent leurs événements standards avec des données
+fictives ; ils n’utilisent pas de coffre réel. Le navigateur et l’extension
+restent responsables de leurs propositions de remplissage/enregistrement.
+La synchronisation ne journalise ni ne stocke les secrets ; ses observateurs
+et son accès à l’arbre sémantique sont libérés en quittant les formulaires.
+Les tests du DOM s’exécutent avec `flutter test --platform chrome
+test/credential_autofill_web_test.dart` depuis `frontend/`.
+
 Une exception citant `bootstrap-autofill-overlay.js` et
 `AutofillInlineMenuContentService` correspond au script d’une extension de
 gestion de mots de passe. Cette erreur est notamment

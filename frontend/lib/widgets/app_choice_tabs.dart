@@ -6,16 +6,64 @@ class AppChoiceTabs extends StatelessWidget {
   final List<IconData> icons;
   final int selectedIndex;
   final ValueChanged<int> onSelected;
+  final bool floating;
   const AppChoiceTabs({
     super.key,
     required this.labels,
     required this.icons,
     required this.selectedIndex,
     required this.onSelected,
+    this.floating = false,
   });
+  static double floatingHeight(BuildContext context) =>
+      50 + MediaQuery.textScalerOf(context).scale(12) * 1.2;
   @override
   Widget build(BuildContext context) => LayoutBuilder(
     builder: (context, constraints) {
+      if (floating) {
+        return SizedBox(
+          height: floatingHeight(context),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              for (var index = 0; index < labels.length; index++)
+                Expanded(
+                  child: Tooltip(
+                    message: labels[index],
+                    child: AppSelectionButton(
+                      key: ValueKey('operation-type-$index'),
+                      selected: selectedIndex == index,
+                      outlined: false,
+                      isTab: true,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 2,
+                        vertical: 8,
+                      ),
+                      onPressed: () => onSelected(index),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(icons[index], size: 22),
+                          const SizedBox(height: 6),
+                          Text(
+                            labels[index].characters.length > 10
+                                ? '${labels[index].characters.take(6)}.'
+                                : labels[index],
+                            semanticsLabel: labels[index],
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(fontSize: 12, height: 1.2),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        );
+      }
       Widget button(int index) => AppSelectionButton(
         key: ValueKey('operation-type-$index'),
         selected: selectedIndex == index,

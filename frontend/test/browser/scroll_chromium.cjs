@@ -1,7 +1,7 @@
 // Build scroll_fixture.dart, then run with an isolated Chromium debug endpoint:
 // node test/browser/scroll_chromium.cjs http://127.0.0.1:9235
 const {createServer} = require('node:http');
-const {readFile} = require('node:fs/promises');
+const {readFile, writeFile, mkdir} = require('node:fs/promises');
 const path = require('node:path');
 const assert = require('node:assert/strict');
 const {once} = require('node:events');
@@ -65,6 +65,24 @@ async function measure(origin, mode, width=390) {
         assert.equal(Number(await evaluate('document.body.dataset.selectedTab')), index);
       }
       assert.equal(await evaluate('document.body.dataset.pageNotifications'), '1,1,1,1');
+      const output = path.resolve(__dirname, '../../../test-results');
+      await mkdir(output, {recursive:true});
+      const screenshot = async suffix => {
+        const shot = await send('Page.captureScreenshot', {format:'png'});
+        await writeFile(path.join(output, `workspace-${width}${suffix}.png`), Buffer.from(shot.data,'base64'));
+      };
+      await screenshot('');
+      if (width < 760) {
+        await evaluate("window.dispatchEvent(new Event('mysold-fixture-hide'))");
+        await delay(300);
+        assert.equal(await evaluate('document.body.dataset.hidden'), 'true');
+        await screenshot('-hidden');
+        await touch('touchStart', width-46, 22);
+        await delay(30);
+        await touch('touchEnd');
+        await delay(200);
+        assert.equal(await evaluate('document.body.dataset.hidden'), 'false', 'The top-edge reveal tab must restore amounts');
+      }
       return {mode, width, preparedPages:4, initialDataNotifications:'1,1,1,1', returnedToMonth:true};
     }
     const coordinates = await evaluate('Object.assign({}, document.body.dataset)');
@@ -143,7 +161,7 @@ async function measure(origin, mode, width=390) {
   try {
     const results = [];
     for(const mode of ['normal','forced']) results.push(await measure(origin,mode));
-    for(const width of [390,1280]) results.push(await measure(origin,'workspace',width));
+    for(const width of [320,390,1280]) results.push(await measure(origin,'workspace',width));
     console.log(JSON.stringify(results,null,2));
     assert.equal(results[0].tappables, 0, 'Autofill must not leave global semantics enabled');
     assert.ok(results[0].afterThresholdMs < 160, 'Ordinary touch scrolling still waits for the semantics debounce');

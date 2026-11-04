@@ -191,7 +191,7 @@ class _MonthManagerState extends State<MonthManagerScreen> {
   String _typeLabel(String type) {
     switch (type) {
       case 'expense':
-        return context.tr('Depenses');
+        return context.tr('Dépenses');
       case 'income':
         return context.tr('Revenus');
       case 'investment':
@@ -634,6 +634,7 @@ class _MonthManagerState extends State<MonthManagerScreen> {
     List<TransactionModel> txs,
     String type,
     String monthLabel,
+    bool mobile,
   ) {
     final filtered = _filteredTransactions(txs, type);
     final monthlyAmount = _monthlyTransactionsAmount(filtered, type);
@@ -649,31 +650,11 @@ class _MonthManagerState extends State<MonthManagerScreen> {
                   padding: const EdgeInsets.fromLTRB(16, 20, 16, 4),
                   child: _buildMonthHeader(monthLabel),
                 ),
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-                  child: AppChoiceTabs(
-                    labels: [
-                      'expense',
-                      'income',
-                      'investment',
-                      'transfer',
-                    ].map(_typeLabel).toList(),
-                    icons: const [
-                      Icons.money_off_outlined,
-                      Icons.attach_money,
-                      Icons.trending_up_outlined,
-                      Icons.sync_alt,
-                    ],
-                    selectedIndex: _selectedIndex,
-                    onSelected: (index) {
-                      if (index == _selectedIndex) return;
-                      setState(() {
-                        _selectedIndex = index;
-                        _selectedCategoryId = null;
-                      });
-                    },
+                if (!mobile)
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                    child: _operationTabs(),
                   ),
-                ),
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16),
                   child: AppPanel(
@@ -800,7 +781,7 @@ class _MonthManagerState extends State<MonthManagerScreen> {
           )
         else
           SliverPadding(
-            padding: const EdgeInsets.only(bottom: 88),
+            padding: EdgeInsets.only(bottom: mobile ? 16 : 88),
             sliver: SliverList.builder(
               itemCount: filtered.length,
               itemBuilder: (_, i) {
@@ -854,7 +835,33 @@ class _MonthManagerState extends State<MonthManagerScreen> {
   @override
   Widget build(BuildContext context) => ActivePageBuilder(builder: _buildPage);
 
+  Widget _operationTabs({bool floating = false}) => AppChoiceTabs(
+    floating: floating,
+    labels: [
+      'expense',
+      'income',
+      'investment',
+      'transfer',
+    ].map(_typeLabel).toList(),
+    icons: const [
+      Icons.money_off_outlined,
+      Icons.attach_money,
+      Icons.trending_up_outlined,
+      Icons.sync_alt,
+    ],
+    selectedIndex: _selectedIndex,
+    onSelected: (index) {
+      if (index == _selectedIndex) return;
+      setState(() {
+        _selectedIndex = index;
+        _selectedCategoryId = null;
+      });
+    },
+  );
+
   Widget _buildPage(BuildContext context) {
+    final mobile =
+        MediaQuery.sizeOf(context).width < AppDesign.mobileBreakpoint;
     final references = context.watch<UserDataProvider>();
     final financialVersion = references.financialDataVersion;
     if (_lastFinancialDataVersion != null &&
@@ -885,58 +892,102 @@ class _MonthManagerState extends State<MonthManagerScreen> {
       onResume: _loadReferenceData,
       child: Scaffold(
         floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
-        floatingActionButton: _MonthAddFab(
-          onRefresh: () => _refresh(forceRefresh: true),
+        floatingActionButton: Padding(
+          padding: EdgeInsets.only(
+            bottom: mobile ? AppChoiceTabs.floatingHeight(context) + 20 : 0,
+          ),
+          child: _MonthAddFab(onRefresh: () => _refresh(forceRefresh: true)),
         ),
-        body: _transactionsError != null
-            ? Center(
-                child: Padding(
-                  padding: const EdgeInsets.all(24),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text('${_t('Erreur')} : $_transactionsError'),
-                      const SizedBox(height: 16),
-                      FilledButton.icon(
-                        onPressed: () => _refresh(forceRefresh: true),
-                        icon: const Icon(Icons.refresh),
-                        label: Text(_t('Réessayer')),
+        body: Stack(
+          fit: StackFit.expand,
+          children: [
+            Padding(
+              padding: EdgeInsets.only(
+                bottom: mobile
+                    ? AppChoiceTabs.floatingHeight(context) + 100
+                    : 0,
+              ),
+              child: _transactionsError != null
+                  ? Center(
+                      child: Padding(
+                        padding: const EdgeInsets.all(24),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text('${_t('Erreur')} : $_transactionsError'),
+                            const SizedBox(height: 16),
+                            FilledButton.icon(
+                              onPressed: () => _refresh(forceRefresh: true),
+                              icon: const Icon(Icons.refresh),
+                              label: Text(_t('Réessayer')),
+                            ),
+                          ],
+                        ),
                       ),
-                    ],
-                  ),
-                ),
-              )
-            : _isLoadingTransactions
-            ? PagePendingContent(header: _buildMonthHeader(monthLabel))
-            : ScrollItemRetention(
-                child: CachedPageStack(
-                  index: _selectedIndex,
-                  itemCount: 4,
-                  revision: (
-                    transactions: _transactions,
-                    month: (_currentMonth.year, _currentMonth.month),
-                    references: references.referenceDataVersion,
-                    filters: (
-                      _searchQuery,
-                      _selectedCategoryId,
-                      _selectedAccountId,
-                      _minAmount,
-                      _maxAmount,
-                      _sortField,
-                      _sortAscending,
+                    )
+                  : _isLoadingTransactions
+                  ? PagePendingContent(header: _buildMonthHeader(monthLabel))
+                  : ScrollItemRetention(
+                      child: CachedPageStack(
+                        index: _selectedIndex,
+                        itemCount: 4,
+                        revision: (
+                          mobile: mobile,
+                          textScaler: MediaQuery.textScalerOf(context),
+                          transactions: _transactions,
+                          month: (_currentMonth.year, _currentMonth.month),
+                          references: references.referenceDataVersion,
+                          filters: (
+                            _searchQuery,
+                            _selectedCategoryId,
+                            _selectedAccountId,
+                            _minAmount,
+                            _maxAmount,
+                            _sortField,
+                            _sortAscending,
+                          ),
+                          currency: context.watch<CurrencyProvider>().currency,
+                          hidden: context.watch<PrivacyProvider>().hideAmounts,
+                          theme: Theme.of(context),
+                          locale: Localizations.localeOf(context),
+                        ),
+                        itemBuilder: (_, index) => _buildTabContent(
+                          _transactions,
+                          [
+                            'expense',
+                            'income',
+                            'investment',
+                            'transfer',
+                          ][index],
+                          monthLabel,
+                          mobile,
+                        ),
+                      ),
                     ),
-                    currency: context.watch<CurrencyProvider>().currency,
-                    hidden: context.watch<PrivacyProvider>().hideAmounts,
-                    theme: Theme.of(context),
-                    locale: Localizations.localeOf(context),
+            ),
+            if (mobile)
+              Positioned(
+                left: 12,
+                right: 12,
+                bottom: 8,
+                child: Material(
+                  key: const ValueKey('month-operation-dock'),
+                  color: Theme.of(context).colorScheme.surface,
+                  elevation: 8,
+                  shadowColor: Colors.black.withValues(alpha: 0.25),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(22),
+                    side: BorderSide(color: AppDesign.border(context)),
                   ),
-                  itemBuilder: (_, index) => _buildTabContent(
-                    _transactions,
-                    ['expense', 'income', 'investment', 'transfer'][index],
-                    monthLabel,
+                  clipBehavior: Clip.antiAlias,
+                  child: Padding(
+                    padding: const EdgeInsets.all(6),
+                    child: _operationTabs(floating: true),
                   ),
                 ),
               ),
+          ],
+        ),
       ),
     );
   }

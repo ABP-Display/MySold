@@ -1,6 +1,7 @@
 import 'package:mysold/widgets/app_loading_screen.dart';
 import 'package:mysold/widgets/retained_page_view.dart';
 import 'package:mysold/widgets/web_scroll_scope.dart';
+import 'package:mysold/widgets/app_typography.dart';
 import 'dart:async';
 
 import 'package:flutter/foundation.dart' show kIsWeb;
@@ -134,7 +135,9 @@ class _MyAppState extends State<MyApp> {
           navigatorKey: _navigatorKey,
           child: child ?? const SizedBox.shrink(),
         );
-        return kIsWeb ? WebScrollScope(child: page) : page;
+        return kIsWeb
+            ? WebScrollScope(child: AppTypography.readable(context, page))
+            : page;
       },
       title: 'MySold',
       debugShowCheckedModeBanner: false,

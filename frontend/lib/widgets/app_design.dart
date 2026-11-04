@@ -3,6 +3,7 @@ import 'package:flutter/gestures.dart';
 
 abstract final class AppDesign {
   static const contentWidth = 1280.0;
+  static const mobileBreakpoint = 760.0;
   static const radius = 12.0;
   static TextStyle pageTitle(BuildContext context) => Theme.of(context)
       .textTheme

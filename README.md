@@ -554,6 +554,12 @@ restent chargées à la demande. Une erreur laisse apparaître l’état d’err
 la page concernée sans bloquer les autres onglets.
 Les pages déjà consultées conservent leur état. Sur mobile, le menu inférieur
 repose sur une base arrondie, espacée des bords et de la zone gestuelle système.
+Sur les largeurs inférieures à 760 pixels, le bandeau de marque supérieur est
+retiré. Un onglet discret au bord supérieur permet de réafficher les montants
+lorsque le mode discret est actif. Le texte utilise un agrandissement minimal
+de 15 %, sans diminuer le réglage d’accessibilité du système. Les quatre types
+d’opérations du mois sont regroupés dans un second menu arrondi au-dessus de la
+navigation principale ; les commandes et le contenu défilant ne se recouvrent pas.
 Les onglets du simulateur et les filtres d’opérations changent directement de sélection. Le survol et
 le focus au clavier restent visibles. Les pages déjà ouvertes conservent leur
 état et leur défilement ; revenir sur « Mois » ne reconstruit pas ses graphiques

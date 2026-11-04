@@ -196,6 +196,7 @@ class AppWorkspace extends StatelessWidget {
           constraints.maxHeight >= 600 &&
           MediaQuery.textScalerOf(context).scale(13) <= 20;
       final colors = Theme.of(context).colorScheme;
+      final mobile = constraints.maxWidth < AppDesign.mobileBreakpoint;
       return Scaffold(
         body: Row(
           children: [
@@ -203,40 +204,42 @@ class AppWorkspace extends StatelessWidget {
             Expanded(
               child: Column(
                 children: [
-                  Container(
-                    decoration: BoxDecoration(
-                      color: colors.surface,
-                      border: Border(
-                        bottom: BorderSide(color: AppDesign.border(context)),
-                      ),
-                    ),
-                    child: SafeArea(
-                      bottom: false,
-                      child: Padding(
-                        padding: EdgeInsets.symmetric(
-                          horizontal: wide ? 28 : 16,
-                          vertical: 10,
+                  if (!mobile)
+                    Container(
+                      key: const ValueKey('workspace-header'),
+                      decoration: BoxDecoration(
+                        color: colors.surface,
+                        border: Border(
+                          bottom: BorderSide(color: AppDesign.border(context)),
                         ),
-                        child: Row(
-                          children: [
-                            if (wide)
-                              Expanded(
-                                child: Text(
-                                  '${context.tr('Espace personnel')} / ${context.tr(destinations[selectedIndex].label)}',
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    color: colors.onSurfaceVariant,
+                      ),
+                      child: SafeArea(
+                        bottom: false,
+                        child: Padding(
+                          padding: EdgeInsets.symmetric(
+                            horizontal: wide ? 28 : 16,
+                            vertical: 10,
+                          ),
+                          child: Row(
+                            children: [
+                              if (wide)
+                                Expanded(
+                                  child: Text(
+                                    '${context.tr('Espace personnel')} / ${context.tr(destinations[selectedIndex].label)}',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: colors.onSurfaceVariant,
+                                    ),
                                   ),
-                                ),
-                              )
-                            else
-                              Expanded(child: _brand(context, compact: true)),
-                            _privacy(context, !wide),
-                          ],
+                                )
+                              else
+                                Expanded(child: _brand(context, compact: true)),
+                              _privacy(context, !wide),
+                            ],
+                          ),
                         ),
                       ),
                     ),
-                  ),
                   Expanded(
                     child: Align(
                       alignment: Alignment.topCenter,
@@ -244,7 +247,55 @@ class AppWorkspace extends StatelessWidget {
                         constraints: const BoxConstraints(
                           maxWidth: AppDesign.contentWidth,
                         ),
-                        child: child,
+                        child: SafeArea(
+                          top: mobile,
+                          bottom: false,
+                          child: Stack(
+                            fit: StackFit.expand,
+                            children: [
+                              Padding(
+                                padding: EdgeInsets.only(
+                                  top: mobile && hidden ? 44 : 0,
+                                ),
+                                child: child,
+                              ),
+                              if (mobile && hidden)
+                                Positioned(
+                                  top: 0,
+                                  right: 18,
+                                  child: Material(
+                                    key: const ValueKey('privacy-reveal-tab'),
+                                    color: colors.surfaceContainerHigh,
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: const BorderRadius.vertical(
+                                        bottom: Radius.circular(16),
+                                      ),
+                                      side: BorderSide(
+                                        color: AppDesign.border(context),
+                                      ),
+                                    ),
+                                    clipBehavior: Clip.antiAlias,
+                                    child: IconButton(
+                                      tooltip: context.tr(
+                                        'Afficher les montants',
+                                      ),
+                                      onPressed: onPrivacy,
+                                      style: IconButton.styleFrom(
+                                        minimumSize: const Size(56, 44),
+                                        padding: EdgeInsets.zero,
+                                        tapTargetSize:
+                                            MaterialTapTargetSize.shrinkWrap,
+                                      ),
+                                      icon: const Icon(
+                                        Icons.visibility_outlined,
+                                        size: 22,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ),
                       ),
                     ),
                   ),
@@ -302,7 +353,17 @@ class AppWorkspace extends StatelessWidget {
                                       Icon(destinations[index].icon, size: 22),
                                       const SizedBox(height: 4),
                                       Text(
-                                        context.tr(destinations[index].label),
+                                        mobile
+                                            ? context
+                                                  .tr(destinations[index].label)
+                                                  .replaceFirst(' ', '\n')
+                                            : context.tr(
+                                                destinations[index].label,
+                                              ),
+                                        semanticsLabel: context.tr(
+                                          destinations[index].label,
+                                        ),
+                                        softWrap: !mobile,
                                         maxLines: 2,
                                         overflow: TextOverflow.ellipsis,
                                         textAlign: TextAlign.center,

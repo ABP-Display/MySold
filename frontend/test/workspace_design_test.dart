@@ -19,7 +19,8 @@ void main() {
             tester.view.devicePixelRatio = 1;
             addTearDown(tester.view.resetPhysicalSize);
             addTearDown(tester.view.resetDevicePixelRatio);
-            var hidden = false;
+            final initiallyHidden = size.width < AppDesign.mobileBreakpoint;
+            var hidden = initiallyHidden;
             var selected = 0;
             await tester.pumpWidget(
               MaterialApp(
@@ -122,7 +123,7 @@ void main() {
             );
             await tester.tap(find.byIcon(Icons.visibility_outlined));
             await tester.pumpAndSettle();
-            expect(hidden, isTrue);
+            expect(hidden, !initiallyHidden);
             await tester.tap(find.byIcon(Icons.person).first);
             await tester.pumpAndSettle();
             expect(selected, 3);

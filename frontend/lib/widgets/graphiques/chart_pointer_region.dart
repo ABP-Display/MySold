@@ -63,26 +63,104 @@ class _ChartPointerRegionState extends State<ChartPointerRegion> {
     onHover: (event) {
       if (!_scrolling) widget.onSelect(event.localPosition);
     },
-    child: GestureDetector(
+    child: RawGestureDetector(
       behavior: HitTestBehavior.opaque,
-      dragStartBehavior: DragStartBehavior.down,
-      onTapUp: (details) => widget.onSelect(details.localPosition),
-      onTapCancel: widget.onClear,
-      onHorizontalDragStart: (details) {
-        _dragKind = details.kind;
-        widget.onSelect(details.localPosition);
-      },
-      onHorizontalDragUpdate: (details) =>
-          widget.onSelect(details.localPosition),
-      onHorizontalDragEnd: (_) {
-        if (_dragKind != PointerDeviceKind.mouse) widget.onClear?.call();
-        _dragKind = null;
-      },
-      onHorizontalDragCancel: () {
-        _dragKind = null;
-        widget.onClear?.call();
+      gestures: {
+        TapGestureRecognizer:
+            GestureRecognizerFactoryWithHandlers<TapGestureRecognizer>(
+              () => TapGestureRecognizer(),
+              (instance) => instance
+                ..gestureSettings = MediaQuery.maybeGestureSettingsOf(context)
+                ..onTapUp = (details) {
+                  widget.onSelect(details.localPosition);
+                }
+                ..onTapCancel = widget.onClear,
+            ),
+        _ChartHorizontalDragRecognizer:
+            GestureRecognizerFactoryWithHandlers<
+              _ChartHorizontalDragRecognizer
+            >(
+              () => _ChartHorizontalDragRecognizer(),
+              (instance) => instance
+                ..gestureSettings = MediaQuery.maybeGestureSettingsOf(context)
+                ..dragStartBehavior = DragStartBehavior.down
+                ..onlyAcceptDragOnThreshold = true
+                ..onStart = (details) {
+                  _dragKind = details.kind;
+                  widget.onSelect(details.localPosition);
+                }
+                ..onUpdate = (details) {
+                  widget.onSelect(details.localPosition);
+                }
+                ..onEnd = (_) {
+                  if (_dragKind != PointerDeviceKind.mouse)
+                    widget.onClear?.call();
+                  _dragKind = null;
+                }
+                ..onCancel = () {
+                  _dragKind = null;
+                  widget.onClear?.call();
+                },
+            ),
       },
       child: widget.child,
     ),
   );
+}
+
+/// A coalesced move can cross both axis thresholds in one event. Let the
+/// vertical page recognizer win when that first movement is mostly vertical.
+class _ChartHorizontalDragRecognizer extends HorizontalDragGestureRecognizer {
+  final _movement = <int, Offset>{};
+  Offset _currentMovement = Offset.zero;
+
+  @override
+  void addAllowedPointer(PointerDownEvent event) {
+    _movement[event.pointer] = Offset.zero;
+    super.addAllowedPointer(event);
+  }
+
+  @override
+  void addAllowedPointerPanZoom(PointerPanZoomStartEvent event) {
+    _movement[event.pointer] = Offset.zero;
+    super.addAllowedPointerPanZoom(event);
+  }
+
+  @override
+  void handleEvent(PointerEvent event) {
+    final delta = switch (event) {
+      PointerMoveEvent() => event.delta,
+      PointerPanZoomUpdateEvent() => event.panDelta,
+      _ => null,
+    };
+    if (delta != null && _movement.containsKey(event.pointer)) {
+      _currentMovement = _movement[event.pointer]! + delta;
+      _movement[event.pointer] = _currentMovement;
+    }
+    super.handleEvent(event);
+    if (event is PointerUpEvent ||
+        event is PointerCancelEvent ||
+        event is PointerPanZoomEndEvent) {
+      _movement.remove(event.pointer);
+      if (_movement.isEmpty) _currentMovement = Offset.zero;
+    }
+  }
+
+  @override
+  void didStopTrackingLastPointer(int pointer) {
+    super.didStopTrackingLastPointer(pointer);
+    _movement.clear();
+    _currentMovement = Offset.zero;
+  }
+
+  @override
+  bool hasSufficientGlobalDistanceToAccept(
+    PointerDeviceKind pointerDeviceKind,
+    double? deviceTouchSlop,
+  ) =>
+      _currentMovement.dx.abs() > _currentMovement.dy.abs() &&
+      super.hasSufficientGlobalDistanceToAccept(
+        pointerDeviceKind,
+        deviceTouchSlop,
+      );
 }

@@ -1,6 +1,7 @@
 import 'package:mysold/widgets/app_design.dart';
 import 'package:mysold/data/document_store.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter_colorpicker/flutter_colorpicker.dart';
 import 'package:flutter_iconpicker/flutter_iconpicker.dart';
 import 'package:flutter_iconpicker/Models/configuration.dart';
@@ -226,6 +227,7 @@ class _AddCategoryPageState extends State<AddCategoryPage> {
       ),
       body: SafeArea(
         child: ListView(
+          dragStartBehavior: DragStartBehavior.down,
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
           children: [
             _buildHeader(),

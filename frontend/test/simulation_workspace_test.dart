@@ -95,6 +95,9 @@ void main() {
           Offset(area.right - 16, area.center.dy),
         );
         await tester.pump();
+        expect(find.byKey(const ValueKey('chart-info-card')), findsNothing);
+        await finger.up();
+        await tester.pump();
         expect(find.byKey(const ValueKey('chart-info-card')), findsOneWidget);
         expect(find.text('Mois 2'), findsOneWidget);
         final info = tester.getRect(
@@ -102,8 +105,6 @@ void main() {
         );
         expect(area.contains(info.topLeft), isTrue);
         expect(area.contains(info.bottomRight), isTrue);
-        await finger.up();
-        await tester.pump();
         expect(tester.takeException(), isNull);
       }
     },

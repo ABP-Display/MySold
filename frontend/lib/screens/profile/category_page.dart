@@ -6,6 +6,7 @@ import 'package:mysold/widgets/category_amount_filter.dart';
 import 'package:mysold/models/category_filter.dart';
 import 'package:mysold/data/document_store.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/gestures.dart';
 import 'package:provider/provider.dart';
 
 import 'package:mysold/services/budget_service.dart';
@@ -308,6 +309,7 @@ class _CategoriePageState extends State<CategoriePage> {
             ),
           );
     return ListView.builder(
+      dragStartBehavior: DragStartBehavior.down,
       key: PageStorageKey('category-list-$type'),
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 96),
       itemCount: 2 + (visible.isEmpty ? 1 : visible.length),

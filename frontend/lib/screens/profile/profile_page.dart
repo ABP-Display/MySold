@@ -2,6 +2,7 @@ import 'package:mysold/widgets/app_design.dart';
 import 'package:mysold/data/document_store.dart';
 import 'package:mysold/data/local_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/gestures.dart';
 
 import 'package:mysold/l10n/app_localizations.dart';
 import 'package:mysold/screens/profile/account_page.dart';
@@ -80,6 +81,7 @@ class _ProfilePageState extends State<ProfilePage> {
                 snapshot.connectionState == ConnectionState.waiting;
 
             return ListView(
+              dragStartBehavior: DragStartBehavior.down,
               padding: const EdgeInsets.fromLTRB(20, 24, 20, 28),
               children: [
                 PageIntro(

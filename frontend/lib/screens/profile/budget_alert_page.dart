@@ -1,5 +1,6 @@
 import 'package:mysold/widgets/app_design.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/gestures.dart';
 import 'package:provider/provider.dart';
 
 import 'package:mysold/l10n/app_localizations.dart';
@@ -260,6 +261,7 @@ class _BudgetAlertPageState extends State<BudgetAlertPage> {
               }
 
               return ListView(
+                dragStartBehavior: DragStartBehavior.down,
                 padding: const EdgeInsets.fromLTRB(16, 12, 16, 96),
                 children: [
                   _buildHeader(stats, currency, alerts.length),

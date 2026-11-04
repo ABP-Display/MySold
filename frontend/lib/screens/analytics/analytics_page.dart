@@ -2,6 +2,7 @@ import 'package:mysold/widgets/active_page_builder.dart';
 import 'package:mysold/data/bounded_async_cache.dart';
 import 'package:mysold/widgets/page_pending_content.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/gestures.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:mysold/data/document_store.dart';
@@ -172,6 +173,7 @@ class _AnalyticsPageState extends State<AnalyticsPage>
         if (!snapshot.hasData) {
           if (!snapshot.hasError) return PagePendingContent(header: header());
           return ListView(
+            dragStartBehavior: DragStartBehavior.down,
             padding: const EdgeInsets.all(20),
             children: [
               header(),

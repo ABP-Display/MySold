@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/gestures.dart';
 import 'package:mysold/models/simulation_projection.dart';
 import 'package:mysold/widgets/app_design.dart';
 import 'package:mysold/widgets/app_select_field.dart';
@@ -251,6 +252,7 @@ class _SimulationWorkspaceState extends State<SimulationWorkspace> {
     child: ConstrainedBox(
       constraints: const BoxConstraints(maxWidth: 1040),
       child: ListView(
+        dragStartBehavior: DragStartBehavior.down,
         key: PageStorageKey(key),
         padding: const EdgeInsets.fromLTRB(16, 20, 16, 32),
         children: [

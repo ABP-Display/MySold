@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/gestures.dart';
 import 'package:mysold/l10n/app_localizations.dart';
 import 'package:mysold/widgets/app_design.dart';
 
@@ -118,6 +119,7 @@ class SettingsOverview extends StatelessWidget {
     child: ConstrainedBox(
       constraints: const BoxConstraints(maxWidth: 920),
       child: ListView(
+        dragStartBehavior: DragStartBehavior.down,
         padding: const EdgeInsets.fromLTRB(20, 20, 20, 28),
         children: [
           if (showIntro)
@@ -212,6 +214,7 @@ class AdvancedPreferencesContent extends StatelessWidget {
     child: ConstrainedBox(
       constraints: const BoxConstraints(maxWidth: 920),
       child: ListView(
+        dragStartBehavior: DragStartBehavior.down,
         padding: const EdgeInsets.fromLTRB(20, 20, 20, 28),
         children: [
           SettingsSection(

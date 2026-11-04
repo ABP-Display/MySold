@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/gestures.dart';
 
 abstract final class AppDesign {
   static const contentWidth = 1280.0;
@@ -371,7 +372,10 @@ Future<T?> showAppSheet<T>({
                 ),
               ),
               Flexible(
-                child: SingleChildScrollView(child: builder(dialogContext)),
+                child: SingleChildScrollView(
+                  dragStartBehavior: DragStartBehavior.down,
+                  child: builder(dialogContext),
+                ),
               ),
             ],
           ),
@@ -385,7 +389,10 @@ Future<T?> showAppSheet<T>({
       constraints: BoxConstraints(
         maxHeight: MediaQuery.sizeOf(sheetContext).height * 0.90,
       ),
-      child: SingleChildScrollView(child: builder(sheetContext)),
+      child: SingleChildScrollView(
+        dragStartBehavior: DragStartBehavior.down,
+        child: builder(sheetContext),
+      ),
     ),
     isScrollControlled: isScrollControlled,
     showDragHandle: showDragHandle,

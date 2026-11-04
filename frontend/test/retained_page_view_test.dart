@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mysold/widgets/retained_page_view.dart';
 
@@ -35,7 +36,7 @@ class _PageState extends State<_Page> {
 
 void main() {
   testWidgets(
-    'SoldUp page swipes and vertical scrolls cancel clicks and preserve visited pages',
+    'Only navigation buttons change pages; vertical scroll and page state survive',
     (tester) async {
       final controller = PageController();
       addTearDown(controller.dispose);
@@ -71,7 +72,35 @@ void main() {
           .position;
       final offset = position.pixels;
       expect(offset, greaterThan(100));
-      await tester.dragFrom(const Offset(650, 160), const Offset(-600, 3));
+      await tester.dragFrom(const Offset(650, 160), const Offset(-600, 0));
+      await tester.pumpAndSettle();
+      expect(selected, 0);
+      expect(controller.page, 0);
+      expect(created, [1, 0]);
+      await tester.sendEventToBinding(
+        const PointerScrollEvent(
+          position: Offset(650, 160),
+          scrollDelta: Offset(600, 0),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(controller.page, 0);
+      final trackpad = await tester.createGesture(
+        kind: PointerDeviceKind.trackpad,
+      );
+      await trackpad.panZoomStart(const Offset(650, 160));
+      await trackpad.panZoomUpdate(
+        const Offset(650, 160),
+        pan: const Offset(-400, 0),
+      );
+      await trackpad.panZoomEnd();
+      await tester.pumpAndSettle();
+      expect(controller.page, 0);
+      controller.animateToPage(
+        1,
+        duration: const Duration(milliseconds: 260),
+        curve: Curves.easeInOut,
+      );
       await tester.pumpAndSettle();
       expect(selected, 1);
       expect(taps, 0);

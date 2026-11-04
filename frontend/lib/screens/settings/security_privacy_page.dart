@@ -10,6 +10,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:file_saver/file_saver.dart';
 import 'package:mysold/data/local_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/gestures.dart';
 import 'package:provider/provider.dart';
 
 import 'package:mysold/services/auth_service.dart';
@@ -1209,6 +1210,7 @@ class _SecurityPrivacyPageState extends State<SecurityPrivacyPage> {
         title: Text(context.tr('Sécurité et confidentialité')),
       ),
       body: ListView(
+        dragStartBehavior: DragStartBehavior.down,
         padding: const EdgeInsets.fromLTRB(16, 12, 16, 28),
         children: [
           _Panel(
@@ -1517,6 +1519,7 @@ class _LegalTextPage extends StatelessWidget {
     return Scaffold(
       appBar: appPageBar(context, title: Text(title)),
       body: ListView(
+        dragStartBehavior: DragStartBehavior.down,
         padding: const EdgeInsets.fromLTRB(16, 16, 16, 28),
         children: [
           Text(
@@ -2223,6 +2226,7 @@ class _ImportProgressPageState extends State<_ImportProgressPage> {
                           child: Text(context.tr('En attente des taches...')),
                         )
                       : ListView.separated(
+                          dragStartBehavior: DragStartBehavior.down,
                           itemCount: _logs.length,
                           separatorBuilder: (_, __) => const Divider(height: 1),
                           itemBuilder: (context, index) {

@@ -525,16 +525,23 @@ sur le graphique et le geste vertical sur la page sont distingués : la directio
 retenue au début du glissement reste
 prioritaire jusqu’au relâchement, malgré les petites dérives du doigt. Un clic
 n’est exécuté qu’au relâchement lorsqu’aucun glissement n’a été reconnu.
-Les seuils tactiles et le démarrage du défilement utilisent les valeurs standards
-de Flutter, comme l’ancienne application. Le graphique du patrimoine annuel
+Sur le web, si l’appareil ne fournit pas de seuil tactile, une tolérance de
+8 pixels logiques remplace le seuil générique de Flutter. Les réglages fournis
+par l’appareil sont conservés. Les listes gardent le déplacement accumulé depuis
+le contact initial (`DragStartBehavior.down`), au lieu de l’abandonner quand le
+geste est reconnu. Cela évite une zone de déplacement sans effet au départ d’un
+bouton ou d’un graphique, tout en conservant une tolérance pour les appuis.
+Le graphique du patrimoine annuel
 conserve ses info-bulles natives. Les répartitions du mois sont ouvertes par défaut
 sur téléphone comme sur ordinateur.
 Les pages masquées reportent aussi leurs nouvelles lectures et agrégations à leur
 réouverture. Aucune lecture des transactions n’est faite pour vérifier les alertes
 budgétaires lorsqu’aucune alerte n’est active.
 
-La navigation principale reprend le `PageView` de SoldUp : glissement horizontal
-entre les quatre pages et animation de 260 ms lors du choix d’une destination.
+La navigation principale conserve le `PageView` et l’animation de 260 ms lors du
+choix d’une destination par les boutons du menu. Le glissement horizontal entre
+les quatre pages est désactivé, y compris au pavé tactile. Les interactions
+horizontales propres aux graphiques et aux sélecteurs restent disponibles.
 Les pages déjà consultées conservent leur état. Sur mobile, le menu inférieur
 repose sur une base arrondie, espacée des bords et de la zone gestuelle système.
 Les onglets du simulateur et les filtres d’opérations changent directement de sélection. Le survol et
@@ -542,6 +549,12 @@ le focus au clavier restent visibles. Les pages déjà ouvertes conservent leur
 état et leur défilement ; revenir sur « Mois » ne reconstruit pas ses graphiques
 si les données sont inchangées. Les sections de « Stats mensuelles » et « Annuel » sont
 construites au fur et à mesure des besoins du défilement.
+
+Les tests vérifient le premier déplacement court sur les zones interactives,
+l’absence de clic pendant un glissement, les appuis simples, la molette et la
+conservation du défilement après un changement de page. Les scénarios couvrent
+des largeurs téléphone/PC et des configurations de plateforme simulées ; ils ne
+remplacent pas une mesure de fluidité sur un téléphone réel en PWA.
 
 ## Formulaires et extensions du navigateur
 

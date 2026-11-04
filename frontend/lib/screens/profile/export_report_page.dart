@@ -1,6 +1,7 @@
 import 'package:mysold/widgets/app_design.dart';
 import 'package:mysold/data/local_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/gestures.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
@@ -107,6 +108,7 @@ class _ExportReportPageState extends State<ExportReportPage> {
         title: Text(context.tr('Exporter un rapport')),
       ),
       body: ListView(
+        dragStartBehavior: DragStartBehavior.down,
         padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
         children: [
           _Panel(

@@ -1,6 +1,7 @@
 import 'package:mysold/widgets/credential_autofill.dart';
 import 'package:mysold/widgets/app_design.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/services.dart';
 import 'package:mysold/widgets/totp_qr_code.dart';
 import 'package:mysold/data/api_client.dart';
@@ -171,6 +172,7 @@ class _MfaSettingsPageState extends State<MfaSettingsPage> {
       title: Text(context.tr('Double authentification')),
     ),
     body: SingleChildScrollView(
+      dragStartBehavior: DragStartBehavior.down,
       padding: const EdgeInsets.all(20),
       child: Center(
         child: ConstrainedBox(

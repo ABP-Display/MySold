@@ -1,6 +1,7 @@
 import 'package:mysold/widgets/active_page_builder.dart';
 import 'package:mysold/widgets/page_pending_content.dart';
 import 'package:mysold/widgets/scroll_item_retention.dart';
+import 'package:flutter/gestures.dart';
 import 'package:mysold/widgets/page_activity_listener.dart';
 import 'package:mysold/widgets/cached_page_stack.dart';
 import 'package:mysold/widgets/month_page_header.dart';
@@ -638,6 +639,7 @@ class _MonthManagerState extends State<MonthManagerScreen> {
     final monthlyAmount = _monthlyTransactionsAmount(filtered, type);
 
     return CustomScrollView(
+      dragStartBehavior: DragStartBehavior.down,
       slivers: [
         SliverToBoxAdapter(
           child: RepaintBoundary(

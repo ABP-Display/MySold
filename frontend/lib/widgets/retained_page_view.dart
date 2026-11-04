@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
-/// Use SoldUp's native PageView gestures while retaining visited destinations.
+/// Keep visited destinations and button-driven transitions, without swipe
+/// navigation competing with the gestures inside each page.
 class RetainedPageView extends StatelessWidget {
   final PageController controller;
   final ValueChanged<int> onPageChanged;
@@ -15,6 +16,7 @@ class RetainedPageView extends StatelessWidget {
   @override
   Widget build(BuildContext context) => PageView(
     controller: controller,
+    physics: const NeverScrollableScrollPhysics(),
     onPageChanged: onPageChanged,
     children: [
       for (var i = 0; i < children.length; i++)

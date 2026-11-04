@@ -4,6 +4,7 @@ import 'package:mysold/widgets/app_design.dart';
 import 'package:mysold/data/document_store.dart';
 import 'package:mysold/data/local_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/gestures.dart';
 
 import 'package:mysold/l10n/app_localizations.dart';
 import 'package:mysold/login_page.dart';
@@ -103,6 +104,7 @@ class _SettingsSheetState extends State<SettingsSheet> {
       builder: (context) {
         return SafeArea(
           child: SingleChildScrollView(
+            dragStartBehavior: DragStartBehavior.down,
             padding: EdgeInsets.fromLTRB(
               16,
               16,

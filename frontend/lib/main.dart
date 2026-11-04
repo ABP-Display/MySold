@@ -1,5 +1,6 @@
 import 'package:mysold/widgets/app_loading_screen.dart';
 import 'package:mysold/widgets/retained_page_view.dart';
+import 'package:mysold/widgets/web_scroll_scope.dart';
 import 'dart:async';
 
 import 'package:flutter/foundation.dart' show kIsWeb;
@@ -128,10 +129,13 @@ class _MyAppState extends State<MyApp> {
 
     return MaterialApp(
       navigatorKey: _navigatorKey,
-      builder: (context, child) => PwaUpdatePrompt(
-        navigatorKey: _navigatorKey,
-        child: child ?? const SizedBox.shrink(),
-      ),
+      builder: (context, child) {
+        final page = PwaUpdatePrompt(
+          navigatorKey: _navigatorKey,
+          child: child ?? const SizedBox.shrink(),
+        );
+        return kIsWeb ? WebScrollScope(child: page) : page;
+      },
       title: 'MySold',
       debugShowCheckedModeBanner: false,
       theme: themeProvider.themeData,

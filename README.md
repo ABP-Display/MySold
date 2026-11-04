@@ -556,6 +556,24 @@ conservation du défilement après un changement de page. Les scénarios couvren
 des largeurs téléphone/PC et des configurations de plateforme simulées ; ils ne
 remplacent pas une mesure de fluidité sur un téléphone réel en PWA.
 
+Le formulaire d’identification ne force pas l’activation globale de l’arbre
+d’accessibilité. Dans le moteur Flutter Web 3.44, cette activation persiste après
+la fermeture du formulaire et le `ClickDebouncer` peut retenir pendant 200 ms
+les gestes démarrant sur les éléments cliquables sémantiques. Ce délai intervient
+avant les listes Flutter, indépendamment des données ou des appels à l’API.
+L’accessibilité demandée par un lecteur d’écran reste disponible : elle n’est
+ni désactivée ni contournée. Son traitement tactile dépend toujours du moteur.
+
+Une régression de navigateur, distincte des tests de widgets, vérifie le passage
+d’un formulaire à une liste puis un glissement tactile sur un bouton. Elle
+compare le fonctionnement ordinaire à un témoin avec accessibilité forcée et
+vérifie aussi le formulaire natif d’autoremplissage avec des valeurs fictives.
+Depuis `frontend/`, compiler avec
+`flutter build web --release --no-tree-shake-icons --no-web-resources-cdn --target test/browser/scroll_fixture.dart --output build/scroll-fixture`,
+puis exécuter `node test/browser/scroll_chromium.cjs http://127.0.0.1:9235`
+avec un Chromium de test lancé sur ce port de diagnostic local et un profil
+isolé. Ce scénario n’accède ni à l’API ni aux données utilisateur.
+
 ## Formulaires et extensions du navigateur
 
 Les étapes d’inscription conservent les identifiants déjà saisis dans le même
@@ -563,9 +581,12 @@ groupe d’autofill jusqu’à la création du compte. Les formulaires de confir
 contiennent aussi l’identifiant du compte, y compris lorsque l’accessibilité est
 activée. Les confirmations PIN ne demandent pas d’enregistrement du mot de passe.
 
-La connexion, l’inscription et les confirmations du mot de passe utilisent des
-champs identifiés avec `name`, un `id` stable et les indications HTML standard
-`username`, `current-password` ou `new-password`. Le remplissage des champs sans
+La connexion, l’inscription et les confirmations du mot de passe utilisent les
+groupes d’autoremplissage natifs Flutter et les indications HTML standard
+`username`, `current-password` ou `new-password`. Sans accessibilité activée,
+le formulaire HTML natif est créé lorsqu’un champ reçoit le focus. Si
+l’accessibilité est activée, le pont complémentaire identifie aussi les champs
+sémantiques avec `name` et un `id` stable. Le remplissage des champs sans
 focus est transmis aux contrôleurs Flutter via les événements `input`/`change` ;
 une dernière synchronisation précède la validation, y compris si le gestionnaire
 ne déclenche pas d’événement. L’identifiant est associé aux mots de passe dans

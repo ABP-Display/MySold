@@ -1,15 +1,13 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/semantics.dart';
 import 'credential_autofill_stub.dart'
     if (dart.library.js_interop) 'credential_autofill_web.dart'
     as platform;
 
 int _nextCredentialId = 0;
 
-/// Expose real, labelled inputs while a credentials form is visible. The handle
-/// is released on route changes: the rest of the app keeps its normal semantics
-/// policy and rendering cost.
+/// Supplement native AutofillGroup inputs when browser accessibility is active.
+/// Do not force semantics for autofill: the web engine retains that activation
+/// and buffers touch gestures starting on semantic buttons for up to 200 ms.
 class CredentialAutofillScope extends StatefulWidget {
   final Widget child;
   const CredentialAutofillScope({super.key, required this.child});
@@ -25,26 +23,17 @@ class CredentialAutofillScope extends StatefulWidget {
 
 class _CredentialAutofillScopeState extends State<CredentialAutofillScope> {
   final _id = 'mysold-form-${_nextCredentialId++}';
-  SemanticsHandle? _handle;
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    if (!kIsWeb) return;
     final active = TickerMode.of(context);
-    if (active) {
-      _handle ??= SemanticsBinding.instance.ensureSemantics();
-    } else {
-      _handle?.dispose();
-      _handle = null;
-    }
     platform.setCredentialScope(_id, active);
   }
 
   @override
   void dispose() {
     platform.setCredentialScope(_id, false);
-    _handle?.dispose();
     super.dispose();
   }
 

@@ -174,35 +174,25 @@ void main() {
     },
   );
 
-  testWidgets(
-    'The scope releases its semantics handle when hidden or disposed',
-    (tester) async {
-      final before = SemanticsBinding.instance.debugOutstandingSemanticsHandles;
-      await tester.pumpWidget(
-        const TickerMode(
-          enabled: true,
-          child: CredentialAutofillScope(child: SizedBox()),
-        ),
-      );
-      expect(
-        SemanticsBinding.instance.debugOutstandingSemanticsHandles,
-        before + 1,
-      );
-      await tester.pumpWidget(
-        const TickerMode(
-          enabled: false,
-          child: CredentialAutofillScope(child: SizedBox()),
-        ),
-      );
-      expect(
-        SemanticsBinding.instance.debugOutstandingSemanticsHandles,
-        before,
-      );
-      await tester.pumpWidget(const SizedBox());
-      expect(
-        SemanticsBinding.instance.debugOutstandingSemanticsHandles,
-        before,
-      );
-    },
-  );
+  testWidgets('Autofill never forces or disables browser accessibility', (
+    tester,
+  ) async {
+    final before = SemanticsBinding.instance.debugOutstandingSemanticsHandles;
+    await tester.pumpWidget(
+      const TickerMode(
+        enabled: true,
+        child: CredentialAutofillScope(child: SizedBox()),
+      ),
+    );
+    expect(SemanticsBinding.instance.debugOutstandingSemanticsHandles, before);
+    await tester.pumpWidget(
+      const TickerMode(
+        enabled: false,
+        child: CredentialAutofillScope(child: SizedBox()),
+      ),
+    );
+    expect(SemanticsBinding.instance.debugOutstandingSemanticsHandles, before);
+    await tester.pumpWidget(const SizedBox());
+    expect(SemanticsBinding.instance.debugOutstandingSemanticsHandles, before);
+  });
 }

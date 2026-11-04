@@ -22,7 +22,8 @@ import 'package:mysold/screens/settings/privacy_provider.dart';
 import 'package:mysold/widgets/privacy/privacy_chart_mask.dart';
 
 class DashboardScreen extends StatefulWidget {
-  const DashboardScreen({super.key});
+  final VoidCallback? onInitialLoad;
+  const DashboardScreen({super.key, this.onInitialLoad});
 
   @override
   State<DashboardScreen> createState() => _DashboardScreenState();
@@ -33,6 +34,16 @@ class _DashboardScreenState extends State<DashboardScreen> {
   int _selectedYear = DateTime.now().year;
   int? _lastFinancialDataVersion;
   int? _lastReferenceDataVersion;
+  bool _initialLoadNotified = false;
+
+  void _notifyInitialLoad() {
+    if (_initialLoadNotified) return;
+    _initialLoadNotified = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) widget.onInitialLoad?.call();
+    });
+  }
+
   final Set<_MonthlyChartSeries> _monthlyChartSeries = {
     ..._MonthlyChartSeries.values,
   };
@@ -175,6 +186,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       initialData: _yearCache.peek(_selectedYear),
       future: _loadYearData(_selectedYear),
       builder: (context, snapshot) {
+        if (snapshot.hasData || snapshot.hasError) _notifyInitialLoad();
         if (!snapshot.hasData && !snapshot.hasError) {
           return PagePendingContent(header: header());
         }

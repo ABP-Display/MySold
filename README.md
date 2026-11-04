@@ -542,6 +542,16 @@ La navigation principale conserve le `PageView` et l’animation de 260 ms lors 
 choix d’une destination par les boutons du menu. Le glissement horizontal entre
 les quatre pages est désactivé, y compris au pavé tactile. Les interactions
 horizontales propres aux graphiques et aux sélecteurs restent disponibles.
+Après validation du PIN, l’écran de chargement initial couvre la préparation
+successive de Mois, des statistiques mensuelles et annuelles, puis du profil.
+Chaque page charge ses données initiales et effectue un premier rendu avant le
+retour sur Mois et l’affichage de l’espace de travail. Le démarrage peut donc
+prendre un peu plus longtemps, mais ces premières lectures et constructions ne
+sont plus déclenchées pendant la première animation de changement d’onglet.
+Les caches existants sont réutilisés : l’année courante et les mois nécessaires
+à la comparaison sont préparés, pas tout l’historique. Les anciennes périodes
+restent chargées à la demande. Une erreur laisse apparaître l’état d’erreur de
+la page concernée sans bloquer les autres onglets.
 Les pages déjà consultées conservent leur état. Sur mobile, le menu inférieur
 repose sur une base arrondie, espacée des bords et de la zone gestuelle système.
 Les onglets du simulateur et les filtres d’opérations changent directement de sélection. Le survol et

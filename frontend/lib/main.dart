@@ -244,12 +244,21 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   PrivacyProvider? _privacy;
   bool _shakeListening = false;
   bool _initialDataReady = false;
+  final _initialPageReady = List.generate(4, (_) => Completer<void>());
+  late final _readiness = _initialPageReady
+      .map((ready) => ready.future)
+      .toList();
   late final _pages = <Widget>[
-    MonthManagerScreen(onInitialLoad: _showWorkspace),
-    const AnalyticsPage(),
-    const DashboardScreen(),
-    const ProfilePage(),
+    MonthManagerScreen(onInitialLoad: () => _markPageReady(0)),
+    AnalyticsPage(onInitialLoad: () => _markPageReady(1)),
+    DashboardScreen(onInitialLoad: () => _markPageReady(2)),
+    ProfilePage(onInitialLoad: () => _markPageReady(3)),
   ];
+  void _markPageReady(int index) {
+    if (!_initialPageReady[index].isCompleted)
+      _initialPageReady[index].complete();
+  }
+
   void _showWorkspace() {
     if (mounted && !_initialDataReady) setState(() => _initialDataReady = true);
   }
@@ -379,26 +388,23 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           excluding: !_initialDataReady,
           child: ExcludeFocus(
             excluding: !_initialDataReady,
-            child: TickerMode(
-              enabled: _initialDataReady,
-              child: AppWorkspace(
-                selectedIndex: _selectedIndex,
-                destinations: _navItems
-                    .map(
-                      (item) => WorkspaceDestination(item.labelKey, item.icon),
-                    )
-                    .toList(),
-                onSelected: _goToPage,
-                hidden: privacy.hideAmounts,
-                onPrivacy: () => privacy.setHideAmounts(!privacy.hideAmounts),
-                child: RetainedPageView(
-                  controller: _pageController,
-                  onPageChanged: (index) {
-                    if (mounted && index != _selectedIndex)
-                      setState(() => _selectedIndex = index);
-                  },
-                  children: _pages,
-                ),
+            child: AppWorkspace(
+              selectedIndex: _selectedIndex,
+              destinations: _navItems
+                  .map((item) => WorkspaceDestination(item.labelKey, item.icon))
+                  .toList(),
+              onSelected: _goToPage,
+              hidden: privacy.hideAmounts,
+              onPrivacy: () => privacy.setHideAmounts(!privacy.hideAmounts),
+              child: RetainedPageView(
+                controller: _pageController,
+                readiness: _readiness,
+                onPrepared: _showWorkspace,
+                onPageChanged: (index) {
+                  if (mounted && index != _selectedIndex)
+                    setState(() => _selectedIndex = index);
+                },
+                children: _pages,
               ),
             ),
           ),

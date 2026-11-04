@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -35,6 +36,113 @@ class _PageState extends State<_Page> {
 }
 
 void main() {
+  testWidgets(
+    'Startup prepares destinations once and restores the initial page',
+    (tester) async {
+      final controller = PageController();
+      addTearDown(controller.dispose);
+      final created = [0, 0, 0, 0];
+      final ready = List.generate(4, (_) => Completer<void>());
+      var prepared = 0;
+      final navigation = <int>[];
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: RetainedPageView(
+              controller: controller,
+              onPageChanged: navigation.add,
+              readiness: ready.map((entry) => entry.future).toList(),
+              onPrepared: () => prepared++,
+              children: [for (var i = 0; i < 4; i++) _Page(i, created, () {})],
+            ),
+          ),
+        ),
+      );
+      for (var index = 0; index < 4; index++) {
+        await tester.pumpAndSettle();
+        expect(controller.page, index.toDouble());
+        expect(created[index], 1);
+        expect(prepared, 0);
+        ready[index].complete();
+      }
+      await tester.pumpAndSettle();
+      expect(prepared, 1);
+      expect(controller.page, 0);
+      expect(navigation, isEmpty);
+      expect(created, [1, 1, 1, 1]);
+      controller.animateToPage(
+        3,
+        duration: const Duration(milliseconds: 260),
+        curve: Curves.linear,
+      );
+      await tester.pumpAndSettle();
+      expect(navigation, [1, 2, 3]);
+      expect(created, [1, 1, 1, 1]);
+      expect(tester.takeException(), isNull);
+    },
+  );
+
+  testWidgets(
+    'Startup continues after a data error without an animation ticker',
+    (tester) async {
+      final controller = PageController();
+      addTearDown(controller.dispose);
+      final ready = [Completer<void>(), Completer<void>()];
+      var prepared = 0;
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: RetainedPageView(
+              controller: controller,
+              onPageChanged: (_) {},
+              readiness: ready.map((entry) => entry.future).toList(),
+              onPrepared: () => prepared++,
+              children: const [SizedBox(), SizedBox()],
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      ready[1].completeError(StateError('Fixture early failure'));
+      await tester.pump();
+      ready[0].completeError(StateError('Fixture load failure'));
+      await tester.pumpAndSettle();
+      expect(prepared, 1);
+      expect(controller.page, 0);
+      expect(tester.takeException(), isNull);
+    },
+  );
+
+  testWidgets('Disposing during startup cancels remaining navigation', (
+    tester,
+  ) async {
+    final controller = PageController();
+    addTearDown(controller.dispose);
+    final ready = [Completer<void>(), Completer<void>()];
+    final created = [0, 0];
+    var prepared = 0;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: RetainedPageView(
+            controller: controller,
+            onPageChanged: (_) {},
+            readiness: ready.map((entry) => entry.future).toList(),
+            onPrepared: () => prepared++,
+            children: [for (var i = 0; i < 2; i++) _Page(i, created, () {})],
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.pumpWidget(const SizedBox());
+    ready[0].complete();
+    await tester.pumpAndSettle();
+    expect(created, [1, 0]);
+    expect(prepared, 0);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets(
     'Only navigation buttons change pages; vertical scroll and page state survive',
     (tester) async {

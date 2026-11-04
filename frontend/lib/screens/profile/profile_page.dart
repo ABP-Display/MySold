@@ -14,13 +14,24 @@ import 'package:mysold/screens/profile/simulation.dart';
 import 'package:mysold/screens/settings/settings_sheet.dart';
 
 class ProfilePage extends StatefulWidget {
-  const ProfilePage({super.key});
+  final VoidCallback? onInitialLoad;
+  const ProfilePage({super.key, this.onInitialLoad});
   @override
   State<ProfilePage> createState() => _ProfilePageState();
 }
 
 class _ProfilePageState extends State<ProfilePage> {
   late Future<_ProfileUser> _user;
+  bool _initialLoadNotified = false;
+
+  void _notifyInitialLoad() {
+    if (_initialLoadNotified) return;
+    _initialLoadNotified = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) widget.onInitialLoad?.call();
+    });
+  }
+
   @override
   void initState() {
     super.initState();
@@ -76,6 +87,7 @@ class _ProfilePageState extends State<ProfilePage> {
         child: FutureBuilder<_ProfileUser>(
           future: _user,
           builder: (context, snapshot) {
+            if (snapshot.hasData || snapshot.hasError) _notifyInitialLoad();
             final user = snapshot.data;
             final isLoading =
                 snapshot.connectionState == ConnectionState.waiting;

@@ -6,8 +6,13 @@ import 'package:mysold/widgets/credential_autofill.dart';
 import 'package:mysold/widgets/lazy_section_list.dart';
 import 'package:mysold/widgets/web_scroll_scope.dart';
 import 'package:web/web.dart' as web;
+import 'workspace_fixture.dart';
 
-void main() => runApp(const MaterialApp(home: _Fixture()));
+void main() => runApp(
+  Uri.base.queryParameters['semantics'] == 'workspace'
+      ? const WorkspaceFixture()
+      : const MaterialApp(home: _Fixture()),
+);
 
 class _Fixture extends StatefulWidget {
   const _Fixture();

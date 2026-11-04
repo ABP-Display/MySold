@@ -26,7 +26,8 @@ DateTime _prior(DateTime value) => value.year == 1 && value.month == 1
     : DateTime(value.year, value.month - 1);
 
 class AnalyticsPage extends StatefulWidget {
-  const AnalyticsPage({super.key});
+  final VoidCallback? onInitialLoad;
+  const AnalyticsPage({super.key, this.onInitialLoad});
   @override
   State<AnalyticsPage> createState() => _AnalyticsPageState();
 }
@@ -43,6 +44,15 @@ class _AnalyticsPageState extends State<AnalyticsPage>
   MonthlySeries _series = MonthlySeries.expense;
   bool _cumulative = true;
   int? _financialVersion;
+  bool _initialLoadNotified = false;
+
+  void _notifyInitialLoad() {
+    if (_initialLoadNotified) return;
+    _initialLoadNotified = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) widget.onInitialLoad?.call();
+    });
+  }
 
   @override
   void initState() {
@@ -170,6 +180,7 @@ class _AnalyticsPageState extends State<AnalyticsPage>
           : null,
       future: _sources(),
       builder: (context, snapshot) {
+        if (snapshot.hasData || snapshot.hasError) _notifyInitialLoad();
         if (!snapshot.hasData) {
           if (!snapshot.hasError) return PagePendingContent(header: header());
           return ListView(

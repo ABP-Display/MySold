@@ -20,7 +20,7 @@ const server = createServer(async (req, res) => {
   } catch { res.writeHead(404).end(); }
 });
 
-async function measure(origin, mode) {
+async function measure(origin, mode, width=390) {
   const target = await (await fetch(debug + '/json/new?about:blank', {method:'PUT'})).json();
   const socket = new WebSocket(target.webSocketDebuggerUrl);
   await once(socket, 'open');
@@ -46,7 +46,7 @@ async function measure(origin, mode) {
     type, touchPoints:type === 'touchEnd' ? [] : [{x,y,id:1}],
   });
   try {
-    await send('Emulation.setDeviceMetricsOverride', {width:390,height:844,deviceScaleFactor:1,mobile:true});
+    await send('Emulation.setDeviceMetricsOverride', {width,height:844,deviceScaleFactor:1,mobile:width<600});
     await send('Emulation.setTouchEmulationEnabled', {enabled:true,maxTouchPoints:1});
     await send('Page.navigate', {url: origin + '/?semantics=' + mode});
     let ready = false;
@@ -56,6 +56,17 @@ async function measure(origin, mode) {
       await delay(100);
     }
     assert.ok(ready, 'Fixture did not load');
+    if (mode === 'workspace') {
+      assert.equal(await evaluate('document.body.dataset.pageNotifications'), '1,1,1,1');
+      assert.equal(Number(await evaluate('document.body.dataset.selectedTab')), 0);
+      for (const index of [1,2,3,0]) {
+        await evaluate(`window.dispatchEvent(new CustomEvent('mysold-fixture-tab', {detail:${index}}))`);
+        await delay(450);
+        assert.equal(Number(await evaluate('document.body.dataset.selectedTab')), index);
+      }
+      assert.equal(await evaluate('document.body.dataset.pageNotifications'), '1,1,1,1');
+      return {mode, width, preparedPages:4, initialDataNotifications:'1,1,1,1', returnedToMonth:true};
+    }
     const coordinates = await evaluate('Object.assign({}, document.body.dataset)');
     await touch('touchStart',Number(coordinates.emailX),Number(coordinates.emailY));
     await touch('touchEnd');
@@ -132,6 +143,7 @@ async function measure(origin, mode) {
   try {
     const results = [];
     for(const mode of ['normal','forced']) results.push(await measure(origin,mode));
+    for(const width of [390,1280]) results.push(await measure(origin,'workspace',width));
     console.log(JSON.stringify(results,null,2));
     assert.equal(results[0].tappables, 0, 'Autofill must not leave global semantics enabled');
     assert.ok(results[0].afterThresholdMs < 160, 'Ordinary touch scrolling still waits for the semantics debounce');

@@ -13,6 +13,8 @@ class AppSelectionButton extends StatefulWidget {
   final double minHeight;
   final EdgeInsetsGeometry padding;
   final Color? backgroundColor;
+  final BorderRadius borderRadius;
+  final EdgeInsets selectionInset;
   const AppSelectionButton({
     super.key,
     required this.child,
@@ -23,6 +25,8 @@ class AppSelectionButton extends StatefulWidget {
     this.minHeight = 46,
     this.padding = const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
     this.backgroundColor,
+    this.borderRadius = const BorderRadius.all(Radius.circular(10)),
+    this.selectionInset = EdgeInsets.zero,
   });
 
   @override
@@ -43,6 +47,42 @@ class _AppSelectionButtonState extends State<AppSelectionButton> {
   void _activate() {
     _focus.requestFocus();
     widget.onPressed();
+  }
+
+  Widget _surface(BoxDecoration decoration, Widget child) {
+    final constraints = BoxConstraints(
+      minWidth: 44,
+      minHeight: widget.minHeight,
+    );
+    if (widget.selectionInset == EdgeInsets.zero) {
+      return Container(
+        constraints: constraints,
+        padding: widget.padding,
+        decoration: decoration,
+        child: child,
+      );
+    }
+    // Shrink only the painted selection, not its tap target or text layout.
+    return ConstrainedBox(
+      constraints: constraints,
+      child: Stack(
+        fit: StackFit.passthrough,
+        children: [
+          Positioned.fill(
+            child: IgnorePointer(
+              child: Padding(
+                padding: widget.selectionInset,
+                child: DecoratedBox(decoration: decoration),
+              ),
+            ),
+          ),
+          Padding(
+            padding: widget.padding.add(const EdgeInsets.all(1.25)),
+            child: child,
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -77,20 +117,15 @@ class _AppSelectionButtonState extends State<AppSelectionButton> {
           behavior: HitTestBehavior.opaque,
           excludeFromSemantics: true,
           onTap: _activate,
-          child: Container(
-            constraints: BoxConstraints(
-              minWidth: 44,
-              minHeight: widget.minHeight,
-            ),
-            padding: widget.padding,
-            decoration: BoxDecoration(
+          child: _surface(
+            BoxDecoration(
               color: _hovered
                   ? Color.alphaBlend(
                       colors.primary.withValues(alpha: 0.06),
                       fill,
                     )
                   : fill,
-              borderRadius: BorderRadius.circular(10),
+              borderRadius: widget.borderRadius,
               border: Border.all(
                 width: 1.25,
                 color: _focused
@@ -102,7 +137,7 @@ class _AppSelectionButtonState extends State<AppSelectionButton> {
                     : Colors.transparent,
               ),
             ),
-            child: IconTheme.merge(
+            IconTheme.merge(
               data: IconThemeData(color: foreground),
               child: DefaultTextStyle.merge(
                 style: Theme.of(

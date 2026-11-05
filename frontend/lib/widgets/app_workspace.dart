@@ -348,6 +348,8 @@ class AppWorkspace extends StatelessWidget {
                                   selected: selectedIndex == index,
                                   outlined: false,
                                   minHeight: 68,
+                                  selectionInset: const EdgeInsets.all(3),
+                                  borderRadius: BorderRadius.circular(15),
                                   padding: const EdgeInsets.symmetric(
                                     horizontal: 4,
                                     vertical: 8,

@@ -5,6 +5,21 @@ import 'package:mysold/widgets/app_typography.dart';
 import 'package:mysold/widgets/app_choice_tabs.dart';
 import 'package:mysold/widgets/app_design.dart';
 
+void expectInsetSelection(WidgetTester tester, Finder button, double radius) {
+  final background = find
+      .descendant(of: button, matching: find.byType(DecoratedBox))
+      .first;
+  final decoration =
+      tester.widget<DecoratedBox>(background).decoration as BoxDecoration;
+  final target = tester.getRect(button), painted = tester.getRect(background);
+  expect(decoration.borderRadius, BorderRadius.circular(radius));
+  expect(painted.left - target.left, closeTo(3, .001));
+  expect(painted.top - target.top, closeTo(3, .001));
+  expect(painted.width, closeTo(target.width - 6, .001));
+  expect(painted.height, closeTo(target.height - 6, .001));
+  expect(target.height, greaterThanOrEqualTo(44));
+}
+
 void main() {
   for (final brightness in Brightness.values) {
     testWidgets('Floating menu keeps an opaque theme surface in $brightness', (
@@ -83,6 +98,12 @@ void main() {
       );
       await tester.pumpAndSettle();
       final mobile = width < 760;
+      if (mobile)
+        expectInsetSelection(
+          tester,
+          find.byKey(const ValueKey('destination-0')),
+          15,
+        );
       expect(
         find.byKey(const ValueKey('workspace-header')),
         mobile ? findsNothing : findsOneWidget,
@@ -348,6 +369,11 @@ void main() {
               tester.getRect(find.byKey(ValueKey('operation-type-$index'))),
           ];
           expect(buttons.map((rect) => rect.width).toSet(), hasLength(1));
+          expectInsetSelection(
+            tester,
+            find.byKey(const ValueKey('operation-type-0')),
+            13,
+          );
           for (var index = 1; index < 4; index++)
             expect(buttons[index].left, buttons[index - 1].right);
           await tester.tap(find.byKey(const ValueKey('operation-type-3')));

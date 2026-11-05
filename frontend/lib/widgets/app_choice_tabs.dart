@@ -35,6 +35,8 @@ class AppChoiceTabs extends StatelessWidget {
                       selected: selectedIndex == index,
                       outlined: false,
                       isTab: true,
+                      selectionInset: const EdgeInsets.all(3),
+                      borderRadius: BorderRadius.circular(13),
                       padding: const EdgeInsets.symmetric(
                         horizontal: 2,
                         vertical: 8,

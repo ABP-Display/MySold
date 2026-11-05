@@ -18,6 +18,60 @@ abstract final class AppDesign {
   );
 }
 
+/// Clearance used by scroll content, not a fixed strip reducing its viewport.
+class WorkspaceOverlayInsets extends InheritedWidget {
+  final double bottom;
+  const WorkspaceOverlayInsets({
+    super.key,
+    required this.bottom,
+    required super.child,
+  });
+  static double bottomOf(BuildContext context) =>
+      context
+          .dependOnInheritedWidgetOfExactType<WorkspaceOverlayInsets>()
+          ?.bottom ??
+      0;
+  @override
+  bool updateShouldNotify(WorkspaceOverlayInsets oldWidget) =>
+      bottom != oldWidget.bottom;
+}
+
+/// The decorative outline must not intercept taps in the gaps between controls.
+class AppMenuSurface extends StatelessWidget {
+  final Widget child;
+  final bool floating;
+  final double radius;
+  const AppMenuSurface({
+    super.key,
+    required this.child,
+    required this.floating,
+    this.radius = 24,
+  });
+  @override
+  Widget build(BuildContext context) {
+    final decoration = BoxDecoration(
+      color: floating ? null : Theme.of(context).colorScheme.surface,
+      borderRadius: BorderRadius.circular(radius),
+      border: Border.all(color: AppDesign.border(context)),
+    );
+    if (!floating)
+      return Container(
+        clipBehavior: Clip.antiAlias,
+        decoration: decoration,
+        child: child,
+      );
+    return Stack(
+      fit: StackFit.passthrough,
+      children: [
+        Positioned.fill(
+          child: IgnorePointer(child: DecoratedBox(decoration: decoration)),
+        ),
+        child,
+      ],
+    );
+  }
+}
+
 /// Keep long navigation titles readable, including with enlarged system text.
 AppBar appPageBar(
   BuildContext context, {

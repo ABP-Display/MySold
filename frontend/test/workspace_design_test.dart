@@ -46,70 +46,77 @@ void main() {
                     onSelected: (value) => setState(() => selected = value),
                     hidden: hidden,
                     onPrivacy: () => setState(() => hidden = !hidden),
-                    child: ListView(
-                      padding: const EdgeInsets.all(16),
-                      children: [
-                        const PageIntro(
-                          title: 'Budget mensuel',
-                          subtitle: 'Vos opérations, simplement.',
+                    child: Builder(
+                      builder: (context) => ListView(
+                        padding: EdgeInsets.fromLTRB(
+                          16,
+                          16,
+                          16,
+                          16 + WorkspaceOverlayInsets.bottomOf(context),
                         ),
-                        const AppMetricGrid(
-                          children: [
-                            AppMetricCard(
-                              label: 'Investissements annuels',
-                              value: '123456.78 €',
-                              icon: Icons.trending_up,
-                              color: Colors.green,
-                            ),
-                            AppMetricCard(
-                              label: 'Projection fin de mois',
-                              value: '54321.00 €',
-                              icon: Icons.timeline,
-                              color: Colors.orange,
-                            ),
-                          ],
-                        ),
-                        AppOperationCard(
-                          title:
-                              'Courses de la semaine et fournitures pour la maison',
-                          subtitle:
-                              'Compte courant principal · Alimentation · 23/10/2026',
-                          amount: '-123 456,78 €',
-                          icon: Icons.shopping_basket_outlined,
-                          color: Colors.orange,
-                          onTap: () {},
-                        ),
-                        AppPanel(
-                          child: FilledButton(
-                            onPressed: () => showAppSheet(
-                              context: context,
-                              builder: (context) => Padding(
-                                padding: const EdgeInsets.all(20),
-                                child: Column(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    const AppDialogHeader(
-                                      title: 'Préférences du budget',
-                                      icon: Icons.tune,
-                                    ),
-                                    for (var i = 0; i < 12; i++)
-                                      TextField(
-                                        decoration: InputDecoration(
-                                          labelText: 'Champ $i',
-                                        ),
+                        children: [
+                          const PageIntro(
+                            title: 'Budget mensuel',
+                            subtitle: 'Vos opérations, simplement.',
+                          ),
+                          const AppMetricGrid(
+                            children: [
+                              AppMetricCard(
+                                label: 'Investissements annuels',
+                                value: '123456.78 €',
+                                icon: Icons.trending_up,
+                                color: Colors.green,
+                              ),
+                              AppMetricCard(
+                                label: 'Projection fin de mois',
+                                value: '54321.00 €',
+                                icon: Icons.timeline,
+                                color: Colors.orange,
+                              ),
+                            ],
+                          ),
+                          AppOperationCard(
+                            title:
+                                'Courses de la semaine et fournitures pour la maison',
+                            subtitle:
+                                'Compte courant principal · Alimentation · 23/10/2026',
+                            amount: '-123 456,78 €',
+                            icon: Icons.shopping_basket_outlined,
+                            color: Colors.orange,
+                            onTap: () {},
+                          ),
+                          AppPanel(
+                            child: FilledButton(
+                              onPressed: () => showAppSheet(
+                                context: context,
+                                builder: (context) => Padding(
+                                  padding: const EdgeInsets.all(20),
+                                  child: Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      const AppDialogHeader(
+                                        title: 'Préférences du budget',
+                                        icon: Icons.tune,
                                       ),
-                                    FilledButton(
-                                      onPressed: () => Navigator.pop(context),
-                                      child: const Text('Terminer'),
-                                    ),
-                                  ],
+                                      for (var i = 0; i < 12; i++)
+                                        TextField(
+                                          decoration: InputDecoration(
+                                            labelText: 'Champ $i',
+                                          ),
+                                        ),
+                                      FilledButton(
+                                        onPressed: () => Navigator.pop(context),
+                                        child: const Text('Terminer'),
+                                      ),
+                                    ],
+                                  ),
                                 ),
                               ),
+                              child: const Text('Ouvrir'),
                             ),
-                            child: const Text('Ouvrir'),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
                 ),

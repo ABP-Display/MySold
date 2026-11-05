@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mysold/widgets/app_workspace.dart';
 import 'package:mysold/widgets/app_typography.dart';
 import 'package:mysold/widgets/app_choice_tabs.dart';
+import 'package:mysold/widgets/app_design.dart';
 
 void main() {
   for (final width in [320.0, 390.0, 768.0, 1440.0]) {
@@ -55,6 +56,9 @@ void main() {
           tester.getTopLeft(find.byKey(const ValueKey('page-content'))).dy,
           24,
         );
+      final pageBounds = tester.getRect(
+        find.byKey(const ValueKey('page-content')),
+      );
       update(() => hidden = true);
       await tester.pumpAndSettle();
       if (mobile) {
@@ -63,9 +67,14 @@ void main() {
         final rect = tester.getRect(tab);
         expect(rect.top, 24);
         expect(rect.height, 44);
+        expect(rect.center.dx, width / 2);
+        expect(
+          tester.getRect(find.byKey(const ValueKey('page-content'))),
+          pageBounds,
+        );
         expect(
           tester.getTopLeft(find.byKey(const ValueKey('page-content'))).dy,
-          greaterThanOrEqualTo(rect.bottom),
+          24,
         );
         await tester.tap(find.byIcon(Icons.visibility_outlined));
         await tester.pumpAndSettle();
@@ -75,6 +84,149 @@ void main() {
       expect(tester.takeException(), isNull);
     });
   }
+
+  for (final inset in [0.0, 34.0]) {
+    testWidgets('Footer gaps pass taps and drags to tiles with inset $inset', (
+      tester,
+    ) async {
+      tester.view.physicalSize = const Size(390, 844);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      final scroll = ScrollController();
+      addTearDown(scroll.dispose);
+      final tapped = <int>[];
+      var navigations = 0;
+      await tester.pumpWidget(
+        MaterialApp(
+          builder: (context, child) => MediaQuery(
+            data: MediaQuery.of(
+              context,
+            ).copyWith(padding: EdgeInsets.only(bottom: inset)),
+            child: child!,
+          ),
+          home: AppWorkspace(
+            selectedIndex: 0,
+            destinations: const [
+              WorkspaceDestination('Mois', Icons.calendar_month),
+              WorkspaceDestination('Stats', Icons.query_stats),
+              WorkspaceDestination('Annuel', Icons.dashboard),
+              WorkspaceDestination('Profil', Icons.person),
+            ],
+            hidden: false,
+            onPrivacy: () {},
+            onSelected: (_) => navigations++,
+            child: Builder(
+              builder: (context) => ListView.builder(
+                controller: scroll,
+                padding: EdgeInsets.only(
+                  bottom: WorkspaceOverlayInsets.bottomOf(context),
+                ),
+                itemCount: 40,
+                itemBuilder: (_, index) => SizedBox(
+                  height: 52,
+                  child: TextButton(
+                    key: ValueKey('fixture-tile-$index'),
+                    onPressed: () => tapped.add(index),
+                    child: Text('Tile $index'),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      final surface = tester.getRect(
+        find.byKey(const ValueKey('bottom-navigation-surface')),
+      );
+      await tester.tapAt(Offset(4, surface.center.dy));
+      await tester.pump();
+      expect(tapped, hasLength(1));
+      await tester.tapAt(Offset(surface.center.dx, surface.top + 2));
+      await tester.pump();
+      expect(tapped, hasLength(2));
+      await tester.tap(find.byKey(const ValueKey('destination-3')));
+      await tester.pump();
+      expect(navigations, 1);
+      expect(tapped, hasLength(2));
+      await tester.dragFrom(
+        Offset(4, surface.center.dy),
+        const Offset(0, -180),
+      );
+      await tester.pumpAndSettle();
+      expect(scroll.offset, greaterThan(80));
+      expect(tapped, hasLength(2));
+      scroll.jumpTo(scroll.position.maxScrollExtent);
+      await tester.pumpAndSettle();
+      final last = find.byKey(const ValueKey('fixture-tile-39'));
+      expect(tester.getRect(last).bottom, lessThanOrEqualTo(surface.top));
+      await tester.tap(last);
+      expect(tapped.last, 39);
+      expect(tester.takeException(), isNull);
+    });
+  }
+
+  testWidgets('Floating operation menu outline does not intercept a tile tap', (
+    tester,
+  ) async {
+    var tileTaps = 0, selections = 0;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: Stack(
+            children: [
+              Positioned.fill(
+                child: GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: () => tileTaps++,
+                  child: const SizedBox.expand(),
+                ),
+              ),
+              Positioned(
+                left: 12,
+                right: 12,
+                bottom: 120,
+                child: AppMenuSurface(
+                  key: const ValueKey('floating-test-menu'),
+                  floating: true,
+                  child: Padding(
+                    padding: const EdgeInsets.all(6),
+                    child: AppChoiceTabs(
+                      floating: true,
+                      selectedIndex: 0,
+                      onSelected: (_) => selections++,
+                      labels: const [
+                        'Dépenses',
+                        'Revenus',
+                        'Investissements',
+                        'Transferts',
+                      ],
+                      icons: const [
+                        Icons.money_off,
+                        Icons.attach_money,
+                        Icons.trending_up,
+                        Icons.sync_alt,
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+    final rect = tester.getRect(
+      find.byKey(const ValueKey('floating-test-menu')),
+    );
+    await tester.tapAt(Offset(rect.center.dx, rect.top + 2));
+    expect(tileTaps, 1);
+    expect(selections, 0);
+    await tester.tap(find.byKey(const ValueKey('operation-type-1')));
+    expect(selections, 1);
+    expect(tileTaps, 1);
+  });
 
   for (final width in [320.0, 390.0, 1280.0]) {
     for (final scale in [1.0, 2.0]) {

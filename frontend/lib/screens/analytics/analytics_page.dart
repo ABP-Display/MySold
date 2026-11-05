@@ -1,4 +1,5 @@
 import 'package:mysold/widgets/active_page_builder.dart';
+import 'package:mysold/widgets/app_design.dart';
 import 'package:mysold/data/bounded_async_cache.dart';
 import 'package:mysold/widgets/page_pending_content.dart';
 import 'package:flutter/material.dart';
@@ -185,7 +186,12 @@ class _AnalyticsPageState extends State<AnalyticsPage>
           if (!snapshot.hasError) return PagePendingContent(header: header());
           return ListView(
             dragStartBehavior: DragStartBehavior.down,
-            padding: const EdgeInsets.all(20),
+            padding: EdgeInsets.fromLTRB(
+              20,
+              20,
+              20,
+              20 + WorkspaceOverlayInsets.bottomOf(context),
+            ),
             children: [
               header(),
               if (snapshot.hasError) ...[

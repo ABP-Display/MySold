@@ -94,7 +94,12 @@ class _ProfilePageState extends State<ProfilePage> {
 
             return ListView(
               dragStartBehavior: DragStartBehavior.down,
-              padding: const EdgeInsets.fromLTRB(20, 24, 20, 28),
+              padding: EdgeInsets.fromLTRB(
+                20,
+                24,
+                20,
+                28 + WorkspaceOverlayInsets.bottomOf(context),
+              ),
               children: [
                 PageIntro(
                   eyebrow: context.tr('ESPACE PERSONNEL'),

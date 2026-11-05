@@ -12,6 +12,7 @@ class AppSelectionButton extends StatefulWidget {
   final bool isTab;
   final double minHeight;
   final EdgeInsetsGeometry padding;
+  final Color? backgroundColor;
   const AppSelectionButton({
     super.key,
     required this.child,
@@ -21,6 +22,7 @@ class AppSelectionButton extends StatefulWidget {
     this.isTab = false,
     this.minHeight = 46,
     this.padding = const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+    this.backgroundColor,
   });
 
   @override
@@ -49,9 +51,10 @@ class _AppSelectionButtonState extends State<AppSelectionButton> {
     final foreground = widget.selected
         ? colors.primary
         : colors.onSurfaceVariant;
+    final background = widget.backgroundColor ?? Colors.transparent;
     final fill = widget.selected
-        ? colors.primary.withValues(alpha: 0.12)
-        : Colors.transparent;
+        ? Color.alphaBlend(colors.primary.withValues(alpha: 0.12), background)
+        : background;
     return Semantics(
       button: !widget.isTab,
       role: widget.isTab ? SemanticsRole.tab : null,

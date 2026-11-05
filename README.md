@@ -119,6 +119,29 @@ Les services `db`, `api` et `web` doivent être sains ; `keys` doit avoir termin
 avec le code 0. Le premier démarrage
 peut demander quelques minutes, le temps de télécharger et construire les images.
 
+### Erreurs API et petite VM
+
+Les messages Chrome `[Violation] requestAnimationFrame` ou `setTimeout` indiquent
+du travail long sur le navigateur client ; ils ne prouvent pas une panne de la VM.
+Une réponse HTTP 500 sur `/api/documents/get` ou `/api/documents/query` est en
+revanche une erreur côté serveur. Une saturation mémoire/CPU est une hypothèse,
+pas un diagnostic sans les journaux du serveur.
+
+En cas d’incident, relever les informations suivantes sur la VM, idéalement
+juste après une erreur, sans publier les secrets ou données personnelles :
+
+```sh
+docker compose ps
+docker compose logs --since=30m --tail=150 api db web
+docker stats --no-stream
+free -h
+df -h
+```
+
+Chercher notamment une exception Python, un échec PostgreSQL, un dépassement de
+délai ou un processus tué par manque de mémoire. Ne pas supprimer `data/keys/`
+ou `data/postgres/` pour tenter de résoudre une erreur de connexion.
+
 ## Architecture
 
 ```text
@@ -555,11 +578,16 @@ la page concernée sans bloquer les autres onglets.
 Les pages déjà consultées conservent leur état. Sur mobile, le menu inférieur
 repose sur une base arrondie, espacée des bords et de la zone gestuelle système.
 Sur les largeurs inférieures à 760 pixels, le bandeau de marque supérieur est
-retiré. Un onglet discret au bord supérieur permet de réafficher les montants
-lorsque le mode discret est actif. Le texte utilise un agrandissement minimal
+retiré. Un bouton centré en superposition au bord supérieur permet de réafficher
+les montants lorsque le mode discret est actif, sans décaler la page.
+Le texte utilise un agrandissement minimal
 de 15 %, sans diminuer le réglage d’accessibilité du système. Les quatre types
 d’opérations du mois sont regroupés dans un second menu arrondi au-dessus de la
-navigation principale ; les commandes et le contenu défilant ne se recouvrent pas.
+navigation principale. Les bandes opaques fixes sont retirées : la page défile
+derrière les commandes, dont les boutons gardent un fond légèrement translucide
+pour rester lisibles. Les zones libres laissent passer les clics et les gestes
+vers les tiles. Une marge en fin de liste permet de dégager la dernière opération
+au-dessus des menus ; le viewport de la page conserve toute sa hauteur.
 Les onglets du simulateur et les filtres d’opérations changent directement de sélection. Le survol et
 le focus au clavier restent visibles. Les pages déjà ouvertes conservent leur
 état et leur défilement ; revenir sur « Mois » ne reconstruit pas ses graphiques

@@ -197,7 +197,16 @@ class AppWorkspace extends StatelessWidget {
           MediaQuery.textScalerOf(context).scale(13) <= 20;
       final colors = Theme.of(context).colorScheme;
       final mobile = constraints.maxWidth < AppDesign.mobileBreakpoint;
+      final overlayBottom = mobile
+          ? math.max(
+                  72.0,
+                  46 + MediaQuery.textScalerOf(context).scale(12) * 2.3,
+                ) +
+                30 +
+                MediaQuery.paddingOf(context).bottom
+          : 0.0;
       return Scaffold(
+        extendBody: mobile,
         body: Row(
           children: [
             if (wide) _sidebar(context),
@@ -253,42 +262,45 @@ class AppWorkspace extends StatelessWidget {
                           child: Stack(
                             fit: StackFit.expand,
                             children: [
-                              Padding(
-                                padding: EdgeInsets.only(
-                                  top: mobile && hidden ? 44 : 0,
-                                ),
+                              WorkspaceOverlayInsets(
+                                bottom: overlayBottom,
                                 child: child,
                               ),
                               if (mobile && hidden)
                                 Positioned(
                                   top: 0,
-                                  right: 18,
-                                  child: Material(
-                                    key: const ValueKey('privacy-reveal-tab'),
-                                    color: colors.surfaceContainerHigh,
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: const BorderRadius.vertical(
-                                        bottom: Radius.circular(16),
+                                  left: 0,
+                                  right: 0,
+                                  child: Align(
+                                    alignment: Alignment.topCenter,
+                                    child: Material(
+                                      key: const ValueKey('privacy-reveal-tab'),
+                                      color: colors.surfaceContainerHigh,
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius:
+                                            const BorderRadius.vertical(
+                                              bottom: Radius.circular(16),
+                                            ),
+                                        side: BorderSide(
+                                          color: AppDesign.border(context),
+                                        ),
                                       ),
-                                      side: BorderSide(
-                                        color: AppDesign.border(context),
-                                      ),
-                                    ),
-                                    clipBehavior: Clip.antiAlias,
-                                    child: IconButton(
-                                      tooltip: context.tr(
-                                        'Afficher les montants',
-                                      ),
-                                      onPressed: onPrivacy,
-                                      style: IconButton.styleFrom(
-                                        minimumSize: const Size(56, 44),
-                                        padding: EdgeInsets.zero,
-                                        tapTargetSize:
-                                            MaterialTapTargetSize.shrinkWrap,
-                                      ),
-                                      icon: const Icon(
-                                        Icons.visibility_outlined,
-                                        size: 22,
+                                      clipBehavior: Clip.antiAlias,
+                                      child: IconButton(
+                                        tooltip: context.tr(
+                                          'Afficher les montants',
+                                        ),
+                                        onPressed: onPrivacy,
+                                        style: IconButton.styleFrom(
+                                          minimumSize: const Size(56, 44),
+                                          padding: EdgeInsets.zero,
+                                          tapTargetSize:
+                                              MaterialTapTargetSize.shrinkWrap,
+                                        ),
+                                        icon: const Icon(
+                                          Icons.visibility_outlined,
+                                          size: 22,
+                                        ),
                                       ),
                                     ),
                                   ),
@@ -311,14 +323,9 @@ class AppWorkspace extends StatelessWidget {
                 key: const ValueKey('bottom-navigation'),
                 child: Padding(
                   padding: const EdgeInsets.fromLTRB(12, 6, 12, 12),
-                  child: Container(
+                  child: AppMenuSurface(
                     key: const ValueKey('bottom-navigation-surface'),
-                    clipBehavior: Clip.antiAlias,
-                    decoration: BoxDecoration(
-                      color: colors.surface,
-                      borderRadius: BorderRadius.circular(24),
-                      border: Border.all(color: AppDesign.border(context)),
-                    ),
+                    floating: mobile,
                     child: Padding(
                       padding: const EdgeInsets.all(6),
                       child: SizedBox(
@@ -340,6 +347,9 @@ class AppWorkspace extends StatelessWidget {
                                   key: ValueKey('destination-$index'),
                                   selected: selectedIndex == index,
                                   outlined: false,
+                                  backgroundColor: mobile
+                                      ? colors.surface.withValues(alpha: 0.9)
+                                      : null,
                                   minHeight: 68,
                                   padding: const EdgeInsets.symmetric(
                                     horizontal: 4,

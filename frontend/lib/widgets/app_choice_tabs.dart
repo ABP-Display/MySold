@@ -34,6 +34,9 @@ class AppChoiceTabs extends StatelessWidget {
                       key: ValueKey('operation-type-$index'),
                       selected: selectedIndex == index,
                       outlined: false,
+                      backgroundColor: Theme.of(
+                        context,
+                      ).colorScheme.surface.withValues(alpha: 0.9),
                       isTab: true,
                       padding: const EdgeInsets.symmetric(
                         horizontal: 2,

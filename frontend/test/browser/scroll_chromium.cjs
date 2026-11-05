@@ -77,7 +77,7 @@ async function measure(origin, mode, width=390) {
         await delay(300);
         assert.equal(await evaluate('document.body.dataset.hidden'), 'true');
         await screenshot('-hidden');
-        await touch('touchStart', width-46, 22);
+        await touch('touchStart', width/2, 22);
         await delay(30);
         await touch('touchEnd');
         await delay(200);

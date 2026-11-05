@@ -769,7 +769,16 @@ class _MonthManagerState extends State<MonthManagerScreen> {
             hasScrollBody: false,
             child: Center(
               child: Padding(
-                padding: const EdgeInsets.all(24),
+                padding: EdgeInsets.fromLTRB(
+                  24,
+                  24,
+                  24,
+                  mobile
+                      ? WorkspaceOverlayInsets.bottomOf(context) +
+                            AppChoiceTabs.floatingHeight(context) +
+                            100
+                      : 24,
+                ),
                 child: Text(
                   _hasActiveFilters
                       ? _t('Aucune transaction ne correspond aux filtres.')
@@ -781,7 +790,13 @@ class _MonthManagerState extends State<MonthManagerScreen> {
           )
         else
           SliverPadding(
-            padding: EdgeInsets.only(bottom: mobile ? 16 : 88),
+            padding: EdgeInsets.only(
+              bottom: mobile
+                  ? WorkspaceOverlayInsets.bottomOf(context) +
+                        AppChoiceTabs.floatingHeight(context) +
+                        116
+                  : 88,
+            ),
             sliver: SliverList.builder(
               itemCount: filtered.length,
               itemBuilder: (_, i) {
@@ -862,6 +877,7 @@ class _MonthManagerState extends State<MonthManagerScreen> {
   Widget _buildPage(BuildContext context) {
     final mobile =
         MediaQuery.sizeOf(context).width < AppDesign.mobileBreakpoint;
+    final overlayBottom = WorkspaceOverlayInsets.bottomOf(context);
     final references = context.watch<UserDataProvider>();
     final financialVersion = references.financialDataVersion;
     if (_lastFinancialDataVersion != null &&
@@ -894,92 +910,77 @@ class _MonthManagerState extends State<MonthManagerScreen> {
         floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
         floatingActionButton: Padding(
           padding: EdgeInsets.only(
-            bottom: mobile ? AppChoiceTabs.floatingHeight(context) + 20 : 0,
+            bottom: mobile
+                ? overlayBottom + AppChoiceTabs.floatingHeight(context) + 20
+                : 0,
           ),
           child: _MonthAddFab(onRefresh: () => _refresh(forceRefresh: true)),
         ),
         body: Stack(
           fit: StackFit.expand,
           children: [
-            Padding(
-              padding: EdgeInsets.only(
-                bottom: mobile
-                    ? AppChoiceTabs.floatingHeight(context) + 100
-                    : 0,
-              ),
-              child: _transactionsError != null
-                  ? Center(
-                      child: Padding(
-                        padding: const EdgeInsets.all(24),
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Text('${_t('Erreur')} : $_transactionsError'),
-                            const SizedBox(height: 16),
-                            FilledButton.icon(
-                              onPressed: () => _refresh(forceRefresh: true),
-                              icon: const Icon(Icons.refresh),
-                              label: Text(_t('Réessayer')),
-                            ),
-                          ],
-                        ),
-                      ),
-                    )
-                  : _isLoadingTransactions
-                  ? PagePendingContent(header: _buildMonthHeader(monthLabel))
-                  : ScrollItemRetention(
-                      child: CachedPageStack(
-                        index: _selectedIndex,
-                        itemCount: 4,
-                        revision: (
-                          mobile: mobile,
-                          textScaler: MediaQuery.textScalerOf(context),
-                          transactions: _transactions,
-                          month: (_currentMonth.year, _currentMonth.month),
-                          references: references.referenceDataVersion,
-                          filters: (
-                            _searchQuery,
-                            _selectedCategoryId,
-                            _selectedAccountId,
-                            _minAmount,
-                            _maxAmount,
-                            _sortField,
-                            _sortAscending,
+            _transactionsError != null
+                ? Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(24),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text('${_t('Erreur')} : $_transactionsError'),
+                          const SizedBox(height: 16),
+                          FilledButton.icon(
+                            onPressed: () => _refresh(forceRefresh: true),
+                            icon: const Icon(Icons.refresh),
+                            label: Text(_t('Réessayer')),
                           ),
-                          currency: context.watch<CurrencyProvider>().currency,
-                          hidden: context.watch<PrivacyProvider>().hideAmounts,
-                          theme: Theme.of(context),
-                          locale: Localizations.localeOf(context),
-                        ),
-                        itemBuilder: (_, index) => _buildTabContent(
-                          _transactions,
-                          [
-                            'expense',
-                            'income',
-                            'investment',
-                            'transfer',
-                          ][index],
-                          monthLabel,
-                          mobile,
-                        ),
+                        ],
                       ),
                     ),
-            ),
+                  )
+                : _isLoadingTransactions
+                ? PagePendingContent(header: _buildMonthHeader(monthLabel))
+                : ScrollItemRetention(
+                    child: CachedPageStack(
+                      index: _selectedIndex,
+                      itemCount: 4,
+                      revision: (
+                        mobile: mobile,
+                        overlayBottom: overlayBottom,
+                        textScaler: MediaQuery.textScalerOf(context),
+                        transactions: _transactions,
+                        month: (_currentMonth.year, _currentMonth.month),
+                        references: references.referenceDataVersion,
+                        filters: (
+                          _searchQuery,
+                          _selectedCategoryId,
+                          _selectedAccountId,
+                          _minAmount,
+                          _maxAmount,
+                          _sortField,
+                          _sortAscending,
+                        ),
+                        currency: context.watch<CurrencyProvider>().currency,
+                        hidden: context.watch<PrivacyProvider>().hideAmounts,
+                        theme: Theme.of(context),
+                        locale: Localizations.localeOf(context),
+                      ),
+                      itemBuilder: (_, index) => _buildTabContent(
+                        _transactions,
+                        ['expense', 'income', 'investment', 'transfer'][index],
+                        monthLabel,
+                        mobile,
+                      ),
+                    ),
+                  ),
             if (mobile)
               Positioned(
                 left: 12,
                 right: 12,
-                bottom: 8,
-                child: Material(
+                bottom: overlayBottom + 8,
+                child: AppMenuSurface(
                   key: const ValueKey('month-operation-dock'),
-                  color: Theme.of(context).colorScheme.surface,
-                  elevation: 8,
-                  shadowColor: Colors.black.withValues(alpha: 0.25),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(22),
-                    side: BorderSide(color: AppDesign.border(context)),
-                  ),
-                  clipBehavior: Clip.antiAlias,
+                  floating: true,
+                  radius: 22,
                   child: Padding(
                     padding: const EdgeInsets.all(6),
                     child: _operationTabs(floating: true),

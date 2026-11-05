@@ -584,9 +584,10 @@ Le texte utilise un agrandissement minimal
 de 15 %, sans diminuer le réglage d’accessibilité du système. Les quatre types
 d’opérations du mois sont regroupés dans un second menu arrondi au-dessus de la
 navigation principale. Les bandes opaques fixes sont retirées : la page défile
-derrière les commandes, dont les boutons gardent un fond légèrement translucide
-pour rester lisibles. Les zones libres laissent passer les clics et les gestes
-vers les tiles. Une marge en fin de liste permet de dégager la dernière opération
+derrière les commandes. Les deux menus arrondis gardent un fond plein adapté
+au thème ; seule la zone autour reste transparente. Les espaces hors des menus
+laissent passer les clics et les gestes vers les tiles. Une marge en fin de liste
+permet de dégager la dernière opération
 au-dessus des menus ; le viewport de la page conserve toute sa hauteur.
 Les onglets du simulateur et les filtres d’opérations changent directement de sélection. Le survol et
 le focus au clavier restent visibles. Les pages déjà ouvertes conservent leur

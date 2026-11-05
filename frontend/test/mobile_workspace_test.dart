@@ -6,6 +6,43 @@ import 'package:mysold/widgets/app_choice_tabs.dart';
 import 'package:mysold/widgets/app_design.dart';
 
 void main() {
+  for (final brightness in Brightness.values) {
+    testWidgets('Floating menu keeps an opaque theme surface in $brightness', (
+      tester,
+    ) async {
+      final theme = ThemeData(brightness: brightness);
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: theme,
+          home: Scaffold(
+            backgroundColor: Colors.red,
+            body: Center(
+              child: AppMenuSurface(
+                key: const ValueKey('opaque-menu'),
+                floating: true,
+                child: const SizedBox(width: 300, height: 80),
+              ),
+            ),
+          ),
+        ),
+      );
+      final background =
+          tester
+                  .widget<DecoratedBox>(
+                    find
+                        .descendant(
+                          of: find.byKey(const ValueKey('opaque-menu')),
+                          matching: find.byType(DecoratedBox),
+                        )
+                        .first,
+                  )
+                  .decoration
+              as BoxDecoration;
+      expect(background.color, theme.colorScheme.surface);
+      expect(background.color!.a, 1);
+    });
+  }
+
   for (final width in [320.0, 390.0, 768.0, 1440.0]) {
     testWidgets('Workspace header and privacy reveal at $width', (
       tester,
@@ -143,7 +180,7 @@ void main() {
       await tester.tapAt(Offset(4, surface.center.dy));
       await tester.pump();
       expect(tapped, hasLength(1));
-      await tester.tapAt(Offset(surface.center.dx, surface.top + 2));
+      await tester.tapAt(Offset(surface.center.dx, surface.top - 2));
       await tester.pump();
       expect(tapped, hasLength(2));
       await tester.tap(find.byKey(const ValueKey('destination-3')));
@@ -167,7 +204,7 @@ void main() {
     });
   }
 
-  testWidgets('Floating operation menu outline does not intercept a tile tap', (
+  testWidgets('Only space outside the opaque menu passes through to a tile', (
     tester,
   ) async {
     var tileTaps = 0, selections = 0;
@@ -220,9 +257,11 @@ void main() {
     final rect = tester.getRect(
       find.byKey(const ValueKey('floating-test-menu')),
     );
-    await tester.tapAt(Offset(rect.center.dx, rect.top + 2));
+    await tester.tapAt(Offset(rect.center.dx, rect.top - 2));
     expect(tileTaps, 1);
     expect(selections, 0);
+    await tester.tapAt(Offset(rect.center.dx, rect.top + 2));
+    expect(tileTaps, 1);
     await tester.tap(find.byKey(const ValueKey('operation-type-1')));
     expect(selections, 1);
     expect(tileTaps, 1);

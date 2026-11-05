@@ -36,7 +36,7 @@ class WorkspaceOverlayInsets extends InheritedWidget {
       bottom != oldWidget.bottom;
 }
 
-/// The decorative outline must not intercept taps in the gaps between controls.
+/// An opaque menu surface without an opaque strip around the floating controls.
 class AppMenuSurface extends StatelessWidget {
   final Widget child;
   final bool floating;
@@ -50,7 +50,7 @@ class AppMenuSurface extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final decoration = BoxDecoration(
-      color: floating ? null : Theme.of(context).colorScheme.surface,
+      color: Theme.of(context).colorScheme.surface,
       borderRadius: BorderRadius.circular(radius),
       border: Border.all(color: AppDesign.border(context)),
     );
@@ -63,9 +63,7 @@ class AppMenuSurface extends StatelessWidget {
     return Stack(
       fit: StackFit.passthrough,
       children: [
-        Positioned.fill(
-          child: IgnorePointer(child: DecoratedBox(decoration: decoration)),
-        ),
+        Positioned.fill(child: DecoratedBox(decoration: decoration)),
         child,
       ],
     );

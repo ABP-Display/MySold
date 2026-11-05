@@ -347,9 +347,6 @@ class AppWorkspace extends StatelessWidget {
                                   key: ValueKey('destination-$index'),
                                   selected: selectedIndex == index,
                                   outlined: false,
-                                  backgroundColor: mobile
-                                      ? colors.surface.withValues(alpha: 0.9)
-                                      : null,
                                   minHeight: 68,
                                   padding: const EdgeInsets.symmetric(
                                     horizontal: 4,

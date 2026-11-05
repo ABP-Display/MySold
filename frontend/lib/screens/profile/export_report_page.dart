@@ -11,6 +11,7 @@ import 'package:mysold/providers/user_data_provider.dart';
 import 'package:mysold/screens/settings/currency_provider.dart';
 import 'package:mysold/services/security_gate.dart';
 import 'package:mysold/services/transaction_export_service.dart';
+import 'package:mysold/services/report_timeline.dart';
 
 class ExportReportPage extends StatefulWidget {
   const ExportReportPage({super.key});
@@ -35,6 +36,11 @@ class _ExportReportPageState extends State<ExportReportPage> {
         return DateTimeRange(
           start: DateTime(now.year, now.month, 1),
           end: DateTime(now.year, now.month + 1, 1),
+        );
+      case _ExportPeriodChoice.previousMonth:
+        return DateTimeRange(
+          start: previousReportMonth(now),
+          end: DateTime(now.year, now.month),
         );
       case _ExportPeriodChoice.custom:
         return _customRange ??
@@ -90,6 +96,8 @@ class _ExportReportPageState extends State<ExportReportPage> {
         return 'Annee complete';
       case _ExportPeriodChoice.thisMonth:
         return 'Ce mois-ci';
+      case _ExportPeriodChoice.previousMonth:
+        return 'Mois précédent (M-1)';
       case _ExportPeriodChoice.custom:
         return 'Periode personnalisee';
     }
@@ -132,6 +140,17 @@ class _ExportReportPageState extends State<ExportReportPage> {
                   selected: _period == _ExportPeriodChoice.thisMonth,
                   onTap: () =>
                       setState(() => _period = _ExportPeriodChoice.thisMonth),
+                ),
+                _RadioRow(
+                  title: context.tr('Mois précédent (M-1)'),
+                  subtitle: DateFormat(
+                    'MMMM yyyy',
+                    Localizations.localeOf(context).toString(),
+                  ).format(previousReportMonth(DateTime.now())),
+                  selected: _period == _ExportPeriodChoice.previousMonth,
+                  onTap: () => setState(
+                    () => _period = _ExportPeriodChoice.previousMonth,
+                  ),
                 ),
                 _RadioRow(
                   title: context.tr('Periode personnalisee'),
@@ -283,6 +302,8 @@ class _ExportReportLoadingPageState extends State<ExportReportLoadingPage> {
         categories: categories,
         investments: investments,
         primaryColor: primaryColor,
+        periodStart: widget.range.start,
+        periodEnd: widget.range.end,
       );
 
       _step(0.92, context.tr('Enregistrement du fichier...'));
@@ -400,7 +421,7 @@ class _ExportReportLoadingPageState extends State<ExportReportLoadingPage> {
   }
 }
 
-enum _ExportPeriodChoice { fullYear, thisMonth, custom }
+enum _ExportPeriodChoice { fullYear, thisMonth, previousMonth, custom }
 
 class _Panel extends StatelessWidget {
   final IconData icon;

@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:math' as math;
 
 import 'package:file_saver/file_saver.dart';
 import 'package:flutter/foundation.dart';
@@ -8,6 +9,7 @@ import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 
 import 'package:mysold/models/transaction_model.dart';
+import 'package:mysold/services/report_timeline.dart';
 
 class TransactionExportService {
   static final DateFormat _dateFormat = DateFormat('dd/MM/yyyy');
@@ -82,8 +84,12 @@ class TransactionExportService {
     required Map<String, Map<String, dynamic>> categories,
     required Map<String, String> investments,
     int? primaryColor,
+    DateTime? periodStart,
+    DateTime? periodEnd,
   }) async {
-    final regularFont = await rootBundle.load('assets/fonts/Roboto-Regular.ttf');
+    final regularFont = await rootBundle.load(
+      'assets/fonts/Roboto-Regular.ttf',
+    );
     final boldFont = await rootBundle.load('assets/fonts/Roboto-Bold.ttf');
     Uint8List? logoBytes;
     try {
@@ -104,6 +110,8 @@ class TransactionExportService {
       'categories': categories,
       'investments': investments,
       'primaryColor': primaryColor ?? 0xFF2563EB,
+      'periodStart': periodStart?.millisecondsSinceEpoch,
+      'periodEnd': periodEnd?.millisecondsSinceEpoch,
       'regularFont': regularFont.buffer.asUint8List(
         regularFont.offsetInBytes,
         regularFont.lengthInBytes,
@@ -168,7 +176,22 @@ class TransactionExportService {
     required pw.Font boldFont,
     required pw.ImageProvider? logo,
     required PdfColor accent,
+    DateTime? periodStart,
+    DateTime? periodEnd,
   }) async {
+    var first = transactions.isEmpty ? DateTime.now() : transactions.first.date;
+    var last = first;
+    for (final tx in transactions) {
+      if (tx.date.isBefore(first)) first = tx.date;
+      if (tx.date.isAfter(last)) last = tx.date;
+    }
+    final timeline = ReportTimeline.build(
+      transactions: transactions.map(
+        (tx) => (date: tx.date, type: tx.type, amount: tx.amount),
+      ),
+      start: periodStart ?? DateTime(first.year, first.month),
+      end: periodEnd ?? DateTime(last.year, last.month + 1),
+    );
     final income = _sumByType(transactions, 'income');
     final expense = _sumByType(transactions, 'expense');
     final investment = _sumByType(transactions, 'investment');
@@ -233,6 +256,8 @@ class TransactionExportService {
               boldFont: boldFont,
             ),
             pw.SizedBox(height: 14),
+            _evolutionCharts(timeline, currency, accent, boldFont),
+            pw.SizedBox(height: 14),
             _sectionTitle('Répartition du rapport', accent, boldFont),
             pw.SizedBox(height: 8),
             _typeBreakdown(
@@ -274,6 +299,137 @@ class TransactionExportService {
     );
 
     return document.save();
+  }
+
+  static pw.Widget _evolutionCharts(
+    ReportTimeline timeline,
+    String currency,
+    PdfColor accent,
+    pw.Font boldFont,
+  ) {
+    final points = timeline.points;
+    final colors = <String, PdfColor>{
+      'Revenus': PdfColors.green700,
+      'Dépenses': PdfColors.red700,
+      'Investissements': PdfColors.blue700,
+      'Transferts': PdfColors.blueGrey400,
+    };
+    final types = ['income', 'expense', 'investment', 'transfer'];
+    final flows = [
+      for (final type in types) [for (final p in points) p.amount(type)],
+    ];
+    final available = [for (final p in points) p.available];
+
+    pw.Widget chart(List<List<double>> series, List<PdfColor> palette) {
+      final values = series.expand((v) => v);
+      final min = math.min(0.0, values.reduce(math.min));
+      final max = math.max(0.0, values.reduce(math.max));
+      final roughStep = math.max(0.01, (max - min) / 4);
+      final magnitude = math
+          .pow(10, (math.log(roughStep) / math.ln10).floor())
+          .toDouble();
+      final step =
+          [1, 2, 5, 10].firstWhere((n) => n * magnitude >= roughStep) *
+          magnitude;
+      final bottom = (min / step).floor() * step;
+      final top = max == min ? bottom + step * 4 : (max / step).ceil() * step;
+      final ticks = <double>[
+        for (var i = 0; i <= ((top - bottom) / step).round(); i++)
+          bottom + step * i,
+      ];
+      final indices = <int>{
+        for (var i = 0; i <= math.min(5, points.length - 1); i++)
+          (i *
+                  (points.length - 1) /
+                  math.max(1, math.min(5, points.length - 1)))
+              .round(),
+      }.toList();
+      return pw.SizedBox(
+        height: 155,
+        child: pw.Chart(
+          grid: pw.CartesianGrid(
+            xAxis: pw.FixedAxis(
+              points.length == 1 ? [0, 1] : indices,
+              format: (v) {
+                if (v.toInt() >= points.length) return '';
+                return DateFormat(
+                  timeline.monthly ? 'MM/yy' : 'dd/MM',
+                ).format(points[v.toInt()].date);
+              },
+              textStyle: const pw.TextStyle(fontSize: 8),
+              color: PdfColors.grey400,
+              marginStart: 8,
+              marginEnd: 18,
+            ),
+            yAxis: pw.FixedAxis(
+              ticks,
+              format: (v) => NumberFormat.compact(locale: 'fr').format(v),
+              textStyle: const pw.TextStyle(fontSize: 8),
+              divisions: true,
+              divisionsColor: PdfColors.grey200,
+              color: PdfColors.grey400,
+              marginEnd: 10,
+            ),
+          ),
+          datasets: [
+            for (var s = 0; s < series.length; s++)
+              pw.LineDataSet(
+                color: palette[s],
+                lineWidth: 1.5,
+                drawPoints: points.length == 1,
+                pointSize: 2,
+                data: [
+                  for (var i = 0; i < points.length; i++)
+                    pw.PointChartValue(i.toDouble(), series[s][i]),
+                ],
+              ),
+          ],
+        ),
+      );
+    }
+
+    return pw.Column(
+      crossAxisAlignment: pw.CrossAxisAlignment.start,
+      children: [
+        _sectionTitle('Évolution des transactions', accent, boldFont),
+        pw.SizedBox(height: 6),
+        pw.Text(
+          '${timeline.monthly ? 'Flux par mois' : 'Flux par jour'} ($currency) - opérations enregistrées',
+          style: const pw.TextStyle(fontSize: 9, color: PdfColors.blueGrey600),
+        ),
+        pw.SizedBox(height: 10),
+        pw.Wrap(
+          spacing: 16,
+          runSpacing: 5,
+          children: [
+            for (final entry in colors.entries)
+              pw.Row(
+                mainAxisSize: pw.MainAxisSize.min,
+                children: [
+                  pw.Container(width: 12, height: 3, color: entry.value),
+                  pw.SizedBox(width: 4),
+                  pw.Text(entry.key, style: const pw.TextStyle(fontSize: 8)),
+                ],
+              ),
+          ],
+        ),
+        pw.SizedBox(height: 8),
+        chart(flows, colors.values.toList()),
+        pw.SizedBox(height: 16),
+        pw.Text(
+          'Reste disponible cumulé ($currency)',
+          style: pw.TextStyle(font: boldFont, fontSize: 10),
+        ),
+        pw.SizedBox(height: 6),
+        chart([available], [PdfColors.blueGrey800]),
+        pw.SizedBox(height: 6),
+        pw.Text(
+          'Revenus - dépenses - investissements depuis le début de la période. '
+          'Les transferts sont exclus. Ce cumul ne représente pas le solde des comptes.',
+          style: const pw.TextStyle(fontSize: 8, color: PdfColors.blueGrey600),
+        ),
+      ],
+    );
   }
 
   static pw.Widget _coverHeader({
@@ -1047,6 +1203,12 @@ Future<Uint8List> _buildPdfBytesIsolate(Map<String, dynamic> payload) {
   return TransactionExportService._buildPdfBytes(
     transactions: transactions,
     title: payload['title'] as String,
+    periodStart: payload['periodStart'] == null
+        ? null
+        : DateTime.fromMillisecondsSinceEpoch(payload['periodStart'] as int),
+    periodEnd: payload['periodEnd'] == null
+        ? null
+        : DateTime.fromMillisecondsSinceEpoch(payload['periodEnd'] as int),
     currency: payload['currency'] as String,
     accounts: accounts,
     categories: categories,

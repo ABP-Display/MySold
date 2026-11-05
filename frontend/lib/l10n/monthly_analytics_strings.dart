@@ -4,6 +4,13 @@ String? monthlyAnalyticsText(String key, String language) {
 }
 
 const _texts = <String, List<String>>{
+  'Mois précédent (M-1)': [
+    'Previous month (M-1)',
+    'Mes anterior (M-1)',
+    'Vormonat (M-1)',
+    'Mese precedente (M-1)',
+    '前月 (M-1)',
+  ],
   'Chargement de vos données…': [
     'Loading your data…',
     'Cargando tus datos…',

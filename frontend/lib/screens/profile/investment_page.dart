@@ -1,4 +1,5 @@
 import 'package:mysold/widgets/app_design.dart';
+import 'package:mysold/widgets/app_page_tab_menu.dart';
 import 'package:mysold/data/document_store.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/gestures.dart';
@@ -30,6 +31,14 @@ class _InvestmentPageState extends State<InvestmentPage>
     _allType,
     ...investmentTypeOptions.map((option) => option.value),
   ];
+
+  List<String> get _tabLabels => _tabs
+      .map(
+        (type) => context.tr(
+          type == _allType ? 'Tous' : investmentTypeOption(type).label,
+        ),
+      )
+      .toList();
 
   CollectionReference<Map<String, dynamic>> get _investmentsRef {
     return DocumentStore.instance
@@ -140,21 +149,26 @@ class _InvestmentPageState extends State<InvestmentPage>
     final privacy = context.watch<PrivacyProvider>();
 
     return Scaffold(
+      extendBody: true,
       appBar: appPageBar(
         context,
         title: Text(context.tr('Gestion des investissements')),
-        bottom: TabBar(
-          controller: _tabController,
-          isScrollable: true,
-          tabs: _tabs.map((type) {
-            final option = type == _allType ? null : investmentTypeOption(type);
-            return Tab(
-              icon: Icon(
-                type == _allType ? Icons.grid_view_rounded : option!.icon,
-              ),
-              text: context.tr(type == _allType ? 'Tous' : option!.label),
-            );
-          }).toList(),
+      ),
+      bottomNavigationBar: AnimatedBuilder(
+        animation: _tabController,
+        builder: (context, _) => AppPageTabMenu(
+          keyPrefix: 'investment',
+          labels: _tabLabels,
+          icons: _tabs
+              .map(
+                (type) => type == _allType
+                    ? Icons.grid_view_rounded
+                    : investmentTypeOption(type).icon,
+              )
+              .toList(),
+          scrollable: true,
+          selectedIndex: _tabController.index,
+          onSelected: (index) => _tabController.animateTo(index),
         ),
       ),
       floatingActionButton: FloatingActionButton.extended(
@@ -197,6 +211,7 @@ class _InvestmentPageState extends State<InvestmentPage>
 
               return TabBarView(
                 controller: _tabController,
+                physics: const NeverScrollableScrollPhysics(),
                 children: _tabs.map((type) {
                   final filtered = type == _allType
                       ? investments
@@ -213,7 +228,17 @@ class _InvestmentPageState extends State<InvestmentPage>
 
                   return ListView(
                     dragStartBehavior: DragStartBehavior.down,
-                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 96),
+                    padding: EdgeInsets.fromLTRB(
+                      16,
+                      12,
+                      16,
+                      96 +
+                          AppPageTabMenu.clearance(
+                            context,
+                            _tabLabels,
+                            scrollable: true,
+                          ),
+                    ),
                     children: [
                       _buildHeader(
                         count: filtered.length,
@@ -463,8 +488,13 @@ class _InvestmentPageState extends State<InvestmentPage>
     final option = isFiltered ? investmentTypeOption(type) : null;
 
     return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(28),
+      child: SingleChildScrollView(
+        padding: EdgeInsets.fromLTRB(
+          28,
+          28,
+          28,
+          96 + AppPageTabMenu.clearance(context, _tabLabels, scrollable: true),
+        ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [

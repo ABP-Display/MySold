@@ -122,7 +122,7 @@ void main() {
           find.widgetWithText(SwitchListTile, 'Alertes budgétaires'),
         );
         expect(alerts.onChanged, isNull);
-        for (final title in ['Masquer les montants', 'Secouer pour cacher']) {
+        for (final title in ['Masquer les montants', 'Retourner pour masquer']) {
           await tester.scrollUntilVisible(find.text(title), 250);
           await tester.ensureVisible(find.text(title));
           await tester.pumpAndSettle();

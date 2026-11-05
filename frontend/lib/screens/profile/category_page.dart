@@ -1,5 +1,5 @@
 import 'package:mysold/widgets/app_design.dart';
-import 'package:mysold/widgets/app_selection_button.dart';
+import 'package:mysold/widgets/app_page_tab_menu.dart';
 import 'package:mysold/widgets/lazy_page_stack.dart';
 import 'package:mysold/widgets/category_filter_bar.dart';
 import 'package:mysold/widgets/category_amount_filter.dart';
@@ -176,43 +176,20 @@ class _CategoriePageState extends State<CategoriePage> {
 
   @override
   Widget build(BuildContext context) {
-    final tabHeight = (MediaQuery.textScalerOf(context).scale(14) * 1.5 + 24)
-        .clamp(52.0, 96.0)
-        .toDouble();
     return Scaffold(
+      extendBody: true,
       appBar: appPageBar(
         context,
         title: Text(context.tr('Gestion des categories')),
-        bottom: PreferredSize(
-          preferredSize: Size.fromHeight(tabHeight),
-          child: SizedBox(
-            height: tabHeight,
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                for (var index = 0; index < 2; index++)
-                  Expanded(
-                    child: AppSelectionButton(
-                      key: ValueKey('category-tab-$index'),
-                      selected: index == _selectedIndex,
-                      isTab: true,
-                      outlined: false,
-                      onPressed: () {
-                        if (index != _selectedIndex)
-                          setState(() => _selectedIndex = index);
-                      },
-                      child: Center(
-                        child: Text(
-                          context.tr(index == 0 ? 'Dépenses' : 'Revenus'),
-                          style: const TextStyle(fontSize: 14, height: 1.2),
-                        ),
-                      ),
-                    ),
-                  ),
-              ],
-            ),
-          ),
-        ),
+      ),
+      bottomNavigationBar: AppPageTabMenu(
+        keyPrefix: 'category',
+        labels: [context.tr('Dépenses'), context.tr('Revenus')],
+        icons: const [Icons.trending_down, Icons.trending_up],
+        selectedIndex: _selectedIndex,
+        onSelected: (index) {
+          if (index != _selectedIndex) setState(() => _selectedIndex = index);
+        },
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _openAddCategorie(),
@@ -311,7 +288,16 @@ class _CategoriePageState extends State<CategoriePage> {
     return ListView.builder(
       dragStartBehavior: DragStartBehavior.down,
       key: PageStorageKey('category-list-$type'),
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 96),
+      padding: EdgeInsets.fromLTRB(
+        16,
+        12,
+        16,
+        96 +
+            AppPageTabMenu.clearance(context, [
+              context.tr('Dépenses'),
+              context.tr('Revenus'),
+            ]),
+      ),
       itemCount: 2 + (visible.isEmpty ? 1 : visible.length),
       itemBuilder: (context, position) {
         if (position == 0)
@@ -557,7 +543,16 @@ class _CategoriePageState extends State<CategoriePage> {
   Widget _buildEmptyState(bool isExpense) {
     return Center(
       child: SingleChildScrollView(
-        padding: const EdgeInsets.all(28),
+        padding: EdgeInsets.fromLTRB(
+          28,
+          28,
+          28,
+          96 +
+              AppPageTabMenu.clearance(context, [
+                context.tr('Dépenses'),
+                context.tr('Revenus'),
+              ]),
+        ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [

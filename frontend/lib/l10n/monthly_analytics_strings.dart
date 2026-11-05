@@ -4,6 +4,20 @@ String? monthlyAnalyticsText(String key, String language) {
 }
 
 const _texts = <String, List<String>>{
+  'Retourner pour masquer': [
+    'Turn to hide',
+    'Girar para ocultar',
+    'Zum Verbergen drehen',
+    'Ruota per nascondere',
+    '回転して金額を非表示',
+  ],
+  'Sur mobile compatible, tournez le téléphone d’environ 90° ou retournez-le et maintenez-le brièvement. Le bouton œil réaffiche les montants.': [
+    'On supported phones, rotate by about 90° or turn the phone over and hold briefly. Use the eye button to show amounts again.',
+    'En móviles compatibles, gira unos 90° o da la vuelta al teléfono y mantenlo un instante. El botón del ojo vuelve a mostrar los importes.',
+    'Auf unterstützten Geräten das Telefon etwa 90° drehen oder umdrehen und kurz halten. Die Augentaste zeigt die Beträge wieder an.',
+    'Sui telefoni compatibili, ruota di circa 90° o capovolgi il telefono e mantienilo brevemente. Il pulsante occhio mostra di nuovo gli importi.',
+    '対応する端末を約90°回転、または裏返して少し保持すると金額を隠します。目のボタンで再表示できます。',
+  ],
   'Mois précédent (M-1)': [
     'Previous month (M-1)',
     'Mes anterior (M-1)',

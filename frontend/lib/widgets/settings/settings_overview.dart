@@ -282,12 +282,12 @@ class AdvancedPreferencesContent extends StatelessWidget {
                   contentPadding: EdgeInsets.zero,
                   value: shakeEnabled,
                   onChanged: requestingMotion ? null : onShake,
-                  title: Text(context.tr('Secouer pour cacher')),
+                  title: Text(context.tr('Retourner pour masquer')),
                   subtitle: Text(
                     context.tr(
                       requestingMotion
                           ? 'Vérification du capteur…'
-                          : 'En option sur mobile compatible. Une secousse masque les montants ; le bouton œil les réaffiche.',
+                          : 'Sur mobile compatible, tournez le téléphone d’environ 90° ou retournez-le et maintenez-le brièvement. Le bouton œil réaffiche les montants.',
                     ),
                   ),
                 ),

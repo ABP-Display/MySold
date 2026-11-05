@@ -124,8 +124,14 @@ void main() {
               );
               expect(
                 tester.getCenter(label).dx,
-                closeTo(width * (index + .5) / 3, .5),
+                closeTo(
+                  tester
+                      .getCenter(find.byKey(ValueKey('simulation-tab-$index')))
+                      .dx,
+                  .5,
+                ),
               );
+              expect(tester.getCenter(label).dy, greaterThan(700));
               expect(tester.widget<Text>(label).textAlign, TextAlign.center);
             }
             for (final tab in labels) {

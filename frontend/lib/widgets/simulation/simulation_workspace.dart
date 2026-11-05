@@ -3,7 +3,7 @@ import 'package:flutter/gestures.dart';
 import 'package:mysold/models/simulation_projection.dart';
 import 'package:mysold/widgets/app_design.dart';
 import 'package:mysold/widgets/app_select_field.dart';
-import 'package:mysold/widgets/app_selection_button.dart';
+import 'package:mysold/widgets/app_page_tab_menu.dart';
 import 'package:mysold/widgets/lazy_page_stack.dart';
 import 'package:mysold/widgets/graphiques/simulation_chart.dart';
 
@@ -83,66 +83,30 @@ class _SimulationWorkspaceState extends State<SimulationWorkspace> {
 
   @override
   Widget build(BuildContext context) {
-    final labelStyle = Theme.of(context).textTheme.titleMedium!.copyWith(
-      fontSize: 14,
-      fontWeight: FontWeight.w600,
-    );
-    // Allow long labels to wrap without shrinking text on narrow screens.
-    final measurement =
-        TextPainter(
-          text: TextSpan(text: 'Investissement', style: labelStyle),
-          textDirection: Directionality.of(context),
-          textScaler: MediaQuery.textScalerOf(context),
-        )..layout(
-          maxWidth: (MediaQuery.sizeOf(context).width / 3 - 16).clamp(
-            1,
-            double.infinity,
-          ),
-        );
-    final tabHeight = (measurement.height + 20).clamp(56.0, double.infinity);
-    measurement.dispose();
     // Keep the same page widgets when only the selected tab changes. Form
     // edits and recalculation still rebuild them through this state's setState.
     final pages = [_budgetPage(), _investPage(), _loanPage()];
     const labels = ['Budget', 'Investissement', 'Prêt'];
     return Scaffold(
+      extendBody: true,
       appBar: appPageBar(
         context,
         leading: widget.withBack ? const BackButton() : null,
         title: const Text('Simulation'),
-        bottom: PreferredSize(
-          preferredSize: Size.fromHeight(tabHeight),
-          child: ValueListenableBuilder<int>(
-            valueListenable: _tabs,
-            builder: (context, selected, _) => SizedBox(
-              key: const ValueKey('simulation-tabs'),
-              height: tabHeight,
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  for (var index = 0; index < labels.length; index++)
-                    Expanded(
-                      child: AppSelectionButton(
-                        key: ValueKey('simulation-tab-$index'),
-                        selected: selected == index,
-                        isTab: true,
-                        outlined: false,
-                        padding: const EdgeInsets.symmetric(horizontal: 8),
-                        onPressed: () => _tabs.value = index,
-                        child: Center(
-                          child: Text(
-                            labels[index],
-                            style: labelStyle,
-                            textAlign: TextAlign.center,
-                            softWrap: true,
-                          ),
-                        ),
-                      ),
-                    ),
-                ],
-              ),
-            ),
-          ),
+      ),
+      bottomNavigationBar: ValueListenableBuilder<int>(
+        valueListenable: _tabs,
+        builder: (context, selected, _) => AppPageTabMenu(
+          key: const ValueKey('simulation-tabs'),
+          keyPrefix: 'simulation',
+          labels: labels,
+          icons: const [
+            Icons.wallet_outlined,
+            Icons.trending_up,
+            Icons.account_balance_outlined,
+          ],
+          selectedIndex: selected,
+          onSelected: (index) => _tabs.value = index,
         ),
       ),
       body: ValueListenableBuilder<int>(
@@ -254,7 +218,17 @@ class _SimulationWorkspaceState extends State<SimulationWorkspace> {
       child: ListView(
         dragStartBehavior: DragStartBehavior.down,
         key: PageStorageKey(key),
-        padding: const EdgeInsets.fromLTRB(16, 20, 16, 32),
+        padding: EdgeInsets.fromLTRB(
+          16,
+          20,
+          16,
+          32 +
+              AppPageTabMenu.clearance(context, const [
+                'Budget',
+                'Investissement',
+                'Prêt',
+              ]),
+        ),
         children: [
           PageIntro(title: title, subtitle: subtitle, eyebrow: 'PROJECTION'),
           for (final child in children)

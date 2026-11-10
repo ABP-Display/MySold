@@ -10,6 +10,7 @@ import 'package:pdf/widgets.dart' as pw;
 
 import 'package:mysold/models/transaction_model.dart';
 import 'package:mysold/services/report_timeline.dart';
+import 'package:mysold/services/report_text.dart';
 
 class TransactionExportService {
   static final DateFormat _dateFormat = DateFormat('dd/MM/yyyy');
@@ -215,10 +216,19 @@ class TransactionExportService {
 
     document.addPage(
       pw.MultiPage(
+        maxPages: 250,
         pageFormat: PdfPageFormat.a4,
         margin: const pw.EdgeInsets.all(28),
         theme: pw.ThemeData.withFont(base: font, bold: boldFont),
-        footer: (context) => _footer(context, font),
+        footer: (context) {
+          // pdf's own page limit is an assertion, disabled in release builds.
+          if (context.pageNumber > 250) {
+            throw StateError(
+              'Le rapport dépasse 250 pages. Réduisez la période à exporter.',
+            );
+          }
+          return _footer(context, font);
+        },
         build: (context) {
           return [
             _coverHeader(
@@ -283,7 +293,7 @@ class TransactionExportService {
             pw.SizedBox(height: 14),
             _sectionTitle('Détail par type d opération', accent, boldFont),
             pw.SizedBox(height: 8),
-            _transactionsByType(
+            ..._transactionsByType(
               transactions: transactions,
               currency: currency,
               accounts: accounts,
@@ -808,44 +818,73 @@ class TransactionExportService {
   }) {
     final rows = <pw.TableRow>[
       pw.TableRow(
+        repeat: true,
         decoration: pw.BoxDecoration(color: accent),
-        children: ['Date', 'Type', 'Description', 'Compte', 'Categorie / Actif', 'Montant']
-            .map((text) => _tableHeaderCell(text, boldFont))
-            .toList(),
+        children: [
+          'Date',
+          'Type',
+          'Description',
+          'Compte',
+          'Categorie / Actif',
+          'Montant',
+        ].map((text) => _tableHeaderCell(text, boldFont)).toList(),
       ),
-      ...transactions.asMap().entries.map((entry) {
-        final index = entry.key;
-        final tx = entry.value;
-        final amountPrefix = tx.type == 'income' ? '+' : tx.type == 'expense' ? '-' : '';
-        final amountColor = tx.type == 'income'
-            ? const PdfColor.fromInt(0xFF16A34A)
-            : tx.type == 'expense'
-                ? const PdfColor.fromInt(0xFFDC2626)
-                : accent;
-
-        return pw.TableRow(
-          decoration: pw.BoxDecoration(
-            color: index.isEven ? PdfColors.white : const PdfColor.fromInt(0xFFF8FAFC),
-          ),
-          children: [
-            _tableCell(_dateFormat.format(tx.date), font),
-            _tableCell(_typeLabel(tx.type), font),
-            _tableCell(tx.description, font),
-            _tableCell(_accountLabel(tx, accounts), font),
-            _tableCell(_referenceLabel(tx, categories, investments), font),
-            _tableCell(
-              '$amountPrefix${tx.amount.abs().toStringAsFixed(2)} $currency',
-              boldFont,
-              color: amountColor,
-              alignRight: true,
-            ),
-          ],
-        );
-      }),
     ];
+    for (final entry in transactions.asMap().entries) {
+      final index = entry.key;
+      final tx = entry.value;
+      final amountPrefix = tx.type == 'income'
+          ? '+'
+          : tx.type == 'expense'
+          ? '-'
+          : '';
+      final amountColor = tx.type == 'income'
+          ? const PdfColor.fromInt(0xFF16A34A)
+          : tx.type == 'expense'
+          ? const PdfColor.fromInt(0xFFDC2626)
+          : accent;
+
+      final fields = [
+        splitReportText(tx.description),
+        splitReportText(_accountLabel(tx, accounts)),
+        splitReportText(_referenceLabel(tx, categories, investments)),
+      ];
+      final count = fields.map((field) => field.length).reduce(math.max);
+      for (var part = 0; part < count; part++) {
+        String cell(int field) =>
+            part < fields[field].length ? fields[field][part] : '';
+        rows.add(
+          pw.TableRow(
+            decoration: pw.BoxDecoration(
+              color: index.isEven
+                  ? PdfColors.white
+                  : const PdfColor.fromInt(0xFFF8FAFC),
+            ),
+            children: [
+              _tableCell(part == 0 ? _dateFormat.format(tx.date) : '', font),
+              _tableCell(part == 0 ? _typeLabel(tx.type) : '', font),
+              _tableCell(cell(0), font),
+              _tableCell(cell(1), font),
+              _tableCell(cell(2), font),
+              _tableCell(
+                part == 0
+                    ? '$amountPrefix${tx.amount.abs().toStringAsFixed(2)} $currency'
+                    : '',
+                boldFont,
+                color: amountColor,
+                alignRight: true,
+              ),
+            ],
+          ),
+        );
+      }
+    }
 
     return pw.Table(
-      border: pw.TableBorder.all(color: const PdfColor.fromInt(0xFFE5E7EB), width: 0.5),
+      border: pw.TableBorder.all(
+        color: const PdfColor.fromInt(0xFFE5E7EB),
+        width: 0.5,
+      ),
       columnWidths: const {
         0: pw.FixedColumnWidth(48),
         1: pw.FixedColumnWidth(62),
@@ -858,7 +897,7 @@ class TransactionExportService {
     );
   }
 
-  static pw.Widget _transactionsByType({
+  static List<pw.Widget> _transactionsByType({
     required List<TransactionModel> transactions,
     required String currency,
     required Map<String, String> accounts,
@@ -874,45 +913,53 @@ class TransactionExportService {
       final typed = transactions.where((tx) => tx.type == type).toList();
       if (typed.isEmpty) continue;
       final total = _sumByType(typed, type);
-      sections.add(
+      sections.addAll([
         pw.Container(
-          margin: const pw.EdgeInsets.only(bottom: 12),
-          child: pw.Column(
-            crossAxisAlignment: pw.CrossAxisAlignment.start,
+          margin: const pw.EdgeInsets.only(bottom: 6),
+          child: pw.Row(
+            mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
             children: [
-              pw.Row(
-                mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-                children: [
-                  pw.Text(
-                    '${_typeSectionLabel(type)} (${typed.length})',
-                    style: pw.TextStyle(font: boldFont, fontSize: 9.5, color: _typeColor(type, accent)),
-                  ),
-                  pw.Text(
-                    '${total.toStringAsFixed(2)} $currency',
-                    style: pw.TextStyle(font: boldFont, fontSize: 9, color: _typeColor(type, accent)),
-                  ),
-                ],
+              pw.Text(
+                '${_typeSectionLabel(type)} (${typed.length})',
+                style: pw.TextStyle(
+                  font: boldFont,
+                  fontSize: 9.5,
+                  color: _typeColor(type, accent),
+                ),
               ),
-              pw.SizedBox(height: 6),
-              _transactionTable(
-                transactions: typed,
-                currency: currency,
-                accounts: accounts,
-                categories: categories,
-                investments: investments,
-                font: font,
-                boldFont: boldFont,
-                accent: _typeColor(type, accent),
+              pw.Text(
+                '${total.toStringAsFixed(2)} $currency',
+                style: pw.TextStyle(
+                  font: boldFont,
+                  fontSize: 9,
+                  color: _typeColor(type, accent),
+                ),
               ),
             ],
           ),
         ),
-      );
+        // A Table must be a direct MultiPage child to resume between rows.
+        _transactionTable(
+          transactions: typed,
+          currency: currency,
+          accounts: accounts,
+          categories: categories,
+          investments: investments,
+          font: font,
+          boldFont: boldFont,
+          accent: _typeColor(type, accent),
+        ),
+        pw.SizedBox(height: 12),
+      ]);
     }
-    return pw.Column(children: sections);
+    return sections;
   }
 
-  static pw.Widget _sectionTitle(String text, PdfColor accent, pw.Font boldFont) {
+  static pw.Widget _sectionTitle(
+    String text,
+    PdfColor accent,
+    pw.Font boldFont,
+  ) {
     return pw.Row(
       children: [
         pw.Container(

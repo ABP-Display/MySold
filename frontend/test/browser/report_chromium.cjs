@@ -40,24 +40,35 @@ const server = createServer(async (req, res) => {
     });
     const send = (method, params={}) => new Promise((resolve,reject) => {
       const key = ++id;
-      pending.set(key, {resolve,reject});
+      const timeout = setTimeout(() => { pending.delete(key); reject(new Error(`${method} timed out`)); }, 15000);
+      pending.set(key, {
+        resolve: value => { clearTimeout(timeout); resolve(value); },
+        reject: error => { clearTimeout(timeout); reject(error); },
+      });
       socket.send(JSON.stringify({id:key, method, params}));
     });
     const evaluate = async expression => (await send('Runtime.evaluate', {
       expression, returnByValue:true,
     })).result.value;
     await send('Emulation.setDeviceMetricsOverride', {width:390,height:844,deviceScaleFactor:1,mobile:true});
-    await send('Page.navigate', {url:`http://127.0.0.1:${server.address().port}/`});
+    const expectError = process.env.REPORT_EXPECT_ERROR === '1';
+    await send('Page.navigate', {url:`http://127.0.0.1:${server.address().port}/${expectError ? '?scenario=january' : ''}`});
     let ready = false;
     for (let i=0; i<600; i++) {
       const error = await evaluate('document.body?.dataset.reportError');
+      if (expectError && error) {
+        assert.match(error, /more than 20 pages|won.t fit/);
+        console.log('Reproduced January pagination failure: ' + error.split('\n')[0]);
+        return;
+      }
       assert.ok(!error, error);
       ready = await evaluate('document.body?.dataset.reportReady === "true"');
       if (ready) break;
       await new Promise(resolve => setTimeout(resolve,100));
     }
     assert.ok(ready, 'Report fixture timed out');
-    for (const scenario of ['month','year','empty','single','negative']) {
+    assert.ok(!expectError, 'Expected the legacy January export to fail');
+    for (const scenario of ['month','year','empty','single','negative','january','february','long']) {
       const data = await evaluate(`document.body.dataset.pdf${scenario}`);
       const bytes = Buffer.from(data, 'base64');
       assert.equal(bytes.subarray(0,5).toString(), '%PDF-');

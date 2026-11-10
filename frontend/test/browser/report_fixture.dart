@@ -23,14 +23,55 @@ Future<void> main() async {
   await initializeDateFormatting('fr');
   runApp(const MaterialApp(home: ExportReportPage()));
   try {
-    for (final scenario in ['month', 'year', 'empty', 'single', 'negative']) {
-      final start = scenario == 'year' ? DateTime(2026) : DateTime(2026, 10);
-      final end = scenario == 'year'
+    final selected = Uri.base.queryParameters['scenario'];
+    for (final scenario
+        in selected == null
+            ? [
+                'month',
+                'year',
+                'empty',
+                'single',
+                'negative',
+                'january',
+                'february',
+                'long',
+              ]
+            : [selected]) {
+      final stress =
+          scenario == 'january' || scenario == 'february' || scenario == 'long';
+      final start = stress
+          ? DateTime(2026, scenario == 'february' ? 2 : 1)
+          : scenario == 'year'
+          ? DateTime(2026)
+          : DateTime(2026, 10);
+      final end = stress
+          ? DateTime(start.year, start.month + 1)
+          : scenario == 'year'
           ? DateTime(2027)
           : scenario == 'single'
           ? DateTime(2026, 10, 2)
           : DateTime(2026, 11);
-      final transactions = scenario == 'empty'
+      final transactions = scenario == 'long'
+          ? [
+              tx(start, 'expense', 125)
+                ..description =
+                    'DESCRIPTION-DEBUT\n${List.filled(100, 'Justificatif de paiement détaillé, référence bancaire et motif de la dépense.\n').join()}DESCRIPTION-FIN',
+            ]
+          : stress
+          ? [
+              tx(start, 'income', 5000),
+              for (var i = 0; i < 180; i++)
+                (tx(
+                    DateTime(start.year, start.month, 1 + i % 28),
+                    'expense',
+                    4.25 + i,
+                  )
+                  ..description =
+                      'CONTROLE-${i.toString().padLeft(3, '0')} - Paiement de contrôle'),
+              tx(start, 'investment', 500),
+              tx(start, 'transfer', 250),
+            ]
+          : scenario == 'empty'
           ? <TransactionModel>[]
           : [
                   tx(

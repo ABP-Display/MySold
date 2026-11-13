@@ -58,6 +58,7 @@ void main() async {
   try {
     await LocalAuth.instance.initialize();
   } catch (_) {
+    final strings = AppLocalizations(languageProvider.locale);
     runApp(
       MaterialApp(
         title: 'MySold',
@@ -72,15 +73,15 @@ void main() async {
                 children: [
                   const Icon(Icons.cloud_off_outlined, size: 40),
                   const SizedBox(height: 16),
-                  const Text(
-                    'Connexion à votre serveur MySold impossible.',
+                  Text(
+                    strings.t('Connexion à votre serveur MySold impossible.'),
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 16),
                   FilledButton.icon(
                     onPressed: main,
                     icon: const Icon(Icons.refresh),
-                    label: const Text('Réessayer'),
+                    label: Text(strings.t('Réessayer')),
                   ),
                 ],
               ),

@@ -272,6 +272,7 @@ class _ExportReportLoadingPageState extends State<ExportReportLoadingPage> {
       final references = context.read<UserDataProvider>();
       final currency = context.read<CurrencyProvider>().currency;
       final primaryColor = Theme.of(context).colorScheme.primary.value;
+      final locale = Localizations.localeOf(context).languageCode;
       final service = BudgetService(userId: uid);
 
       _step(0.18, context.tr('Chargement des references...'));
@@ -304,6 +305,7 @@ class _ExportReportLoadingPageState extends State<ExportReportLoadingPage> {
         primaryColor: primaryColor,
         periodStart: widget.range.start,
         periodEnd: widget.range.end,
+        locale: locale,
       );
 
       _step(0.92, context.tr('Enregistrement du fichier...'));
@@ -335,7 +337,7 @@ class _ExportReportLoadingPageState extends State<ExportReportLoadingPage> {
     final end = dateFormat.format(
       widget.range.end.subtract(const Duration(days: 1)),
     );
-    return 'MySold - Rapport complet - $start au $end';
+    return 'MySold - ${context.tr('Rapport complet')} - $start - $end';
   }
 
   @override

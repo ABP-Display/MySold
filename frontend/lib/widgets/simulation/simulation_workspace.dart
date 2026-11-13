@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:mysold/l10n/app_localizations.dart';
 import 'package:flutter/gestures.dart';
 import 'package:mysold/models/simulation_projection.dart';
 import 'package:mysold/widgets/app_design.dart';
@@ -91,15 +92,15 @@ class _SimulationWorkspaceState extends State<SimulationWorkspace> {
       extendBody: true,
       appBar: appPageBar(
         context,
-        leading: widget.withBack ? const BackButton() : null,
-        title: const Text('Simulation'),
+        leading: widget.withBack ? BackButton() : null,
+        title: Text(context.tr('Simulation')),
       ),
       bottomNavigationBar: ValueListenableBuilder<int>(
         valueListenable: _tabs,
         builder: (context, selected, _) => AppPageTabMenu(
-          key: const ValueKey('simulation-tabs'),
+          key: ValueKey('simulation-tabs'),
           keyPrefix: 'simulation',
-          labels: labels,
+          labels: labels.map(context.tr).toList(),
           icons: const [
             Icons.wallet_outlined,
             Icons.trending_up,
@@ -138,21 +139,25 @@ class _SimulationWorkspaceState extends State<SimulationWorkspace> {
     controller: controller,
     keyboardType: TextInputType.numberWithOptions(decimal: !integer),
     decoration: InputDecoration(
-      labelText: label,
+      labelText: context.tr(label),
       suffixText: suffix,
-      helperText: helper,
+      helperText: helper == null ? null : context.tr(helper),
       helperMaxLines: 3,
       errorMaxLines: 3,
     ),
     validator: (text) {
       final number = _parse(text ?? '');
       if (number == null || !number.isFinite)
-        return 'Saisissez un nombre valide.';
+        return context.tr('Saisissez un nombre valide.');
       if (number < min || number > max)
-        return 'Valeur attendue entre $min et $max.';
+        return context.trParams('Valeur attendue entre {min} et {max}.', {
+          'min': min,
+          'max': max,
+        });
       if (integer && number != number.roundToDouble())
-        return 'Saisissez un nombre entier.';
-      return extra?.call(number);
+        return context.tr('Saisissez un nombre entier.');
+      final error = extra?.call(number);
+      return error == null ? null : context.tr(error);
     },
   );
 
@@ -188,16 +193,18 @@ class _SimulationWorkspaceState extends State<SimulationWorkspace> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           _fields(fields),
-          const SizedBox(height: 24),
+          SizedBox(height: 24),
           FilledButton.icon(
             onPressed: calculate,
-            icon: const Icon(Icons.calculate_outlined, size: 20),
-            label: const Text('Calculer la simulation'),
+            icon: Icon(Icons.calculate_outlined, size: 20),
+            label: Text(context.tr('Calculer la simulation')),
           ),
           if (dirty) ...[
-            const SizedBox(height: 10),
+            SizedBox(height: 10),
             Text(
-              'Paramètres modifiés : recalculez pour actualiser le résultat.',
+              context.tr(
+                'Paramètres modifiés : recalculez pour actualiser le résultat.',
+              ),
               style: Theme.of(context).textTheme.bodySmall,
             ),
           ],
@@ -214,7 +221,7 @@ class _SimulationWorkspaceState extends State<SimulationWorkspace> {
   ) => Align(
     alignment: Alignment.topCenter,
     child: ConstrainedBox(
-      constraints: const BoxConstraints(maxWidth: 1040),
+      constraints: BoxConstraints(maxWidth: 1040),
       child: ListView(
         dragStartBehavior: DragStartBehavior.down,
         key: PageStorageKey(key),
@@ -230,7 +237,11 @@ class _SimulationWorkspaceState extends State<SimulationWorkspace> {
               ]),
         ),
         children: [
-          PageIntro(title: title, subtitle: subtitle, eyebrow: 'PROJECTION'),
+          PageIntro(
+            title: context.tr(title),
+            subtitle: context.tr(subtitle),
+            eyebrow: context.tr('PROJECTION'),
+          ),
           for (final child in children)
             Padding(padding: const EdgeInsets.only(bottom: 20), child: child),
         ],
@@ -243,27 +254,34 @@ class _SimulationWorkspaceState extends State<SimulationWorkspace> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text(title, style: Theme.of(context).textTheme.titleLarge),
-            const SizedBox(height: 20),
+            Text(
+              context.tr(title),
+              style: Theme.of(context).textTheme.titleLarge,
+            ),
+            SizedBox(height: 20),
             _fields([
               for (final metric in metrics)
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      metric.$1,
+                      context.tr(metric.$1),
                       style: Theme.of(context).textTheme.bodySmall,
                     ),
-                    const SizedBox(height: 6),
+                    SizedBox(height: 6),
                     SelectableText(
-                      simulationMoney(metric.$2, widget.currency),
+                      simulationMoney(
+                        metric.$2,
+                        widget.currency,
+                        locale: Localizations.localeOf(context).toString(),
+                      ),
                       style: Theme.of(context).textTheme.headlineSmall
                           ?.copyWith(fontWeight: FontWeight.w600),
                     ),
                   ],
                 ),
             ]),
-            const SizedBox(height: 24),
+            SizedBox(height: 24),
             chart,
           ],
         ),
@@ -295,14 +313,18 @@ class _SimulationWorkspaceState extends State<SimulationWorkspace> {
           SimulationLineChart(
             currency: widget.currency,
             series: [
-              SimulationSeries('Épargne', _budget.savings, colors.primary),
               SimulationSeries(
-                'Revenus cumulés',
+                context.tr('Épargne'),
+                _budget.savings,
+                colors.primary,
+              ),
+              SimulationSeries(
+                context.tr('Revenus cumulés'),
                 _budget.income,
                 colors.tertiary,
               ),
               SimulationSeries(
-                'Dépenses cumulées',
+                context.tr('Dépenses cumulées'),
                 _budget.expenses,
                 colors.error,
               ),
@@ -332,15 +354,18 @@ class _SimulationWorkspaceState extends State<SimulationWorkspace> {
           [
             _field('Versement périodique', _payment, suffix: widget.currency),
             AppSelectField<int>(
-              label: 'Fréquence des versements',
+              label: context.tr('Fréquence des versements'),
               icon: Icons.repeat,
               value: _frequency,
-              options: const [
-                AppSelectOption(value: 365, label: 'Chaque jour'),
-                AppSelectOption(value: 52, label: 'Chaque semaine'),
-                AppSelectOption(value: 24, label: 'Deux fois par mois'),
-                AppSelectOption(value: 12, label: 'Chaque mois'),
-                AppSelectOption(value: 1, label: 'Chaque année'),
+              options: [
+                AppSelectOption(value: 365, label: context.tr('Chaque jour')),
+                AppSelectOption(value: 52, label: context.tr('Chaque semaine')),
+                AppSelectOption(
+                  value: 24,
+                  label: context.tr('Deux fois par mois'),
+                ),
+                AppSelectOption(value: 12, label: context.tr('Chaque mois')),
+                AppSelectOption(value: 1, label: context.tr('Chaque année')),
               ],
               onChanged: (value) => setState(() {
                 _frequency = value!;
@@ -369,12 +394,12 @@ class _SimulationWorkspaceState extends State<SimulationWorkspace> {
             annual: true,
             series: [
               SimulationSeries(
-                'Versements cumulés',
+                context.tr('Versements cumulés'),
                 _invest.contributions,
                 colors.secondary,
               ),
               SimulationSeries(
-                'Capital projeté',
+                context.tr('Capital projeté'),
                 _invest.value,
                 colors.primary,
               ),
@@ -386,7 +411,9 @@ class _SimulationWorkspaceState extends State<SimulationWorkspace> {
           ],
         ),
         Text(
-          'Hypothèse : taux annuel nominal constant, capitalisation à chaque versement et versements en fin de période. Projection hors fiscalité et frais ; le rendement réel peut varier.',
+          context.tr(
+            'Hypothèse : taux annuel nominal constant, capitalisation à chaque versement et versements en fin de période. Projection hors fiscalité et frais ; le rendement réel peut varier.',
+          ),
           style: Theme.of(context).textTheme.bodySmall,
         ),
       ],
@@ -456,26 +483,30 @@ class _SimulationWorkspaceState extends State<SimulationWorkspace> {
             currency: widget.currency,
             parts: [
               SimulationCostPart(
-                'Apport personnel',
+                context.tr('Apport personnel'),
                 _loan.deposit,
                 colors.tertiary,
               ),
               SimulationCostPart(
-                'Capital emprunté',
+                context.tr('Capital emprunté'),
                 _loan.principal,
                 colors.primary,
               ),
               SimulationCostPart(
-                'Intérêts',
+                context.tr('Intérêts'),
                 _loan.interest,
-                dark ? const Color(0xFFF1B86A) : const Color(0xFF9C6100),
+                dark ? Color(0xFFF1B86A) : Color(0xFF9C6100),
               ),
               SimulationCostPart(
-                'Assurance',
+                context.tr('Assurance'),
                 _loan.insurance,
-                dark ? const Color(0xFFBCA8EB) : const Color(0xFF7254AD),
+                dark ? Color(0xFFBCA8EB) : Color(0xFF7254AD),
               ),
-              SimulationCostPart('Frais renseignés', _loan.fees, colors.error),
+              SimulationCostPart(
+                context.tr('Frais renseignés'),
+                _loan.fees,
+                colors.error,
+              ),
             ],
           ),
           [
@@ -486,7 +517,9 @@ class _SimulationWorkspaceState extends State<SimulationWorkspace> {
           ],
         ),
         Text(
-          'Calcul à taux fixe nominal avec mensualités constantes. L’assurance est calculée sur le capital initial. Le total inclut uniquement les frais renseignés ; les montants affichés sont arrondis au centime.',
+          context.tr(
+            'Calcul à taux fixe nominal avec mensualités constantes. L’assurance est calculée sur le capital initial. Le total inclut uniquement les frais renseignés ; les montants affichés sont arrondis au centime.',
+          ),
           style: Theme.of(context).textTheme.bodySmall,
         ),
       ],

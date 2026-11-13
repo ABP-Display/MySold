@@ -20,6 +20,7 @@ TransactionModel tx(DateTime date, String type, double amount) =>
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  final locale = Uri.base.queryParameters['lang'] ?? 'fr';
   await initializeDateFormatting('fr');
   runApp(const MaterialApp(home: ExportReportPage()));
   try {
@@ -100,6 +101,7 @@ Future<void> main() async {
         investments: {},
         periodStart: start,
         periodEnd: end,
+        locale: locale,
       );
       web.document.body!.dataset['pdf$scenario'] = base64Encode(bytes);
     }

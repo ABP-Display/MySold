@@ -3,6 +3,8 @@ String? monthlyAnalyticsText(String key, String language) {
   return column == null ? null : _texts[key]?[column];
 }
 
+Iterable<String> get monthlyAnalyticsKeys => _texts.keys;
+
 const _texts = <String, List<String>>{
   'Retourner pour masquer': [
     'Turn to hide',

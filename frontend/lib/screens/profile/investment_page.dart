@@ -108,7 +108,10 @@ class _InvestmentPageState extends State<InvestmentPage>
         return AlertDialog(
           title: Text(context.tr('Supprimer l investissement')),
           content: Text(
-            'Supprimer "${investment.name}" ? Les transactions existantes ne seront pas supprimees.',
+            context.trParams(
+              'Supprimer « {name} » ? Les transactions existantes ne seront pas supprimées.',
+              {'name': investment.name},
+            ),
           ),
           actions: [
             TextButton(

@@ -346,7 +346,7 @@ class _MonthManagerState extends State<MonthManagerScreen> {
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     Text(
-                      'Filtres',
+                      _t('Filtres'),
                       style: Theme.of(context).textTheme.titleLarge?.copyWith(
                         fontWeight: FontWeight.w600,
                       ),
@@ -498,9 +498,11 @@ class _MonthManagerState extends State<MonthManagerScreen> {
                             );
                             if (min != null && max != null && min > max) {
                               ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
+                                SnackBar(
                                   content: Text(
-                                    'Le montant min doit etre inferieur au max.',
+                                    _t(
+                                      'Le montant minimum doit être inférieur au maximum.',
+                                    ),
                                   ),
                                 ),
                               );
@@ -591,7 +593,7 @@ class _MonthManagerState extends State<MonthManagerScreen> {
       chips.add(
         InputChip(
           label: Text(
-            'Tri: ${_sortField == 'amount' ? 'montant' : 'date'} ${_sortAscending ? 'croissant' : 'decroissant'}',
+            '${_t('Tri')}: ${_t(_sortField == 'amount' ? 'Montant' : 'Date')} · ${_t(_sortAscending ? 'Ordre croissant' : 'Ordre decroissant')}',
           ),
           avatar: const Icon(Icons.sort_rounded, size: 18),
           onDeleted: () => setState(() {

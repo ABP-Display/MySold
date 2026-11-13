@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:mysold/l10n/app_localizations.dart';
 import 'package:mysold/widgets/app_design.dart';
 import 'package:mysold/widgets/app_selection_button.dart';
 
@@ -42,7 +43,7 @@ class AppPageTabMenu extends StatelessWidget {
     for (final label in labels) {
       final painter = TextPainter(
         text: TextSpan(
-          text: label,
+          text: context.tr(label),
           style: Theme.of(context).textTheme.labelLarge!.merge(_style),
         ),
         textDirection: Directionality.of(context),
@@ -67,6 +68,7 @@ class AppPageTabMenu extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final labels = this.labels.map(context.tr).toList();
     if (MediaQuery.viewInsetsOf(context).bottom > 0)
       return const SizedBox.shrink();
     final height = heightOf(context, labels, scrollable: scrollable);

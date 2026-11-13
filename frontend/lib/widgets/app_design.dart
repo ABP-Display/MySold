@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:mysold/l10n/app_localizations.dart';
 import 'package:flutter/gestures.dart';
 
 abstract final class AppDesign {
@@ -81,7 +82,7 @@ AppBar appPageBar(
   final style = AppDesign.pageTitle(context);
   final measurement =
       TextPainter(
-        text: TextSpan(text: title.data, style: style),
+        text: TextSpan(text: context.tr(title.data ?? ''), style: style),
         textDirection: Directionality.of(context),
         textScaler: MediaQuery.textScalerOf(context),
         locale: Localizations.maybeLocaleOf(context),
@@ -98,7 +99,7 @@ AppBar appPageBar(
     title: Semantics(
       header: true,
       child: Text(
-        title.data!,
+        context.tr(title.data!),
         key: title.key,
         style: style,
         softWrap: true,
@@ -144,7 +145,7 @@ class PageIntro extends StatelessWidget {
           final heading = Semantics(
             header: true,
             child: Text(
-              title,
+              context.tr(title),
               key: titleKey,
               style: AppDesign.pageTitle(context),
             ),
@@ -154,7 +155,7 @@ class PageIntro extends StatelessWidget {
             children: [
               if (eyebrow != null) ...[
                 Text(
-                  eyebrow!.toUpperCase(),
+                  context.tr(eyebrow!).toUpperCase(),
                   style: TextStyle(
                     color: colors.primary,
                     fontSize: 10,
@@ -185,7 +186,7 @@ class PageIntro extends StatelessWidget {
               ],
               const SizedBox(height: 8),
               Text(
-                subtitle,
+                context.tr(subtitle),
                 style: TextStyle(
                   color: colors.onSurfaceVariant,
                   height: 1.6,

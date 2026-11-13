@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:mysold/widgets/graphiques/chart_info_region.dart';
 import 'package:mysold/widgets/graphiques/viewport_bar_chart.dart';
 import 'package:flutter/material.dart';
+import 'package:mysold/l10n/app_localizations.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:provider/provider.dart';
 import 'package:mysold/models/transaction_model.dart';
@@ -108,16 +109,16 @@ class MonthGraph extends StatelessWidget {
     final filtered = txs.where((t) => t.type == 'transfer').toList();
 
     if (filtered.isEmpty) {
-      return const Padding(
-        padding: EdgeInsets.all(16),
-        child: Text("Aucune donnée pour ce graphique"),
+      return Padding(
+        padding: const EdgeInsets.all(16),
+        child: Text(context.tr('Aucune donnée pour ce graphique')),
       );
     }
 
     final data = <String, double>{};
     for (var tx in filtered) {
-      final from = accountIds[tx.fromAccountId] ?? "De";
-      final to = accountIds[tx.toAccountId] ?? "À";
+      final from = accountIds[tx.fromAccountId] ?? context.tr('Compte source');
+      final to = accountIds[tx.toAccountId] ?? context.tr('Compte destination');
       final label = "$from → $to";
       data[label] = (data[label] ?? 0) + tx.amount.abs();
     }
@@ -172,15 +173,16 @@ class MonthGraph extends StatelessWidget {
     final filtered = txs.where((t) => t.type == 'investment').toList();
 
     if (filtered.isEmpty) {
-      return const Padding(
-        padding: EdgeInsets.all(16),
-        child: Text("Aucune donnée pour ce graphique"),
+      return Padding(
+        padding: const EdgeInsets.all(16),
+        child: Text(context.tr('Aucune donnée pour ce graphique')),
       );
     }
 
     final data = <String, double>{};
     for (var tx in filtered) {
-      final name = investmentIds[tx.investmentId] ?? "Investissement";
+      final name =
+          investmentIds[tx.investmentId] ?? context.tr('Investissement');
       data[name] = (data[name] ?? 0) + tx.amount.abs();
     }
 
@@ -233,9 +235,9 @@ class MonthGraph extends StatelessWidget {
     final filtered = txs.where((t) => t.type == type).toList();
 
     if (filtered.isEmpty) {
-      return const Padding(
-        padding: EdgeInsets.all(16),
-        child: Text("Aucune donnée pour ce graphique"),
+      return Padding(
+        padding: const EdgeInsets.all(16),
+        child: Text(context.tr('Aucune donnée pour ce graphique')),
       );
     }
 
@@ -296,9 +298,9 @@ class MonthGraph extends StatelessWidget {
     final filtered = txs.where((t) => t.type == 'income').toList();
 
     if (filtered.isEmpty) {
-      return const Padding(
-        padding: EdgeInsets.all(16),
-        child: Text("Aucune donnée pour ce graphique"),
+      return Padding(
+        padding: const EdgeInsets.all(16),
+        child: Text(context.tr('Aucune donnée pour ce graphique')),
       );
     }
 

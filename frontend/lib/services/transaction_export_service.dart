@@ -1,9 +1,13 @@
 import 'dart:convert';
+import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:file_saver/file_saver.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter/widgets.dart' show Locale;
+import 'package:mysold/l10n/app_localizations.dart';
+import 'package:intl/date_symbol_data_local.dart';
 import 'package:intl/intl.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
@@ -13,8 +17,14 @@ import 'package:mysold/services/report_timeline.dart';
 import 'package:mysold/services/report_text.dart';
 
 class TransactionExportService {
-  static final DateFormat _dateFormat = DateFormat('dd/MM/yyyy');
-  static final DateFormat _generatedAtFormat = DateFormat('dd/MM/yyyy HH:mm');
+  // Each generation owns its locale, including overlapping web exports.
+  static const _localeKey = #reportLocale;
+  static String get _locale => Zone.current[_localeKey] as String? ?? 'fr';
+  static String _t(String key) => AppLocalizations(Locale(_locale)).t(key);
+  static DateFormat get _dateFormat => DateFormat.yMd(_locale);
+  static DateFormat get _generatedAtFormat => DateFormat.yMd(_locale).add_Hm();
+  static String _money(double value, String currency, [int decimals = 2]) =>
+      '${NumberFormat.decimalPatternDigits(locale: _locale, decimalDigits: decimals).format(value)}${currency.isEmpty ? '' : ' $currency'}';
 
   static Future<String?> saveCsv({
     required List<TransactionModel> transactions,
@@ -50,22 +60,17 @@ class TransactionExportService {
     required Map<String, Map<String, dynamic>> categories,
     required Map<String, String> investments,
     int? primaryColor,
+    String locale = 'fr',
   }) async {
-    final font = await _loadPdfFont('assets/fonts/Roboto-Regular.ttf');
-    final boldFont = await _loadPdfFont('assets/fonts/Roboto-Bold.ttf');
-    final logo = await _loadImage('assets/icons/app_icon_circle.png');
-    final accent = _readableAccent(primaryColor ?? 0xFF2563EB);
-    final bytes = await _buildPdfBytes(
+    final bytes = await buildPdfBytesInBackground(
       transactions: transactions,
       title: title,
       currency: currency,
       accounts: accounts,
       categories: categories,
       investments: investments,
-      font: font,
-      boldFont: boldFont,
-      logo: logo,
-      accent: accent,
+      primaryColor: primaryColor,
+      locale: locale,
     );
     final baseName = _safeName(title);
 
@@ -87,11 +92,23 @@ class TransactionExportService {
     int? primaryColor,
     DateTime? periodStart,
     DateTime? periodEnd,
+    String locale = 'fr',
   }) async {
+    final language = locale.split(RegExp('[-_]')).first;
+    final code =
+        AppLocalizations.supportedLocales.any((l) => l.languageCode == language)
+        ? language
+        : 'fr';
     final regularFont = await rootBundle.load(
-      'assets/fonts/Roboto-Regular.ttf',
+      code == 'ja'
+          ? 'assets/fonts/NotoSansJP-Regular.ttf'
+          : 'assets/fonts/Roboto-Regular.ttf',
     );
-    final boldFont = await rootBundle.load('assets/fonts/Roboto-Bold.ttf');
+    final boldFont = await rootBundle.load(
+      code == 'ja'
+          ? 'assets/fonts/NotoSansJP-Bold.ttf'
+          : 'assets/fonts/Roboto-Bold.ttf',
+    );
     Uint8List? logoBytes;
     try {
       final logo = await rootBundle.load('assets/icons/app_icon_circle.png');
@@ -104,6 +121,7 @@ class TransactionExportService {
     }
 
     return compute(_buildPdfBytesIsolate, {
+      'locale': code,
       'transactions': transactions.map(_transactionToPayload).toList(),
       'title': title,
       'currency': currency,
@@ -291,7 +309,7 @@ class TransactionExportService {
               ),
             ],
             pw.SizedBox(height: 14),
-            _sectionTitle('Détail par type d opération', accent, boldFont),
+            _sectionTitle('Détail par type d’opération', accent, boldFont),
             pw.SizedBox(height: 8),
             ..._transactionsByType(
               transactions: transactions,
@@ -373,7 +391,7 @@ class TransactionExportService {
             ),
             yAxis: pw.FixedAxis(
               ticks,
-              format: (v) => NumberFormat.compact(locale: 'fr').format(v),
+              format: (v) => NumberFormat.compact(locale: _locale).format(v),
               textStyle: const pw.TextStyle(fontSize: 8),
               divisions: true,
               divisionsColor: PdfColors.grey200,
@@ -404,7 +422,7 @@ class TransactionExportService {
         _sectionTitle('Évolution des transactions', accent, boldFont),
         pw.SizedBox(height: 6),
         pw.Text(
-          '${timeline.monthly ? 'Flux par mois' : 'Flux par jour'} ($currency) - opérations enregistrées',
+          '${_t(timeline.monthly ? 'Flux par mois' : 'Flux par jour')} ($currency) - ${_t('Opérations enregistrées')}',
           style: const pw.TextStyle(fontSize: 9, color: PdfColors.blueGrey600),
         ),
         pw.SizedBox(height: 10),
@@ -418,7 +436,10 @@ class TransactionExportService {
                 children: [
                   pw.Container(width: 12, height: 3, color: entry.value),
                   pw.SizedBox(width: 4),
-                  pw.Text(entry.key, style: const pw.TextStyle(fontSize: 8)),
+                  pw.Text(
+                    _t(entry.key),
+                    style: const pw.TextStyle(fontSize: 8),
+                  ),
                 ],
               ),
           ],
@@ -427,15 +448,16 @@ class TransactionExportService {
         chart(flows, colors.values.toList()),
         pw.SizedBox(height: 16),
         pw.Text(
-          'Reste disponible cumulé ($currency)',
+          '${_t('Reste disponible cumulé')} ($currency)',
           style: pw.TextStyle(font: boldFont, fontSize: 10),
         ),
         pw.SizedBox(height: 6),
         chart([available], [PdfColors.blueGrey800]),
         pw.SizedBox(height: 6),
         pw.Text(
-          'Revenus - dépenses - investissements depuis le début de la période. '
-          'Les transferts sont exclus. Ce cumul ne représente pas le solde des comptes.',
+          _t(
+            'Revenus - dépenses - investissements depuis le début de la période. Les transferts sont exclus. Ce cumul ne représente pas le solde des comptes.',
+          ),
           style: const pw.TextStyle(fontSize: 8, color: PdfColors.blueGrey600),
         ),
       ],
@@ -460,11 +482,7 @@ class TransactionExportService {
         crossAxisAlignment: pw.CrossAxisAlignment.center,
         children: [
           if (logo != null)
-            pw.Container(
-              width: 46,
-              height: 46,
-              child: pw.Image(logo),
-            ),
+            pw.Container(width: 46, height: 46, child: pw.Image(logo)),
           if (logo != null) pw.SizedBox(width: 12),
           pw.Expanded(
             child: pw.Column(
@@ -546,7 +564,14 @@ class TransactionExportService {
         pw.SizedBox(height: 8),
         pw.Row(
           children: [
-            _summaryCard('Investissements', investment, currency, accent, font, boldFont),
+            _summaryCard(
+              'Investissements',
+              investment,
+              currency,
+              accent,
+              font,
+              boldFont,
+            ),
             pw.SizedBox(width: 8),
             _summaryCard(
               'Transferts',
@@ -558,7 +583,7 @@ class TransactionExportService {
             ),
             pw.SizedBox(width: 8),
             _summaryCard(
-              'Operations',
+              'Opérations',
               transactionCount.toDouble(),
               '',
               const PdfColor.fromInt(0xFF64748B),
@@ -602,13 +627,17 @@ class TransactionExportService {
           crossAxisAlignment: pw.CrossAxisAlignment.start,
           children: [
             pw.Text(
-              label,
+              _t(label),
               style: pw.TextStyle(font: font, fontSize: 8, color: mutedColor),
             ),
             pw.SizedBox(height: 6),
             pw.Text(
-              '${value.toStringAsFixed(decimals)}${currency.isEmpty ? '' : ' $currency'}',
-              style: pw.TextStyle(font: boldFont, fontSize: 12, color: textColor),
+              _money(value, currency, decimals),
+              style: pw.TextStyle(
+                font: boldFont,
+                fontSize: 12,
+                color: textColor,
+              ),
             ),
           ],
         ),
@@ -631,13 +660,16 @@ class TransactionExportService {
     final spentRatio = hasIncome
         ? (used / income).clamp(0.0, 1.0).toDouble()
         : used > 0
-            ? 1.0
-            : 0.0;
+        ? 1.0
+        : 0.0;
     final percentageLabel = hasIncome
-        ? '${((used / income) * 100).toStringAsFixed(1)} %'
+        ? NumberFormat.decimalPercentPattern(
+            locale: _locale,
+            decimalDigits: 1,
+          ).format(used / income)
         : used > 0
-        ? 'Sans revenu'
-            : '0.0 %';
+        ? _t('Sans revenu')
+        : '0.0 %';
     final isOverBudget = hasIncome ? used > income : used > 0;
 
     return pw.Container(
@@ -654,7 +686,7 @@ class TransactionExportService {
             mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
             children: [
               pw.Text(
-                'Utilisation du revenu disponible',
+                _t('Utilisation du revenu disponible'),
                 style: pw.TextStyle(
                   font: boldFont,
                   fontSize: 9,
@@ -677,13 +709,23 @@ class TransactionExportService {
           _progressBar(spentRatio, const PdfColor.fromInt(0xFFDC2626)),
           pw.SizedBox(height: 8),
           pw.Text(
-            'Dépenses: ${expense.toStringAsFixed(2)} $currency  |  Investissements: ${investment.toStringAsFixed(2)} $currency',
-            style: pw.TextStyle(font: font, fontSize: 8, color: const PdfColor.fromInt(0xFF64748B)),
+            '${_t('Dépenses')}: ${_money(expense, currency)}  |  ${_t('Investissements')}: ${_money(investment, currency)}',
+            style: pw.TextStyle(
+              font: font,
+              fontSize: 8,
+              color: const PdfColor.fromInt(0xFF64748B),
+            ),
           ),
           pw.SizedBox(height: 4),
           pw.Text(
-            'Solde net: ${net.toStringAsFixed(2)} $currency  |  Reste disponible: ${available.toStringAsFixed(2)} $currency',
-            style: pw.TextStyle(font: boldFont, fontSize: 8, color: available >= 0 ? const PdfColor.fromInt(0xFF334155) : const PdfColor.fromInt(0xFFDC2626)),
+            '${_t('Solde net')}: ${_money(net, currency)}  |  ${_t('Reste disponible')}: ${_money(available, currency)}',
+            style: pw.TextStyle(
+              font: boldFont,
+              fontSize: 8,
+              color: available >= 0
+                  ? const PdfColor.fromInt(0xFF334155)
+                  : const PdfColor.fromInt(0xFFDC2626),
+            ),
           ),
         ],
       ),
@@ -734,8 +776,12 @@ class TransactionExportService {
                 pw.SizedBox(
                   width: 86,
                   child: pw.Text(
-                    entry.key,
-                    style: pw.TextStyle(font: boldFont, fontSize: 8, color: const PdfColor.fromInt(0xFF111827)),
+                    _t(entry.key),
+                    style: pw.TextStyle(
+                      font: boldFont,
+                      fontSize: 8,
+                      color: const PdfColor.fromInt(0xFF111827),
+                    ),
                   ),
                 ),
                 pw.Expanded(child: _progressBar(ratio, color)),
@@ -743,9 +789,13 @@ class TransactionExportService {
                 pw.SizedBox(
                   width: 72,
                   child: pw.Text(
-                    '${entry.value.toStringAsFixed(2)} $currency',
+                    _money(entry.value, currency),
                     textAlign: pw.TextAlign.right,
-                    style: pw.TextStyle(font: boldFont, fontSize: 8, color: color),
+                    style: pw.TextStyle(
+                      font: boldFont,
+                      fontSize: 8,
+                      color: color,
+                    ),
                   ),
                 ),
               ],
@@ -777,7 +827,9 @@ class TransactionExportService {
       ),
       child: pw.Column(
         children: topEntries.map((entry) {
-          final ratio = totalExpense <= 0 ? 0.0 : (entry.value / totalExpense).clamp(0.0, 1.0);
+          final ratio = totalExpense <= 0
+              ? 0.0
+              : (entry.value / totalExpense).clamp(0.0, 1.0);
           return pw.Padding(
             padding: const pw.EdgeInsets.only(bottom: 8),
             child: pw.Column(
@@ -788,11 +840,19 @@ class TransactionExportService {
                   children: [
                     pw.Text(
                       entry.key,
-                      style: pw.TextStyle(font: font, fontSize: 8.5, color: const PdfColor.fromInt(0xFF111827)),
+                      style: pw.TextStyle(
+                        font: font,
+                        fontSize: 8.5,
+                        color: const PdfColor.fromInt(0xFF111827),
+                      ),
                     ),
                     pw.Text(
-                      '${entry.value.toStringAsFixed(2)} $currency',
-                      style: pw.TextStyle(font: boldFont, fontSize: 8, color: const PdfColor.fromInt(0xFF64748B)),
+                      _money(entry.value, currency),
+                      style: pw.TextStyle(
+                        font: boldFont,
+                        fontSize: 8,
+                        color: const PdfColor.fromInt(0xFF64748B),
+                      ),
                     ),
                   ],
                 ),
@@ -825,7 +885,7 @@ class TransactionExportService {
           'Type',
           'Description',
           'Compte',
-          'Categorie / Actif',
+          'Catégorie / Actif',
           'Montant',
         ].map((text) => _tableHeaderCell(text, boldFont)).toList(),
       ),
@@ -868,7 +928,7 @@ class TransactionExportService {
               _tableCell(cell(2), font),
               _tableCell(
                 part == 0
-                    ? '$amountPrefix${tx.amount.abs().toStringAsFixed(2)} $currency'
+                    ? '$amountPrefix${_money(tx.amount.abs(), currency)}'
                     : '',
                 boldFont,
                 color: amountColor,
@@ -928,7 +988,7 @@ class TransactionExportService {
                 ),
               ),
               pw.Text(
-                '${total.toStringAsFixed(2)} $currency',
+                _money(total, currency),
                 style: pw.TextStyle(
                   font: boldFont,
                   fontSize: 9,
@@ -972,7 +1032,7 @@ class TransactionExportService {
         ),
         pw.SizedBox(width: 6),
         pw.Text(
-          text,
+          _t(text),
           style: pw.TextStyle(
             font: boldFont,
             fontSize: 11,
@@ -993,7 +1053,10 @@ class TransactionExportService {
         ),
         pw.Expanded(
           flex: ((1 - safeRatio) * 1000).round().clamp(1, 1000).toInt(),
-          child: pw.Container(height: 6, color: const PdfColor.fromInt(0xFFE5E7EB)),
+          child: pw.Container(
+            height: 6,
+            color: const PdfColor.fromInt(0xFFE5E7EB),
+          ),
         ),
       ],
     );
@@ -1003,8 +1066,12 @@ class TransactionExportService {
     return pw.Padding(
       padding: const pw.EdgeInsets.symmetric(horizontal: 5, vertical: 6),
       child: pw.Text(
-        text,
-        style: pw.TextStyle(font: boldFont, fontSize: 7.5, color: PdfColors.white),
+        _t(text),
+        style: pw.TextStyle(
+          font: boldFont,
+          fontSize: 7.5,
+          color: PdfColors.white,
+        ),
       ),
     );
   }
@@ -1033,12 +1100,22 @@ class TransactionExportService {
           mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
           children: [
             pw.Text(
-              'Genere par MySold - ${_generatedAtFormat.format(DateTime.now())}',
-              style: pw.TextStyle(font: font, fontSize: 7, color: const PdfColor.fromInt(0xFF64748B)),
+              '${_t('Généré par MySold')} - ${_generatedAtFormat.format(DateTime.now())}',
+              style: pw.TextStyle(
+                font: font,
+                fontSize: 7,
+                color: const PdfColor.fromInt(0xFF64748B),
+              ),
             ),
             pw.Text(
-              'Page ${context.pageNumber} / ${context.pagesCount}',
-              style: pw.TextStyle(font: font, fontSize: 7, color: const PdfColor.fromInt(0xFF64748B)),
+              _t('Page {page} / {total}')
+                  .replaceAll('{page}', '${context.pageNumber}')
+                  .replaceAll('{total}', '${context.pagesCount}'),
+              style: pw.TextStyle(
+                font: font,
+                fontSize: 7,
+                color: const PdfColor.fromInt(0xFF64748B),
+              ),
             ),
           ],
         ),
@@ -1091,7 +1168,8 @@ class TransactionExportService {
   ) {
     final totals = <String, double>{};
     for (final tx in transactions.where((tx) => tx.type == 'expense')) {
-      final category = categories[tx.categoryId]?['name']?.toString() ?? 'Autre';
+      final category =
+          categories[tx.categoryId]?['name']?.toString() ?? _t('Autre');
       totals[category] = (totals[category] ?? 0) + tx.amount.abs();
     }
     return totals;
@@ -1101,7 +1179,7 @@ class TransactionExportService {
     TransactionModel tx,
     Map<String, String> accounts,
   ) {
-    final from = accounts[tx.fromAccountId] ?? 'Compte inconnu';
+    final from = accounts[tx.fromAccountId] ?? _t('Compte inconnu');
     final to = accounts[tx.toAccountId] ?? '';
     if (tx.type == 'transfer' || tx.type == 'investment') {
       return to.isEmpty ? from : '$from -> $to';
@@ -1115,7 +1193,7 @@ class TransactionExportService {
     Map<String, String> investments,
   ) {
     if (tx.type == 'investment') {
-      return investments[tx.investmentId] ?? 'Investissement';
+      return investments[tx.investmentId] ?? _t('Investissement');
     }
     return categories[tx.categoryId]?['name']?.toString() ?? '';
   }
@@ -1123,13 +1201,13 @@ class TransactionExportService {
   static String _typeLabel(String type) {
     switch (type) {
       case 'income':
-        return 'Revenu';
+        return _t('Revenu');
       case 'expense':
-        return 'Dépense';
+        return _t('Dépense');
       case 'investment':
-        return 'Invest.';
+        return _locale == 'fr' ? 'Invest.' : _t('Investissement');
       case 'transfer':
-        return 'Transfert';
+        return _t('Transfert');
       default:
         return type;
     }
@@ -1138,13 +1216,13 @@ class TransactionExportService {
   static String _typeSectionLabel(String type) {
     switch (type) {
       case 'income':
-        return 'Revenus';
+        return _t('Revenus');
       case 'expense':
-        return 'Dépenses';
+        return _t('Dépenses');
       case 'investment':
-        return 'Investissements';
+        return _t('Investissements');
       case 'transfer':
-        return 'Transferts';
+        return _t('Transferts');
       default:
         return type;
     }
@@ -1189,22 +1267,6 @@ class TransactionExportService {
     return '"$escaped"';
   }
 
-  static Future<pw.Font> _loadPdfFont(String assetPath) async {
-    final data = await rootBundle.load(assetPath);
-    return pw.Font.ttf(data);
-  }
-
-  static Future<pw.ImageProvider?> _loadImage(String assetPath) async {
-    try {
-      final data = await rootBundle.load(assetPath);
-      return pw.MemoryImage(
-        data.buffer.asUint8List(data.offsetInBytes, data.lengthInBytes),
-      );
-    } catch (_) {
-      return null;
-    }
-  }
-
   static PdfColor _readableAccent(int value) {
     final rgb = value & 0x00FFFFFF;
     final red = (rgb >> 16) & 0xFF;
@@ -1230,41 +1292,44 @@ class TransactionExportService {
   }
 }
 
-Future<Uint8List> _buildPdfBytesIsolate(Map<String, dynamic> payload) {
+Future<Uint8List> _buildPdfBytesIsolate(Map<String, dynamic> payload) async {
+  final locale = payload['locale'] as String? ?? 'fr';
+  await initializeDateFormatting(locale);
   final transactions = (payload['transactions'] as List)
       .cast<Map<dynamic, dynamic>>()
       .map(TransactionExportService._transactionFromPayload)
       .toList();
   final accounts = Map<String, String>.from(payload['accounts'] as Map);
   final categories = (payload['categories'] as Map).map(
-    (key, value) => MapEntry(
-      key.toString(),
-      Map<String, dynamic>.from(value as Map),
-    ),
+    (key, value) =>
+        MapEntry(key.toString(), Map<String, dynamic>.from(value as Map)),
   );
   final investments = Map<String, String>.from(payload['investments'] as Map);
   final regularFontBytes = payload['regularFont'] as Uint8List;
   final boldFontBytes = payload['boldFont'] as Uint8List;
   final logoBytes = payload['logo'] as Uint8List?;
 
-  return TransactionExportService._buildPdfBytes(
-    transactions: transactions,
-    title: payload['title'] as String,
-    periodStart: payload['periodStart'] == null
-        ? null
-        : DateTime.fromMillisecondsSinceEpoch(payload['periodStart'] as int),
-    periodEnd: payload['periodEnd'] == null
-        ? null
-        : DateTime.fromMillisecondsSinceEpoch(payload['periodEnd'] as int),
-    currency: payload['currency'] as String,
-    accounts: accounts,
-    categories: categories,
-    investments: investments,
-    font: pw.Font.ttf(ByteData.sublistView(regularFontBytes)),
-    boldFont: pw.Font.ttf(ByteData.sublistView(boldFontBytes)),
-    logo: logoBytes == null ? null : pw.MemoryImage(logoBytes),
-    accent: TransactionExportService._readableAccent(
-      payload['primaryColor'] as int,
+  return runZoned(
+    () => TransactionExportService._buildPdfBytes(
+      transactions: transactions,
+      title: payload['title'] as String,
+      periodStart: payload['periodStart'] == null
+          ? null
+          : DateTime.fromMillisecondsSinceEpoch(payload['periodStart'] as int),
+      periodEnd: payload['periodEnd'] == null
+          ? null
+          : DateTime.fromMillisecondsSinceEpoch(payload['periodEnd'] as int),
+      currency: payload['currency'] as String,
+      accounts: accounts,
+      categories: categories,
+      investments: investments,
+      font: pw.Font.ttf(ByteData.sublistView(regularFontBytes)),
+      boldFont: pw.Font.ttf(ByteData.sublistView(boldFontBytes)),
+      logo: logoBytes == null ? null : pw.MemoryImage(logoBytes),
+      accent: TransactionExportService._readableAccent(
+        payload['primaryColor'] as int,
+      ),
     ),
+    zoneValues: {TransactionExportService._localeKey: locale},
   );
 }

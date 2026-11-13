@@ -144,7 +144,10 @@ class _CategoriePageState extends State<CategoriePage> {
         return AlertDialog(
           title: Text(context.tr('Supprimer la categorie')),
           content: Text(
-            'Supprimer "${category.name}" ? Les transactions existantes ne seront pas supprimees.',
+            context.trParams(
+              'Supprimer « {name} » ? Les transactions existantes ne seront pas supprimées.',
+              {'name': category.name},
+            ),
           ),
           actions: [
             TextButton(

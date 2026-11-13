@@ -7,6 +7,7 @@ const assert = require('node:assert/strict');
 const root = path.resolve(__dirname, '../../build/report-fixture');
 const output = path.resolve(__dirname, '../../../test-results');
 const debug = process.argv[2] || 'http://127.0.0.1:9235';
+const language = process.env.FIXTURE_LANG || 'fr';
 const server = createServer(async (req, res) => {
   const name = new URL(req.url, 'http://localhost').pathname;
   const file = path.resolve(root, '.' + (name === '/' ? '/index.html' : name));
@@ -52,7 +53,7 @@ const server = createServer(async (req, res) => {
     })).result.value;
     await send('Emulation.setDeviceMetricsOverride', {width:390,height:844,deviceScaleFactor:1,mobile:true});
     const expectError = process.env.REPORT_EXPECT_ERROR === '1';
-    await send('Page.navigate', {url:`http://127.0.0.1:${server.address().port}/${expectError ? '?scenario=january' : ''}`});
+    await send('Page.navigate', {url:`http://127.0.0.1:${server.address().port}/?lang=${encodeURIComponent(language)}${expectError ? '&scenario=january' : ''}`});
     let ready = false;
     for (let i=0; i<600; i++) {
       const error = await evaluate('document.body?.dataset.reportError');
@@ -73,7 +74,7 @@ const server = createServer(async (req, res) => {
       const bytes = Buffer.from(data, 'base64');
       assert.equal(bytes.subarray(0,5).toString(), '%PDF-');
       assert.ok(bytes.length > 5000);
-      await writeFile(path.join(output, `report-${scenario}.pdf`), bytes);
+      await writeFile(path.join(output, `report-${language}-${scenario}.pdf`), bytes);
       console.log(`${scenario}: ${bytes.length} bytes`);
     }
     for (const width of [390,1280]) {

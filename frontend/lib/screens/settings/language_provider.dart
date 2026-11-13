@@ -7,10 +7,7 @@ class LanguageOption {
   final String code;
   final String name;
 
-  const LanguageOption({
-    required this.code,
-    required this.name,
-  });
+  const LanguageOption({required this.code, required this.name});
 }
 
 class LanguageProvider extends ChangeNotifier {
@@ -96,12 +93,13 @@ class LanguageProvider extends ChangeNotifier {
     }
 
     _languageCode = normalizedCode;
+    // UI language must not wait for a slow or unavailable server.
+    notifyListeners();
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('languageCode', normalizedCode);
     await prefs.setString('language', optionForCode(normalizedCode).name);
 
     if (syncToFirestore) await _syncLanguage(normalizedCode);
-    notifyListeners();
   }
 
   Future<void> _syncLanguage(String languageCode) async {
@@ -109,12 +107,9 @@ class LanguageProvider extends ChangeNotifier {
     if (uid == null) return;
 
     final option = optionForCode(languageCode);
-    await DocumentStore.instance.collection('users').doc(uid).set(
-      {
-        'language': option.name,
-        'languageCode': option.code,
-      },
-      SetOptions(merge: true),
-    );
+    await DocumentStore.instance.collection('users').doc(uid).set({
+      'language': option.name,
+      'languageCode': option.code,
+    }, SetOptions(merge: true));
   }
 }

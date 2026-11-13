@@ -1,7 +1,7 @@
 'use strict';
 
 // All records below are fictional. State lives only in this page's memory.
-const icons = {month:0xf051f,stats:0xf00ce,global:0xefa1,person:0xe497,left:0xe5cb,right:0xe5cc,income:0xf575,expense:0xf57e,investment:0xf00ce,remaining:0xf336,transfer:0xf01fa,bank:0xee32,category:0xef37,alerts:0xf235,pdf:0xf2a4,settings:0xf36e,search:0xf013d,lock:0xe3b1,savings:0xf336,home:0xf107,shopping:0xf37f,car:0xefc6,health:0xe25c,other:0xe402};
+const icons = {month:0xf051f,stats:0xe4f9,global:0xefa1,person:0xe497,left:0xe15e,right:0xe15f,income:0xe67f,expense:0xe67d,investment:0xe4f9,remaining:0xf336,transfer:0xe625,bank:0xee33,category:0xef37,alerts:0xf234,pdf:0xf2a4,settings:0xf36e,search:0xe567,lock:0xe3b1,savings:0xf336,home:0xf107,shopping:0xf37e,car:0xefc6,health:0xf0f2,other:0xe402};
 const icon = name => `<span class="mi" aria-hidden="true">&#${icons[name] || icons.other};</span>`;
 const months = ['janvier','février','mars','avril','mai','juin','juillet','août','septembre','octobre'];
 const shortMonths = ['janv.','févr.','mars','avr.','mai','juin','juil.','août','sept.','oct.','nov.','déc.'];
@@ -23,7 +23,7 @@ const expenseCategories = [
 const incomeCategories = [{name:'Salaire',description:'Salaire mensuel',amount:3000,color:'var(--green)'},{name:'Remboursements',description:'Remboursement de frais',amount:125,color:'var(--teal)'},{name:'Ventes',description:'Vente d’occasion',amount:75,color:'var(--amber)'}];
 const investmentCategories = [{name:'ETF Monde',description:'Versement ETF Monde',amount:300,color:'var(--neutral)'},{name:'Or',description:'Achat d’or',amount:100,color:'var(--amber)'},{name:'Bitcoin',description:'Versement crypto',amount:50,color:'var(--teal)'}];
 const types = {expense:{label:'Dépenses',color:'var(--red)',sign:'−'},income:{label:'Revenus',color:'var(--green)',sign:'+'},investment:{label:'Investissements',color:'var(--neutral)',sign:''},transfer:{label:'Transferts',color:'var(--teal)',sign:''}};
-const views = ['mois','stats','global','profil'];
+const views = ['mois','stats','global','profil','accounts','categories','investments','simulation','evolution','report'];
 const state = {view:'mois',month:9,type:'expense',private:false,light:false,search:'',series:new Set(['income','expense','investment','remaining'])};
 const content = document.getElementById('content');
 const dialog = document.getElementById('detail');
@@ -126,6 +126,30 @@ function profileRow(key,label,description,mark){return `<button class="profile-r
 function renderProfile(){
   return `<div class="profile-wrap"><div class="profile-head"><div class="avatar" aria-hidden="true">AD</div><div><h1>Alex Démo</h1><p class="muted">Profil fictif</p></div></div><section class="profile-group"><h2>Gestion</h2>${profileRow('accounts','Comptes','Soldes et banques','bank')}${profileRow('categories','Catégories','Revenus et dépenses','category')}${profileRow('investments','Investissements','Actifs et supports','investment')}${profileRow('alerts','Limites','Alertes budget','alerts')}</section><section class="profile-group"><h2>Outils</h2>${profileRow('report','Export PDF','Rapport annuel, mensuel ou personnalisé','pdf')}</section><section class="profile-group"><h2>Préférences</h2>${profileRow('appearance','Apparence',state.light?'Thème clair':'Thème sombre','settings')}${profileRow('privacy','Sécurité et confidentialité','Démo statique · données fictives','lock')}</section></div>`;
 }
+function renderSecondary(){
+  const headings={accounts:'Gestion des comptes',categories:'Gestion des catégories',investments:'Gestion des investissements',simulation:'Simulation',evolution:'Évolution annuelle',report:'Exporter un rapport'};
+  const tab=state.secondaryTab||'0';
+  const menu=(labels)=>`<nav class="secondary-nav" aria-label="Onglets">${labels.map((label,i)=>`<button data-secondary-tab="${i}" aria-pressed="${tab===String(i)}">${label}</button>`).join('')}</nav>`;
+  let body='';
+  if(state.view==='accounts')body=`<div class="balance-panel"><p>Solde global · ${accounts.length} comptes</p><strong class="balance-amount">${money(accounts.reduce((sum,a)=>sum+a.balance,0))}</strong></div>${accountRows()}`;
+  if(state.view==='categories')body=`<div class="section-head"><h2>${tab==='1'?'Catégories de revenus':'Catégories de dépenses'}</h2><span class="muted">2026</span></div>${ranking(tab==='1'?incomeCategories:expenseCategories,tab==='1'?'var(--green)':'var(--red)')}${menu(['Dépenses','Revenus'])}`;
+  if(state.view==='investments'){
+    const labels=['Tous','Actions','ETF','Crypto','Obligations','Autres'];
+    const rows=assets.filter(a=>!Number(tab)||a.kind===labels[Number(tab)]);
+    body=`<h2>Portefeuille investi</h2><p class="balance-amount">${money(rows.reduce((s,a)=>s+a.balance,0))}</p>${rows.map(a=>`<article class="asset-row"><span class="account-icon">${icon('investment')}</span><div><h3>${a.name}</h3><p class="muted">${a.kind} · Compte titres</p><strong>${money(a.balance)}</strong></div></article>`).join('')||'<p class="empty">Aucun actif dans cette catégorie.</p>'}${menu(labels)}`;
+  }
+  if(state.view==='simulation'){
+    const loan=tab==='2',investment=tab==='1';
+    body=`<p class="muted">PROJECTION</p><h2>${loan?'Calculateur de prêt':investment?'Investissement':'Budget prévisionnel'}</h2><section class="simulation-form"><label>${loan?'Montant du projet':'Épargne de départ'}<input type="number" id="demo-capital" value="${loan?200000:1000}" min="0" max="100000000"></label><label>${loan?'Durée en années':'Durée en mois'}<input type="number" id="demo-duration" value="${loan?20:12}" min="1" max="100"></label><button class="primary-button" id="demo-calculate">Calculer la simulation</button><output id="demo-simulation-result">${money(loan?1109.2:7000)}</output></section>${menu(['Budget','Investissement','Prêt'])}`;
+  }
+  if(state.view==='evolution'){
+    const category=tab==='1',rows=category?expenseCategories:tab==='2'?assets:accounts;
+    body=`<div class="period"><h2>2026</h2></div>${rows.map((r,i)=>`<details class="evolution-item"><summary><strong>${r.name}</strong><span>${money(r.balance??r.amount*10)}</span></summary><div class="evolution-body"><p>Au 1er janvier : ${category?'—':money((r.balance||0)*.88)}</p><p>Variation : ${state.private?'••••':'+12 %'}</p>${state.private?mask():`<svg viewBox="0 0 300 120" role="img" aria-label="Évolution fictive"><path d="M5 105 L30 98 L55 100 L80 78 L110 82 L140 60 L170 65 L200 40 L230 30 L265 35 L295 10" fill="none" stroke="currentColor" stroke-width="2"/></svg>`}${shortMonths.slice(0,10).map((m,n)=>`<div class="detail-line"><span>${m}</span><strong>${money((r.balance??r.amount*10)*(.88+n*.012))}</strong></div>`).join('')}</div></details>`).join('')}${menu(['Comptes','Catégories','Investissements'])}`;
+  }
+  if(state.view==='report')body=`<section class="report-options"><h2>Période</h2>${['Année complète','Ce mois-ci','Mois précédent (M-1)','Période personnalisée'].map((label,i)=>`<label><input type="radio" name="period" ${i===1?'checked':''}> ${label}</label>`).join('')}</section><h2>Contenu du rapport</h2><div class="metric-grid">${metric('Revenus',3200,'income')}${metric('Dépenses',1850,'expense')}${metric('Investissements',450,'investment')}${metric('Reste disponible',900,'remaining')}</div><button class="primary-button" data-preview-report="1">Aperçu du rapport</button>`;
+  return `<section class="secondary-page"><div class="secondary-title"><a href="#profil" aria-label="Retour au profil">${icon('left')}</a><h1>${headings[state.view]}</h1></div>${body}</section>`;
+}
+
 function showDialog(title,html){
   document.getElementById('dialog-title').textContent=title;
   document.getElementById('dialog-body').innerHTML=html;
@@ -139,6 +163,7 @@ function showTransaction(index){
   showDialog(r.description,`<div class="detail-amount" style="color:${tint(state.type)}">${state.private?'':types[state.type].sign}${money(r.amount)}</div>${field('Type',types[state.type].label)}${field(state.type==='income'?'Compte crédité':'Compte débité','Compte courant')}${destination?field('Compte crédité',destination):''}${field(state.type==='investment'?'Actif':'Catégorie',r.name)}${field('Date',`${String(r.day).padStart(2,'0')} ${period()}`)}${detailsFootnote}`);
 }
 function showPanel(key){
+  if(['accounts','categories','investments','simulation','evolution','report'].includes(key)){location.hash=key;return;}
   if(key==='accounts')showDialog('Gestion des comptes',accountRows()+detailsFootnote);
   if(key==='categories')showDialog('Gestion des catégories',`<h3>Dépenses</h3>${ranking(expenseCategories,'var(--red)')}<h3 class="section">Revenus</h3>${ranking(incomeCategories,'var(--green)')}${detailsFootnote}`);
   if(key==='investments')showDialog('Gestion des investissements',assets.map(a=>`<div class="account-row"><span class="account-icon">${icon('investment')}</span><div class="row-main"><strong>${a.name}</strong><small>${a.kind} · Compte titres</small></div><strong class="row-amount">${money(a.balance)}</strong></div>`).join('')+detailsFootnote);
@@ -157,26 +182,37 @@ function setTheme(light){
   render();
 }
 function render(){
+  const secondary = !['mois','stats','global','profil'].includes(state.view);
+  document.body.dataset.secondary=String(secondary);
+  document.body.dataset.view=state.view;
+  document.getElementById('privacy-tab').hidden=!state.private;
+  document.getElementById('demo-add').hidden=state.view!=='mois';
   document.querySelectorAll('[data-view]').forEach(a=>{
     if(a.dataset.view===state.view)a.setAttribute('aria-current','page');else a.removeAttribute('aria-current');
   });
   document.title=`MySold · ${state.view==='mois'?'Mois':state.view==='stats'?'Stats':state.view==='global'?'Global':'Profil'} · Démonstration`;
-  content.innerHTML=state.view==='mois'?renderMonth():state.view==='global'?renderGlobal():state.view==='stats'?renderStats():renderProfile();
+  content.innerHTML=secondary?renderSecondary():state.view==='mois'?renderMonth():state.view==='global'?renderGlobal():state.view==='stats'?renderStats():renderProfile();
+  if(secondary)document.title=`MySold · ${content.querySelector('h1').textContent} · Démonstration`;
   if(state.view==='mois')renderTransactions();
+  if(state.view==='profil')content.querySelectorAll('.profile-group')[1].insertAdjacentHTML('beforeend',profileRow('simulation','Simulation','Budget, investissement et prêt','stats')+profileRow('evolution','Évolution annuelle','Comptes, catégories et investissements','investment'));
+  if(state.view==='profil')content.querySelector('.profile-wrap').insertAdjacentHTML('beforeend',`<button class="profile-row" data-demo-privacy="1">${icon('lock')}<span>${state.private?'Afficher':'Masquer'} les montants</span></button>`);
 }
 function navigate(){
+  state.secondaryTab='0';
   const requested=location.hash.slice(1);
   state.view=views.includes(requested)?requested:'mois';state.search='';
   render();
   window.scrollTo(0,0);
 }
 document.getElementById('theme').addEventListener('click',()=>setTheme(!state.light));
+document.getElementById('privacy-tab').addEventListener('click',()=>document.getElementById('privacy').click());
+document.getElementById('demo-add').addEventListener('click',()=>showDialog('Nouvelle transaction',`<div class="metric-grid">${Object.entries(types).map(([key,t])=>`<button class="profile-row" data-demo-new="${key}">${icon(key)}${t.label}</button>`).join('')}</div><p class="dialog-footnote">Démonstration sans enregistrement de données.</p>`));
 document.getElementById('privacy').addEventListener('click',()=>{
   state.private=!state.private;
   const button=document.getElementById('privacy');
   const label=state.private?'Afficher les montants':'Masquer les montants';
   button.setAttribute('aria-pressed',String(state.private));button.setAttribute('aria-label',label);button.title=label;
-  button.innerHTML=`<span class="mi" aria-hidden="true">&#${state.private?0xf4a0:0xf4a1};</span>`;
+  button.innerHTML=`<span class="mi" aria-hidden="true">&#${state.private?0xe6be:0xe6bd};</span>`;
   state.search='';render();
 });
 document.getElementById('close-dialog').addEventListener('click',()=>dialog.close());
@@ -184,10 +220,21 @@ dialog.addEventListener('click',event=>{if(event.target===dialog){const r=dialog
 document.addEventListener('input',event=>{if(event.target.id==='search'){state.search=event.target.value;renderTransactions();}});
 document.addEventListener('click',event=>{
   const button=event.target.closest('button');if(!button)return;
+  if(button.id==='demo-calculate'){
+    const capital=Math.min(1e8,Math.max(0,Number(document.getElementById('demo-capital').value)||0));
+    const duration=Math.min(100,Math.max(1,Number(document.getElementById('demo-duration').value)||1));
+    const tab=state.secondaryTab||'0';
+    const result=tab==='2'?capital*(.035/12)/(1-Math.pow(1+.035/12,-duration*12)):tab==='1'?capital*Math.pow(1+.05/12,duration):capital+500*duration;
+    document.getElementById('demo-simulation-result').textContent=money(result);
+  }
+  if(button.dataset.previewReport)showDialog('MySold · Rapport fictif',`${wealthChart()}${monthlyChart()}${detailsFootnote}`);
   if(button.dataset.month){state.month=Math.max(0,Math.min(9,state.month+Number(button.dataset.month)));state.search='';render();}
   if(button.dataset.type&&Object.hasOwn(types,button.dataset.type)){state.type=button.dataset.type;state.search='';render();}
   if(button.dataset.transaction!==undefined)showTransaction(Number(button.dataset.transaction));
   if(button.dataset.panel)showPanel(button.dataset.panel);
+  if(button.dataset.demoNew){dialog.close();state.type=button.dataset.demoNew;render();}
+  if(button.dataset.demoPrivacy)document.getElementById('privacy').click();
+  if(button.dataset.secondaryTab){state.secondaryTab=button.dataset.secondaryTab;render();}
   if(button.dataset.demoTheme){dialog.close();setTheme(button.dataset.demoTheme==='light');}
   if(button.dataset.series){const key=button.dataset.series;if(state.series.has(key)){if(state.series.size===1)return;state.series.delete(key);}else state.series.add(key);render();}
 });

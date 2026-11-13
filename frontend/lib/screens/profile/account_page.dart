@@ -70,7 +70,10 @@ class _ComptePageState extends State<ComptePage> {
         return AlertDialog(
           title: Text(context.tr('Supprimer le compte')),
           content: Text(
-            'Supprimer "${account.name}" ? Les transactions qui utilisent ce compte ne seront pas supprimees.',
+            context.trParams(
+              'Supprimer « {name} » ? Les transactions qui utilisent ce compte ne seront pas supprimées.',
+              {'name': account.name},
+            ),
           ),
           actions: [
             TextButton(

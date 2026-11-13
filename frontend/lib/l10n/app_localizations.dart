@@ -1,11 +1,77 @@
 import 'package:flutter/material.dart';
 import 'self_hosted_legal.dart';
 import 'monthly_analytics_strings.dart';
+import 'feature_strings.dart';
+import 'completed_strings.dart';
 
 class AppLocalizations {
   final Locale locale;
 
   const AppLocalizations(this.locale);
+
+  static String _canonical(String key) {
+    var value = key.toLowerCase();
+    const accents = {
+      'à': 'a',
+      'â': 'a',
+      'ä': 'a',
+      'é': 'e',
+      'è': 'e',
+      'ê': 'e',
+      'ë': 'e',
+      'î': 'i',
+      'ï': 'i',
+      'ô': 'o',
+      'ö': 'o',
+      'ù': 'u',
+      'û': 'u',
+      'ü': 'u',
+      'ç': 'c',
+      'œ': 'oe',
+      '’': "'",
+    };
+    accents.forEach((a, b) => value = value.replaceAll(a, b));
+    return value.replaceAll(RegExp(r"[^a-z0-9{}]"), '');
+  }
+
+  static final _normalized = {
+    for (final code in ['en', 'es', 'de', 'it', 'ja'])
+      code: {
+        for (final entry
+            in (_translations[code] ?? const <String, String>{}).entries)
+          _canonical(entry.key): entry.value,
+        for (final entry
+            in (_translationComplements[code] ?? const <String, String>{})
+                .entries)
+          _canonical(entry.key): entry.value,
+        for (final key in monthlyAnalyticsKeys)
+          if (monthlyAnalyticsText(key, code) != null)
+            _canonical(key): monthlyAnalyticsText(key, code)!,
+        for (final key in featureStrings.keys)
+          _canonical(key): featureText(key, code)!,
+        for (final entry
+            in (completedStrings[code] ?? const <String, String>{}).entries)
+          _canonical(entry.key): entry.value,
+      },
+  };
+
+  static Set<String> get knownKeys => {
+    ...featureStrings.keys,
+    ...monthlyAnalyticsKeys,
+    for (final catalog in completedStrings.values) ...catalog.keys,
+    for (final catalog in _translations.values) ...catalog.keys,
+    for (final catalog in _translationComplements.values) ...catalog.keys,
+  };
+
+  bool hasTranslation(String key) =>
+      locale.languageCode == 'fr' ||
+      featureText(key, locale.languageCode) != null ||
+      monthlyAnalyticsText(key, locale.languageCode) != null ||
+      selfHostedLegal(key, locale.languageCode) != null ||
+      (_translations[locale.languageCode]?.containsKey(key) ?? false) ||
+      (_translationComplements[locale.languageCode]?.containsKey(key) ??
+          false) ||
+      (_normalized[locale.languageCode]?.containsKey(_canonical(key)) ?? false);
 
   static const supportedLocales = [
     Locale('fr'),
@@ -23,6 +89,10 @@ class AppLocalizations {
 
   String t(String key) {
     final languageCode = locale.languageCode;
+    final feature = featureText(key, languageCode);
+    if (feature != null) return feature;
+    final completed = completedStrings[languageCode]?[key];
+    if (completed != null) return completed;
     final monthly = monthlyAnalyticsText(key, languageCode);
     if (monthly != null) return monthly;
     final legal = selfHostedLegal(key, languageCode);
@@ -48,6 +118,7 @@ class AppLocalizations {
     if (languageCode == 'fr') return key;
     return _translations[languageCode]?[key] ??
         _translations[languageCode]?[legacyKey] ??
+        _normalized[languageCode]?[_canonical(key)] ??
         _translationComplements['fr']?[key] ??
         key;
   }
@@ -61,6 +132,11 @@ class AppLocalizations {
 }
 
 extension AppTranslate on BuildContext {
+  String trParams(String key, Map<String, Object?> values) =>
+      tr(key).replaceAllMapped(
+        RegExp(r'\{(\w+)\}'),
+        (m) => values[m.group(1)]?.toString() ?? m.group(0)!,
+      );
   String tr(String key) => AppLocalizations.of(this).t(key);
   String trType(String value) => AppLocalizations.of(this).type(value);
 }

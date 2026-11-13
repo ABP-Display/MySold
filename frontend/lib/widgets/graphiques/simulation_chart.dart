@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:mysold/l10n/app_localizations.dart';
 import 'package:mysold/widgets/graphiques/chart_info_region.dart';
 
 class SimulationSeries {
@@ -12,8 +13,8 @@ class SimulationSeries {
   const SimulationSeries(this.label, this.values, this.color);
 }
 
-String simulationMoney(double value, String currency) =>
-    NumberFormat.currency(locale: 'fr_FR', symbol: currency).format(value);
+String simulationMoney(double value, String currency, {String locale = 'fr'}) =>
+    NumberFormat.currency(locale: locale, symbol: currency).format(value);
 
 /// One responsive chart style for projections: explicit time units, zero-safe
 /// axes and a shared tooltip contained inside the visible chart area.
@@ -84,11 +85,13 @@ class SimulationLineChart extends StatelessWidget {
                       .round()
                       .clamp(0, end);
               return ChartInfo(
-                annual ? 'Année $index' : 'Mois $index',
+                context.trParams(annual ? 'Année {count}' : 'Mois {count}', {
+                  'count': index,
+                }),
                 series
                     .map(
                       (line) =>
-                          '${line.label} : ${simulationMoney(line.values[index], currency)}',
+                          '${line.label} : ${simulationMoney(line.values[index], currency, locale: Localizations.localeOf(context).toString())}',
                     )
                     .join('\n'),
               );
@@ -126,7 +129,9 @@ class SimulationLineChart extends StatelessWidget {
                         reservedSize: 48,
                         interval: (maxY - minY) / 4,
                         getTitlesWidget: (value, _) => Text(
-                          NumberFormat.compact(locale: 'fr_FR').format(value),
+                          NumberFormat.compact(
+                            locale: Localizations.localeOf(context).toString(),
+                          ).format(value),
                           style: TextStyle(
                             fontSize: 10,
                             color: colors.onSurfaceVariant,
@@ -171,7 +176,7 @@ class SimulationLineChart extends StatelessWidget {
           ),
         ),
         Text(
-          '${annual ? 'Durée en années' : 'Durée en mois'} · Montants en $currency',
+          '${context.tr(annual ? 'Durée en années' : 'Durée en mois')} · ${context.trParams('Montants en {currency}', {'currency': currency})}',
           textAlign: TextAlign.right,
           style: Theme.of(context).textTheme.bodySmall,
         ),
@@ -220,7 +225,7 @@ class SimulationCostChart extends StatelessWidget {
                 if (angle <= boundary)
                   return ChartInfo(
                     part.label,
-                    '${simulationMoney(part.amount, currency)} · ${(part.amount / total * 100).toStringAsFixed(1)} %',
+                    '${simulationMoney(part.amount, currency, locale: Localizations.localeOf(context).toString())} · ${NumberFormat.decimalPercentPattern(locale: Localizations.localeOf(context).toString(), decimalDigits: 1).format(part.amount / total)}',
                     color: part.color,
                   );
               }
@@ -264,7 +269,11 @@ class SimulationCostChart extends StatelessWidget {
                 const SizedBox(width: 12),
                 Flexible(
                   child: Text(
-                    simulationMoney(part.amount, currency),
+                    simulationMoney(
+                      part.amount,
+                      currency,
+                      locale: Localizations.localeOf(context).toString(),
+                    ),
                     textAlign: TextAlign.right,
                     style: const TextStyle(fontWeight: FontWeight.w600),
                   ),

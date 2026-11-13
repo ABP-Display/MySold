@@ -7,6 +7,7 @@ const assert = require('node:assert/strict');
 const root = path.resolve(__dirname, '../../build/page-tabs-fixture');
 const output = path.resolve(__dirname, '../../../test-results');
 const debug = process.argv[2] || 'http://127.0.0.1:9235';
+const language = process.env.FIXTURE_LANG || 'fr';
 const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
 const server = createServer(async (req, res) => {
   const name = new URL(req.url, 'http://localhost').pathname;
@@ -73,7 +74,7 @@ const server = createServer(async (req, res) => {
       for (const page of ['simulation','categories','investments','annual']) {
         await send('Page.navigate',{url:'about:blank'});
         await delay(150);
-        await send('Page.navigate',{url:`http://127.0.0.1:${server.address().port}/?page=${page}`});
+        await send('Page.navigate',{url:`http://127.0.0.1:${server.address().port}/?page=${page}&lang=${language}`});
         let ready=false;
         for(let i=0;i<300;i++) {
           const error=await evaluate('document.body?.dataset.fixtureError');
@@ -97,7 +98,7 @@ const server = createServer(async (req, res) => {
           console.log('Annual chart-origin scroll passed at '+width+'px');
         }
         const shot=await send('Page.captureScreenshot',{format:'png'});
-        await writeFile(path.join(output,`page-tabs-${page}-${width}.png`),Buffer.from(shot.data,'base64'));
+        await writeFile(path.join(output,`page-tabs-${language}-${page}-${width}.png`),Buffer.from(shot.data,'base64'));
         console.log(`${page}: ${width}px, no Flutter errors`);
       }
     }

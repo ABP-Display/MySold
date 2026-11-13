@@ -1,4 +1,6 @@
 import 'dart:convert';
+import 'package:mysold/l10n/app_localizations.dart';
+import 'package:intl/intl.dart';
 import 'package:crypto/crypto.dart';
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
@@ -38,9 +40,10 @@ class _AnnualEvolutionPageState extends State<AnnualEvolutionPage> {
   Future<void> _reference(Map<String, dynamic> entity) async {
     if (!await SecurityGate.requestPin(
           context,
-          title: 'Référence annuelle',
-          message:
-              'Confirmez votre PIN pour modifier la valeur au 1er janvier.',
+          title: context.tr('Référence annuelle'),
+          message: context.tr(
+            'Confirmez votre PIN pour modifier la valeur au 1er janvier.',
+          ),
         ) ||
         !mounted)
       return;
@@ -49,7 +52,9 @@ class _AnnualEvolutionPageState extends State<AnnualEvolutionPage> {
     final amount = await showDialog<double>(
       context: context,
       builder: (dialog) => AlertDialog(
-        title: Text('Valeur au 1er janvier $_year'),
+        title: Text(
+          context.trParams('Valeur au 1er janvier {year}', {'year': _year}),
+        ),
         content: Form(
           key: form,
           child: TextFormField(
@@ -62,18 +67,18 @@ class _AnnualEvolutionPageState extends State<AnnualEvolutionPage> {
             validator: (text) {
               final n = double.tryParse((text ?? '').replaceAll(',', '.'));
               return n == null || !n.isFinite || n.abs() > 1e12
-                  ? 'Montant invalide'
+                  ? context.tr('Montant invalide')
                   : null;
             },
-            decoration: const InputDecoration(
-              labelText: 'Montant de référence',
+            decoration: InputDecoration(
+              labelText: context.tr('Montant de référence'),
             ),
           ),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(dialog),
-            child: const Text('Annuler'),
+            child: Text(context.tr('Annuler')),
           ),
           FilledButton(
             onPressed: () {
@@ -86,7 +91,7 @@ class _AnnualEvolutionPageState extends State<AnnualEvolutionPage> {
                   ),
                 );
             },
-            child: const Text('Enregistrer'),
+            child: Text(context.tr('Enregistrer')),
           ),
         ],
       ),
@@ -106,8 +111,8 @@ class _AnnualEvolutionPageState extends State<AnnualEvolutionPage> {
     } catch (_) {
       if (mounted)
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Référence non enregistrée. Réessayez.'),
+          SnackBar(
+            content: Text(context.tr('Référence non enregistrée. Réessayez.')),
           ),
         );
     }
@@ -121,12 +126,18 @@ class _AnnualEvolutionPageState extends State<AnnualEvolutionPage> {
         ? '••••'
         : value == null
         ? '—'
-        : '${value.toStringAsFixed(2)} $currency';
+        : NumberFormat.currency(
+            locale: Localizations.localeOf(context).toString(),
+            symbol: currency,
+          ).format(value);
     return Scaffold(
       extendBody: true,
-      appBar: appPageBar(context, title: const Text('Évolution annuelle')),
+      appBar: appPageBar(
+        context,
+        title: Text(context.tr('Évolution annuelle')),
+      ),
       bottomNavigationBar: AppPageTabMenu(
-        labels: _labels,
+        labels: _labels.map(context.tr).toList(),
         icons: const [
           Icons.account_balance_wallet_outlined,
           Icons.category_outlined,
@@ -142,25 +153,25 @@ class _AnnualEvolutionPageState extends State<AnnualEvolutionPage> {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               IconButton(
-                tooltip: 'Année précédente',
+                tooltip: context.tr('Année précédente'),
                 onPressed: _year > 1900
                     ? () => setState(() {
                         _year--;
                         _load();
                       })
                     : null,
-                icon: const Icon(Icons.chevron_left),
+                icon: Icon(Icons.chevron_left),
               ),
               Text('$_year', style: Theme.of(context).textTheme.titleLarge),
               IconButton(
-                tooltip: 'Année suivante',
+                tooltip: context.tr('Année suivante'),
                 onPressed: _year < DateTime.now().year
                     ? () => setState(() {
                         _year++;
                         _load();
                       })
                     : null,
-                icon: const Icon(Icons.chevron_right),
+                icon: Icon(Icons.chevron_right),
               ),
             ],
           ),
@@ -172,19 +183,23 @@ class _AnnualEvolutionPageState extends State<AnnualEvolutionPage> {
                   return Center(
                     child: TextButton.icon(
                       onPressed: () => setState(_load),
-                      icon: const Icon(Icons.refresh),
-                      label: const Text('Chargement impossible. Réessayer'),
+                      icon: Icon(Icons.refresh),
+                      label: Text(
+                        context.tr('Chargement impossible. Réessayer'),
+                      ),
                     ),
                   );
                 if (!snapshot.hasData)
-                  return const Center(child: CircularProgressIndicator());
+                  return Center(child: CircularProgressIndicator());
                 final rows = (snapshot.data!['entities'] as List)
                     .cast<Map<String, dynamic>>()
                     .where((e) => e['kind'] == _kinds[_tab])
                     .toList();
                 if (rows.isEmpty)
-                  return const Center(
-                    child: Text('Aucun élément pour cette période.'),
+                  return Center(
+                    child: Text(
+                      context.tr('Aucun élément pour cette période.'),
+                    ),
                   );
                 return ListView.builder(
                   key: PageStorageKey('evolution-$_year-$_tab'),
@@ -192,7 +207,11 @@ class _AnnualEvolutionPageState extends State<AnnualEvolutionPage> {
                     16,
                     8,
                     16,
-                    AppPageTabMenu.clearance(context, _labels) + 24,
+                    AppPageTabMenu.clearance(
+                          context,
+                          _labels.map(context.tr).toList(),
+                        ) +
+                        24,
                   ),
                   itemCount: rows.length,
                   itemBuilder: (context, index) {
@@ -209,71 +228,96 @@ class _AnnualEvolutionPageState extends State<AnnualEvolutionPage> {
                       key: ValueKey('${e['path']}-$_year'),
                       title: Text(e['name'] as String),
                       subtitle: Text(
-                        '${category ? 'Total annuel' : 'Valeur à la date du rapport'} : ${money(e['current'] as num)}',
+                        '${context.tr(category ? 'Total annuel' : 'Valeur à la date du rapport')} : ${money(e['current'] as num)}',
                       ),
                       childrenPadding: const EdgeInsets.all(12),
                       children: [
                         if (category)
                           Text(
-                            'Année précédente, même période : ${money(e['previous'] as num?)} · Écart : ${hidden
-                                ? '••••'
-                                : e['percent'] == null
-                                ? 'Non calculable'
-                                : '${e['percent']} %'}',
+                            context.trParams(
+                              'Année précédente, même période : {amount} · Écart : {percent}',
+                              {
+                                'amount': money(e['previous'] as num?),
+                                'percent': hidden
+                                    ? '••••'
+                                    : e['percent'] == null
+                                    ? context.tr('Non calculable')
+                                    : '${e['percent']} %',
+                              },
+                            ),
                           ),
                         if (!category) ...[
                           ListTile(
-                            title: const Text('Au 1er janvier'),
+                            title: Text(context.tr('Au 1er janvier')),
                             subtitle: Text(
-                              e['estimated'] == true
-                                  ? 'Valeur reconstituée, à confirmer'
-                                  : 'Référence renseignée',
+                              context.tr(
+                                e['estimated'] == true
+                                    ? 'Valeur reconstituée, à confirmer'
+                                    : 'Référence renseignée',
+                              ),
                             ),
                             trailing: Text(money(e['opening'] as num?)),
                           ),
                           Text(
-                            'Variation : ${money(e['delta'] as num?)} · ${hidden
-                                ? '••••'
-                                : e['percent'] == null
-                                ? 'Non calculable'
-                                : '${e['percent']} %'}',
+                            context
+                                .trParams('Variation : {amount} · {percent}', {
+                                  'amount': money(e['delta'] as num?),
+                                  'percent': hidden
+                                      ? '••••'
+                                      : e['percent'] == null
+                                      ? context.tr('Non calculable')
+                                      : '${e['percent']} %',
+                                }),
                           ),
                           if ((e['unexplained'] as num).abs() > 0.01)
                             Text(
-                              'Écart non historisé : ${money(e['unexplained'] as num)}',
+                              context.trParams(
+                                'Écart non historisé : {amount}',
+                                {'amount': money(e['unexplained'] as num)},
+                              ),
                             ),
                           if (_tab == 2)
                             Text(
-                              'Versements nets : ${money(e['netFlows'] as num)} · Valorisation : ${money(e['valuationChange'] as num?)}',
+                              context.trParams(
+                                'Versements nets : {flows} · Valorisation : {value}',
+                                {
+                                  'flows': money(e['netFlows'] as num),
+                                  'value': money(e['valuationChange'] as num?),
+                                },
+                              ),
                             ),
                           if (_tab == 2)
-                            const Text(
-                              'La variation inclut les versements et retraits : ce n’est pas un rendement financier.',
+                            Text(
+                              context.tr(
+                                'La variation inclut les versements et retraits : ce n’est pas un rendement financier.',
+                              ),
                             ),
                           TextButton.icon(
                             onPressed: () => _reference(e),
-                            icon: const Icon(Icons.edit_outlined),
-                            label: const Text(
-                              'Renseigner la référence annuelle',
+                            icon: Icon(Icons.edit_outlined),
+                            label: Text(
+                              context.tr('Renseigner la référence annuelle'),
                             ),
                           ),
                         ],
-                        const Text(
-                          'Clôtures mensuelles et période en cours (UTC)',
+                        Text(
+                          context.tr(
+                            'Clôtures mensuelles et période en cours (UTC)',
+                          ),
                         ),
                         if (!hidden && spots.length < 2)
-                          const Text(
-                            'Historique insuffisant pour tracer une courbe.',
+                          Text(
+                            context.tr(
+                              'Historique insuffisant pour tracer une courbe.',
+                            ),
                           ),
                         if (!hidden && spots.length >= 2)
                           SizedBox(
                             height: 170,
                             child: LineChart(
                               LineChartData(
-                                lineTouchData: const LineTouchData(
-                                  enabled: false,
-                                ),
-                                titlesData: const FlTitlesData(show: false),
+                                lineTouchData: LineTouchData(enabled: false),
+                                titlesData: FlTitlesData(show: false),
                                 borderData: FlBorderData(show: false),
                                 lineBarsData: [
                                   LineChartBarData(
@@ -281,7 +325,7 @@ class _AnnualEvolutionPageState extends State<AnnualEvolutionPage> {
                                     color: Theme.of(
                                       context,
                                     ).colorScheme.primary,
-                                    dotData: const FlDotData(show: false),
+                                    dotData: FlDotData(show: false),
                                   ),
                                 ],
                               ),
@@ -292,20 +336,9 @@ class _AnnualEvolutionPageState extends State<AnnualEvolutionPage> {
                           ListTile(
                             dense: true,
                             title: Text(
-                              const [
-                                'Janvier',
-                                'Février',
-                                'Mars',
-                                'Avril',
-                                'Mai',
-                                'Juin',
-                                'Juillet',
-                                'Août',
-                                'Septembre',
-                                'Octobre',
-                                'Novembre',
-                                'Décembre',
-                              ][m],
+                              DateFormat.MMMM(
+                                Localizations.localeOf(context).toString(),
+                              ).format(DateTime(_year, m + 1)),
                             ),
                             trailing: Text(money(values[m] as num?)),
                           ),

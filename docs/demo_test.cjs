@@ -48,6 +48,12 @@ const server=createServer(async(req,res)=>{
         assert.equal(await evaluate('document.cookie'),'');
       }
       await evaluate('location.hash="profil"');await delay(100);
+      assert.equal(await evaluate('!!document.querySelector("[data-panel=evolution]")'),false);
+      await evaluate('location.hash="accounts"');await delay(100);
+      await evaluate('document.querySelector("[data-entity=accounts]").click()');await delay(100);
+      assert.equal(await evaluate('document.querySelector("h1").textContent'),'Compte courant');
+      assert.ok(await evaluate('document.querySelector("main").textContent.includes("Paramètres")'));
+      await evaluate('location.hash="profil"');await delay(100);
       const top=await evaluate('document.querySelector("main").getBoundingClientRect().top');
       await evaluate('document.querySelector("[data-demo-privacy]").click()');
       assert.equal(await evaluate('document.getElementById("privacy-tab").hidden'),false);

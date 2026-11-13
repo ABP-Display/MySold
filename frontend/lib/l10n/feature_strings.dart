@@ -3,6 +3,35 @@ import 'report_strings.dart';
 // Application-owned text only. Never translate user-entered names or notes.
 const featureStrings = <String, List<String>>{
   ...reportStrings,
+  'Compte non défini': [
+    'Account not set',
+    'Cuenta no definida',
+    'Kein Konto festgelegt',
+    'Conto non impostato',
+    '口座未設定',
+  ],
+  'Variation': ['Change', 'Variación', 'Veränderung', 'Variazione', '増減額'],
+  'Année précédente, même période': [
+    'Same period last year',
+    'Mismo período del año anterior',
+    'Gleicher Zeitraum im Vorjahr',
+    'Stesso periodo dell’anno precedente',
+    '前年同期',
+  ],
+  '{count} transactions': [
+    '{count} transactions',
+    '{count} transacciones',
+    '{count} Buchungen',
+    '{count} transazioni',
+    '{count} 件の取引',
+  ],
+  'Totaux mensuels (UTC)': [
+    'Monthly totals (UTC)',
+    'Totales mensuales (UTC)',
+    'Monatssummen (UTC)',
+    'Totali mensili (UTC)',
+    '月別合計（UTC）',
+  ],
   'Connexion à votre serveur MySold impossible.': [
     'Unable to connect to your MySold server.',
     'No se puede conectar con tu servidor MySold.',

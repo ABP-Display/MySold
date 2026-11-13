@@ -131,23 +131,25 @@ function renderSecondary(){
   const tab=state.secondaryTab||'0';
   const menu=(labels)=>`<nav class="secondary-nav" aria-label="Onglets">${labels.map((label,i)=>`<button data-secondary-tab="${i}" aria-pressed="${tab===String(i)}">${label}</button>`).join('')}</nav>`;
   let body='';
-  if(state.view==='accounts')body=`<div class="balance-panel"><p>Solde global · ${accounts.length} comptes</p><strong class="balance-amount">${money(accounts.reduce((sum,a)=>sum+a.balance,0))}</strong></div>${accountRows()}`;
-  if(state.view==='categories')body=`<div class="section-head"><h2>${tab==='1'?'Catégories de revenus':'Catégories de dépenses'}</h2><span class="muted">2026</span></div>${ranking(tab==='1'?incomeCategories:expenseCategories,tab==='1'?'var(--green)':'var(--red)')}${menu(['Dépenses','Revenus'])}`;
+  const rows=(items,kind)=>items.map((r,i)=>`<button class="profile-row management-row" data-entity="${kind}" data-entity-index="${i}"><span class="account-icon">${icon(r.icon||'investment')}</span><span class="row-main"><strong>${r.name}</strong><small>${r.description||r.kind||'2026'}</small></span><span class="entity-amount"><strong>${money(r.balance??r.amount*10)}</strong><small>${state.private?'••••':kind==='categories'&&tab!=='1'?'−3,0 %':'+12,0 %'}</small></span>${icon('right')}</button>`).join('');
+  if(state.view==='accounts')body=`<div class="balance-panel"><p>Solde global · ${accounts.length} comptes</p><strong class="balance-amount">${money(accounts.reduce((sum,a)=>sum+a.balance,0))}</strong></div>${rows(accounts,'accounts')}`;
+  if(state.view==='categories')body=`<div class="section-head"><h2>${tab==='1'?'Catégories de revenus':'Catégories de dépenses'}</h2><span class="muted">2026</span></div>${rows(tab==='1'?incomeCategories:expenseCategories,'categories')}${menu(['Dépenses','Revenus'])}`;
   if(state.view==='investments'){
     const labels=['Tous','Actions','ETF','Crypto','Obligations','Autres'];
     const rows=assets.filter(a=>!Number(tab)||a.kind===labels[Number(tab)]);
-    body=`<h2>Portefeuille investi</h2><p class="balance-amount">${money(rows.reduce((s,a)=>s+a.balance,0))}</p>${rows.map(a=>`<article class="asset-row"><span class="account-icon">${icon('investment')}</span><div><h3>${a.name}</h3><p class="muted">${a.kind} · Compte titres</p><strong>${money(a.balance)}</strong></div></article>`).join('')||'<p class="empty">Aucun actif dans cette catégorie.</p>'}${menu(labels)}`;
+    body=`<h2>Portefeuille investi</h2><p class="balance-amount">${money(rows.reduce((s,a)=>s+a.balance,0))}</p>${rows.map(a=>`<button class="profile-row management-row" data-entity="investments" data-entity-index="${assets.indexOf(a)}">${icon('investment')}<span class="row-main"><strong>${a.name}</strong><small>${a.kind} · Compte titres</small></span><span class="entity-amount"><strong>${money(a.balance)}</strong><small>${state.private?'••••':'+12,0 %'}</small></span>${icon('right')}</button>`).join('')||'<p class="empty">Aucun actif dans cette catégorie.</p>'}${menu(labels)}`;
   }
   if(state.view==='simulation'){
     const loan=tab==='2',investment=tab==='1';
     body=`<p class="muted">PROJECTION</p><h2>${loan?'Calculateur de prêt':investment?'Investissement':'Budget prévisionnel'}</h2><section class="simulation-form"><label>${loan?'Montant du projet':'Épargne de départ'}<input type="number" id="demo-capital" value="${loan?200000:1000}" min="0" max="100000000"></label><label>${loan?'Durée en années':'Durée en mois'}<input type="number" id="demo-duration" value="${loan?20:12}" min="1" max="100"></label><button class="primary-button" id="demo-calculate">Calculer la simulation</button><output id="demo-simulation-result">${money(loan?1109.2:7000)}</output></section>${menu(['Budget','Investissement','Prêt'])}`;
   }
   if(state.view==='evolution'){
-    const category=tab==='1',rows=category?expenseCategories:tab==='2'?assets:accounts;
-    body=`<div class="period"><h2>2026</h2></div>${rows.map((r,i)=>`<details class="evolution-item"><summary><strong>${r.name}</strong><span>${money(r.balance??r.amount*10)}</span></summary><div class="evolution-body"><p>Au 1er janvier : ${category?'—':money((r.balance||0)*.88)}</p><p>Variation : ${state.private?'••••':'+12 %'}</p>${state.private?mask():`<svg viewBox="0 0 300 120" role="img" aria-label="Évolution fictive"><path d="M5 105 L30 98 L55 100 L80 78 L110 82 L140 60 L170 65 L200 40 L230 30 L265 35 L295 10" fill="none" stroke="currentColor" stroke-width="2"/></svg>`}${shortMonths.slice(0,10).map((m,n)=>`<div class="detail-line"><span>${m}</span><strong>${money((r.balance??r.amount*10)*(.88+n*.012))}</strong></div>`).join('')}</div></details>`).join('')}${menu(['Comptes','Catégories','Investissements'])}`;
+    const entity=state.entity||{record:accounts[0],kind:'accounts',percent:12},r=entity.record,category=entity.kind==='categories';
+    headings.evolution=r.name;
+    body=`<div class="section-head"><h2>Paramètres</h2><span class="muted">${r.description||r.kind||'Compte bancaire'}</span></div>${entity.kind==='investments'?'<p>Compte support : Compte titres</p>':''}<section class="section"><h2>Évolution annuelle · 2026</h2><p class="balance-amount">${money(r.balance??r.amount*10)}</p><p>${category?'Année précédente, même période':'Au 1er janvier'} : ${money((r.balance??r.amount*10)/(1+(entity.percent??12)/100))}</p><p>Variation : ${state.private?'••••':((entity.percent??12)>0?'+':'')+String(entity.percent??12).replace('.',',')+' %'}</p>${state.private?mask():`<svg viewBox="0 0 300 120" role="img" aria-label="Évolution fictive"><path d="M5 105 L30 98 L55 100 L80 78 L110 82 L140 60 L170 65 L200 40 L230 30 L265 35 L295 10" fill="none" stroke="currentColor" stroke-width="2"/></svg>`}${shortMonths.slice(0,10).map((m,n)=>`<div class="detail-line"><span>${m}</span><strong>${money(category?r.amount*(.91+n*.02):(r.balance/1.12)+(r.balance-r.balance/1.12)*(n+1)/10)}</strong></div>`).join('')}</section>`;
   }
   if(state.view==='report')body=`<section class="report-options"><h2>Période</h2>${['Année complète','Ce mois-ci','Mois précédent (M-1)','Période personnalisée'].map((label,i)=>`<label><input type="radio" name="period" ${i===1?'checked':''}> ${label}</label>`).join('')}</section><h2>Contenu du rapport</h2><div class="metric-grid">${metric('Revenus',3200,'income')}${metric('Dépenses',1850,'expense')}${metric('Investissements',450,'investment')}${metric('Reste disponible',900,'remaining')}</div><button class="primary-button" data-preview-report="1">Aperçu du rapport</button>`;
-  return `<section class="secondary-page"><div class="secondary-title"><a href="#profil" aria-label="Retour au profil">${icon('left')}</a><h1>${headings[state.view]}</h1></div>${body}</section>`;
+  return `<section class="secondary-page"><div class="secondary-title"><a href="#${state.view==='evolution'?(state.entity?.kind||'accounts'):'profil'}" aria-label="Retour">${icon('left')}</a><h1>${headings[state.view]}</h1></div>${body}</section>`;
 }
 
 function showDialog(title,html){
@@ -194,7 +196,7 @@ function render(){
   content.innerHTML=secondary?renderSecondary():state.view==='mois'?renderMonth():state.view==='global'?renderGlobal():state.view==='stats'?renderStats():renderProfile();
   if(secondary)document.title=`MySold · ${content.querySelector('h1').textContent} · Démonstration`;
   if(state.view==='mois')renderTransactions();
-  if(state.view==='profil')content.querySelectorAll('.profile-group')[1].insertAdjacentHTML('beforeend',profileRow('simulation','Simulation','Budget, investissement et prêt','stats')+profileRow('evolution','Évolution annuelle','Comptes, catégories et investissements','investment'));
+  if(state.view==='profil')content.querySelectorAll('.profile-group')[1].insertAdjacentHTML('beforeend',profileRow('simulation','Simulation','Budget, investissement et prêt','stats'));
   if(state.view==='profil')content.querySelector('.profile-wrap').insertAdjacentHTML('beforeend',`<button class="profile-row" data-demo-privacy="1">${icon('lock')}<span>${state.private?'Afficher':'Masquer'} les montants</span></button>`);
 }
 function navigate(){
@@ -220,6 +222,11 @@ dialog.addEventListener('click',event=>{if(event.target===dialog){const r=dialog
 document.addEventListener('input',event=>{if(event.target.id==='search'){state.search=event.target.value;renderTransactions();}});
 document.addEventListener('click',event=>{
   const button=event.target.closest('button');if(!button)return;
+  if(button.dataset.entity){
+    const kind=button.dataset.entity,items=kind==='accounts'?accounts:kind==='investments'?assets:state.secondaryTab==='1'?incomeCategories:expenseCategories;
+    state.entity={kind,record:items[Number(button.dataset.entityIndex)],percent:kind==='categories'&&state.secondaryTab!=='1'?-3:12};
+    location.hash='evolution';return;
+  }
   if(button.id==='demo-calculate'){
     const capital=Math.min(1e8,Math.max(0,Number(document.getElementById('demo-capital').value)||0));
     const duration=Math.min(100,Math.max(1,Number(document.getElementById('demo-duration').value)||1));

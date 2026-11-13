@@ -1,4 +1,7 @@
 import 'package:mysold/widgets/app_design.dart';
+import 'package:mysold/widgets/annual_entity_row.dart';
+import 'package:mysold/services/annual_analysis_service.dart';
+import 'package:mysold/screens/profile/entity_evolution_page.dart';
 import 'package:mysold/widgets/app_page_tab_menu.dart';
 import 'package:mysold/widgets/lazy_page_stack.dart';
 import 'package:mysold/widgets/category_filter_bar.dart';
@@ -28,13 +31,14 @@ class CategoriePage extends StatefulWidget {
 class _CategoriePageState extends State<CategoriePage> {
   int _selectedIndex = 0;
   late Stream<QuerySnapshot<Map<String, dynamic>>> _categoryStream;
-  int? _summaryGeneration;
+  Object? _summaryGeneration;
   late Future<Map<String, dynamic>> _summary;
   final _search = [TextEditingController(), TextEditingController()];
   final _minimum = <double?>[null, null], _maximum = <double?>[null, null];
   final _orders = [CategoryOrder.nameAscending, CategoryOrder.nameAscending];
   Map<String, dynamic>? _aggregatedSnapshot;
   final _totals = <String, double>{}, _counts = <String, int>{};
+  Map<String, Map<String, dynamic>> _analysis = {};
 
   CollectionReference<Map<String, dynamic>> get _categoriesRef {
     return DocumentStore.instance
@@ -58,12 +62,16 @@ class _CategoriePageState extends State<CategoriePage> {
   }
 
   Future<Map<String, dynamic>> _annualSummary() {
-    final generation = DocumentStore.instance.generation;
+    final now = DateTime.now().toUtc();
+    final generation = (
+      DocumentStore.instance.generation,
+      now.year,
+      now.month,
+      now.day,
+    );
     if (_summaryGeneration != generation) {
       _summaryGeneration = generation;
-      _summary = DocumentStore.instance.read('analysis/annual', {
-        'year': DateTime.now().year,
-      });
+      _summary = readAnnualAnalysis(DateTime.now().toUtc().year);
     }
     return _summary;
   }
@@ -221,6 +229,7 @@ class _CategoriePageState extends State<CategoriePage> {
               _aggregatedSnapshot = transactions.data;
               _totals.clear();
               _counts.clear();
+              _analysis = annualEntities(transactions.data);
               for (final data in transactions.data!['entities'] as List) {
                 if (data['kind'] != 'categories') continue;
                 final id = (data['path'] as String).split('/').last;
@@ -342,7 +351,6 @@ class _CategoriePageState extends State<CategoriePage> {
             category: category,
             amount: _totals[category.id] ?? 0,
             transactionCount: _counts[category.id] ?? 0,
-            totalAmount: total,
             currency: currency,
             isExpense: isExpense,
             privacy: privacy,
@@ -416,125 +424,46 @@ class _CategoriePageState extends State<CategoriePage> {
     required _CategoryViewModel category,
     required double amount,
     required int transactionCount,
-    required double totalAmount,
     required String currency,
     required bool isExpense,
     required PrivacyProvider privacy,
   }) {
-    final share = totalAmount <= 0
-        ? 0.0
-        : (amount / totalAmount).clamp(0.0, 1.0).toDouble();
-
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: _panelDecoration(),
-      child: Column(
-        children: [
-          Row(
-            children: [
-              Container(
-                height: 48,
-                width: 48,
-                decoration: BoxDecoration(
-                  color: category.color.withOpacity(0.14),
-                  borderRadius: BorderRadius.circular(17),
-                ),
-                child: Icon(category.icon, color: category.color),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      category.name,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      '$transactionCount transaction${transactionCount > 1 ? 's' : ''}',
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: Theme.of(
-                          context,
-                        ).colorScheme.onSurface.withOpacity(0.62),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              PopupMenuButton<String>(
-                onSelected: (value) {
-                  if (value == 'edit') {
-                    _openAddCategorie(doc: category.snapshot);
-                  } else if (value == 'delete') {
-                    _confirmDelete(category);
-                  }
-                },
-                itemBuilder: (context) => [
-                  PopupMenuItem(
-                    value: 'edit',
-                    child: Row(
-                      children: [
-                        const Icon(Icons.edit_outlined),
-                        const SizedBox(width: 8),
-                        Text(context.tr('Modifier')),
-                      ],
-                    ),
-                  ),
-                  PopupMenuItem(
-                    value: 'delete',
-                    child: Row(
-                      children: [
-                        const Icon(
-                          Icons.delete_outline,
-                          color: Colors.redAccent,
-                        ),
-                        const SizedBox(width: 8),
-                        Text(context.tr('Supprimer')),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ],
+    return AnnualEntityRow(
+      key: ValueKey('category-${category.id}'),
+      name: category.name,
+      subtitle: context.trParams('{count} transactions', {
+        'count': transactionCount,
+      }),
+      amount: annualEntityAmount(
+        context,
+        amount,
+        currency,
+        hidden: privacy.hideAmounts,
+      ),
+      percent: _analysis['categories/${category.id}']?['percent'] as num?,
+      hidden: privacy.hideAmounts,
+      category: true,
+      expense: isExpense,
+      icon: category.icon,
+      color: category.color,
+      onTap: () async {
+        await Navigator.push(
+          context,
+          MaterialPageRoute(
+            settings: RouteSettings(name: '/categories/${category.id}'),
+            builder: (_) => EntityEvolutionPage(
+              userId: widget.userId,
+              entityPath: 'categories/${category.id}',
+              name: category.name,
+              onEdit: (doc) => _openAddCategorie(doc: doc),
+            ),
           ),
-          const SizedBox(height: 16),
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  privacy.money(amount, currency),
-                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    color: isExpense ? Colors.redAccent : Colors.green,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
-              Text(
-                privacy.percent(share * 100),
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  fontWeight: FontWeight.w600,
-                  color: Theme.of(
-                    context,
-                  ).colorScheme.onSurface.withOpacity(0.64),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 10),
-          LinearProgressIndicator(
-            value: privacy.hideAmounts ? 1 : share,
-            minHeight: 6,
-            color: privacy.hideAmounts
-                ? Theme.of(context).colorScheme.onSurface.withOpacity(0.18)
-                : category.color,
-            borderRadius: BorderRadius.circular(999),
-          ),
-        ],
+        );
+        if (mounted) setState(() {});
+      },
+      menu: EntityActionsMenu(
+        onEdit: () => _openAddCategorie(doc: category.snapshot),
+        onDelete: () => _confirmDelete(category),
       ),
     );
   }

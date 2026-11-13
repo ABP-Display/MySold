@@ -78,11 +78,15 @@ AppBar appPageBar(
   Widget? leading,
   PreferredSizeWidget? bottom,
   Color? backgroundColor,
+  bool translateTitle = true,
 }) {
+  final label = translateTitle
+      ? context.tr(title.data ?? '')
+      : title.data ?? '';
   final style = AppDesign.pageTitle(context);
   final measurement =
       TextPainter(
-        text: TextSpan(text: context.tr(title.data ?? ''), style: style),
+        text: TextSpan(text: label, style: style),
         textDirection: Directionality.of(context),
         textScaler: MediaQuery.textScalerOf(context),
         locale: Localizations.maybeLocaleOf(context),
@@ -99,7 +103,7 @@ AppBar appPageBar(
     title: Semantics(
       header: true,
       child: Text(
-        context.tr(title.data!),
+        label,
         key: title.key,
         style: style,
         softWrap: true,

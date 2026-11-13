@@ -1,4 +1,7 @@
 import 'package:mysold/widgets/app_design.dart';
+import 'package:mysold/widgets/annual_analysis_scope.dart';
+import 'package:mysold/widgets/annual_entity_row.dart';
+import 'package:mysold/screens/profile/entity_evolution_page.dart';
 import 'package:mysold/widgets/app_page_tab_menu.dart';
 import 'package:mysold/data/document_store.dart';
 import 'package:flutter/material.dart';
@@ -25,6 +28,8 @@ class InvestmentPage extends StatefulWidget {
 class _InvestmentPageState extends State<InvestmentPage>
     with SingleTickerProviderStateMixin {
   late final TabController _tabController;
+  late Stream<QuerySnapshot<Map<String, dynamic>>> _accountsStream,
+      _investmentsStream;
   static const _allType = 'all';
 
   List<String> get _tabs => [
@@ -51,6 +56,17 @@ class _InvestmentPageState extends State<InvestmentPage>
   void initState() {
     super.initState();
     _tabController = TabController(length: _tabs.length, vsync: this);
+    _accountsStream = _accountsRef.snapshots();
+    _investmentsStream = _investmentsRef.snapshots();
+  }
+
+  @override
+  void didUpdateWidget(covariant InvestmentPage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.userId != widget.userId) {
+      _accountsStream = _accountsRef.snapshots();
+      _investmentsStream = _investmentsRef.snapshots();
+    }
   }
 
   @override
@@ -180,7 +196,7 @@ class _InvestmentPageState extends State<InvestmentPage>
         label: Text(context.tr('Actif')),
       ),
       body: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-        stream: _accountsRef.snapshots(),
+        stream: _accountsStream,
         builder: (context, accountSnapshot) {
           final Map<String, String> accounts = {
             for (final doc in accountSnapshot.data?.docs ?? [])
@@ -188,7 +204,7 @@ class _InvestmentPageState extends State<InvestmentPage>
           };
 
           return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-            stream: _investmentsRef.snapshots(),
+            stream: _investmentsStream,
             builder: (context, snapshot) {
               if (snapshot.connectionState == ConnectionState.waiting) {
                 return const Center(child: CircularProgressIndicator());
@@ -204,66 +220,65 @@ class _InvestmentPageState extends State<InvestmentPage>
                 return _InvestmentViewModel.fromFirestore(doc, accounts);
               }).toList()..sort((a, b) => b.balance.compareTo(a.balance));
 
-              final total = investments.fold(0.0, (sum, investment) {
-                return sum + investment.balance;
-              });
-
               if (investments.isEmpty) {
                 return _buildEmptyState();
               }
 
-              return TabBarView(
-                controller: _tabController,
-                physics: const NeverScrollableScrollPhysics(),
-                children: _tabs.map((type) {
-                  final filtered = type == _allType
-                      ? investments
-                      : investments.where((investment) {
-                          return investment.investmentType == type;
-                        }).toList();
-                  final filteredTotal = filtered.fold(0.0, (sum, investment) {
-                    return sum + investment.balance;
-                  });
+              return AnnualAnalysisScope(
+                key: ValueKey(widget.userId),
+                builder: (context, analysis) => TabBarView(
+                  controller: _tabController,
+                  physics: const NeverScrollableScrollPhysics(),
+                  children: _tabs.map((type) {
+                    final filtered = type == _allType
+                        ? investments
+                        : investments.where((investment) {
+                            return investment.investmentType == type;
+                          }).toList();
+                    final filteredTotal = filtered.fold(0.0, (sum, investment) {
+                      return sum + investment.balance;
+                    });
 
-                  if (filtered.isEmpty) {
-                    return _buildEmptyState(type: type);
-                  }
+                    if (filtered.isEmpty) {
+                      return _buildEmptyState(type: type);
+                    }
 
-                  return ListView(
-                    dragStartBehavior: DragStartBehavior.down,
-                    padding: EdgeInsets.fromLTRB(
-                      16,
-                      12,
-                      16,
-                      96 +
-                          AppPageTabMenu.clearance(
-                            context,
-                            _tabLabels,
-                            scrollable: true,
-                          ),
-                    ),
-                    children: [
-                      _buildHeader(
-                        count: filtered.length,
-                        total: filteredTotal,
-                        currency: currency,
-                        privacy: privacy,
+                    return ListView(
+                      dragStartBehavior: DragStartBehavior.down,
+                      padding: EdgeInsets.fromLTRB(
+                        16,
+                        12,
+                        16,
+                        96 +
+                            AppPageTabMenu.clearance(
+                              context,
+                              _tabLabels,
+                              scrollable: true,
+                            ),
                       ),
-                      const SizedBox(height: 16),
-                      ...filtered.map(
-                        (investment) => Padding(
-                          padding: const EdgeInsets.only(bottom: 12),
-                          child: _buildInvestmentCard(
-                            investment: investment,
-                            total: filteredTotal,
-                            currency: currency,
-                            privacy: privacy,
+                      children: [
+                        _buildHeader(
+                          count: filtered.length,
+                          total: filteredTotal,
+                          currency: currency,
+                          privacy: privacy,
+                        ),
+                        const SizedBox(height: 16),
+                        ...filtered.map(
+                          (investment) => Padding(
+                            padding: const EdgeInsets.only(bottom: 12),
+                            child: _buildInvestmentCard(
+                              investment: investment,
+                              analysis: analysis,
+                              currency: currency,
+                              privacy: privacy,
+                            ),
                           ),
                         ),
-                      ),
-                    ],
-                  );
-                }).toList(),
+                      ],
+                    );
+                  }).toList(),
+                ),
               );
             },
           );
@@ -325,163 +340,43 @@ class _InvestmentPageState extends State<InvestmentPage>
 
   Widget _buildInvestmentCard({
     required _InvestmentViewModel investment,
-    required double total,
+    required Map<String, Map<String, dynamic>> analysis,
     required String currency,
     required PrivacyProvider privacy,
   }) {
-    final share = total <= 0
-        ? 0.0
-        : (investment.balance / total).clamp(0.0, 1.0).toDouble();
-
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: _panelDecoration(),
-      child: Column(
-        children: [
-          Row(
-            children: [
-              Container(
-                height: 48,
-                width: 48,
-                decoration: BoxDecoration(
-                  color: Theme.of(
-                    context,
-                  ).colorScheme.primary.withOpacity(0.12),
-                  borderRadius: BorderRadius.circular(17),
-                ),
-                child: Icon(
-                  investment.typeOption.icon,
-                  color: Theme.of(context).colorScheme.primary,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      investment.name,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Row(
-                      children: [
-                        Flexible(flex: 0, child: _typeBadge(investment)),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            investment.description.isEmpty
-                                ? investment.holdingAccountName
-                                : '${investment.description} - ${investment.holdingAccountName}',
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: Theme.of(context).textTheme.bodySmall
-                                ?.copyWith(
-                                  color: Theme.of(
-                                    context,
-                                  ).colorScheme.onSurface.withOpacity(0.62),
-                                ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-              PopupMenuButton<String>(
-                onSelected: (value) {
-                  if (value == 'edit') {
-                    _openAddInvestment(doc: investment.snapshot);
-                  } else if (value == 'delete') {
-                    _confirmDelete(investment);
-                  }
-                },
-                itemBuilder: (context) => [
-                  PopupMenuItem(
-                    value: 'edit',
-                    child: Row(
-                      children: [
-                        const Icon(Icons.edit_outlined),
-                        const SizedBox(width: 8),
-                        Text(context.tr('Modifier')),
-                      ],
-                    ),
-                  ),
-                  PopupMenuItem(
-                    value: 'delete',
-                    child: Row(
-                      children: [
-                        const Icon(
-                          Icons.delete_outline,
-                          color: Colors.redAccent,
-                        ),
-                        const SizedBox(width: 8),
-                        Text(context.tr('Supprimer')),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  privacy.money(investment.balance, currency),
-                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    color: privacy.hideAmounts
-                        ? Theme.of(
-                            context,
-                          ).colorScheme.onSurface.withOpacity(0.58)
-                        : Theme.of(context).colorScheme.primary,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
-              Text(
-                privacy.percent(share * 100),
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  fontWeight: FontWeight.w600,
-                  color: Theme.of(
-                    context,
-                  ).colorScheme.onSurface.withOpacity(0.64),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 10),
-          LinearProgressIndicator(
-            value: privacy.hideAmounts ? 1 : share,
-            minHeight: 6,
-            color: privacy.hideAmounts
-                ? Theme.of(context).colorScheme.onSurface.withOpacity(0.18)
-                : null,
-            borderRadius: BorderRadius.circular(999),
-          ),
-        ],
+    return AnnualEntityRow(
+      key: ValueKey('investment-${investment.id}'),
+      name: investment.name,
+      subtitle:
+          '${context.tr(investment.typeOption.label)} · ${investment.holdingAccountName}',
+      amount: annualEntityAmount(
+        context,
+        investment.balance,
+        currency,
+        hidden: privacy.hideAmounts,
       ),
-    );
-  }
-
-  Widget _typeBadge(_InvestmentViewModel investment) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.primary.withOpacity(0.10),
-        borderRadius: BorderRadius.circular(999),
-      ),
-      child: Text(
-        context.tr(investment.typeOption.label),
-        style: Theme.of(context).textTheme.labelSmall?.copyWith(
-          color: Theme.of(context).colorScheme.primary,
-          fontWeight: FontWeight.w600,
-        ),
+      percent: analysis['investments/${investment.id}']?['percent'] as num?,
+      hidden: privacy.hideAmounts,
+      icon: investment.typeOption.icon,
+      color: Theme.of(context).colorScheme.primary,
+      onTap: () async {
+        await Navigator.push(
+          context,
+          MaterialPageRoute(
+            settings: RouteSettings(name: '/investments/${investment.id}'),
+            builder: (_) => EntityEvolutionPage(
+              userId: widget.userId,
+              entityPath: 'investments/${investment.id}',
+              name: investment.name,
+              onEdit: (doc) => _openAddInvestment(doc: doc),
+            ),
+          ),
+        );
+        if (mounted) setState(() {});
+      },
+      menu: EntityActionsMenu(
+        onEdit: () => _openAddInvestment(doc: investment.snapshot),
+        onDelete: () => _confirmDelete(investment),
       ),
     );
   }

@@ -1,4 +1,7 @@
 import 'package:mysold/widgets/app_design.dart';
+import 'package:mysold/widgets/annual_analysis_scope.dart';
+import 'package:mysold/widgets/annual_entity_row.dart';
+import 'package:mysold/screens/profile/entity_evolution_page.dart';
 import 'package:mysold/data/document_store.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/gestures.dart';
@@ -21,6 +24,21 @@ class ComptePage extends StatefulWidget {
 }
 
 class _ComptePageState extends State<ComptePage> {
+  late Stream<QuerySnapshot<Map<String, dynamic>>> _accountsStream;
+
+  @override
+  void initState() {
+    super.initState();
+    _accountsStream = _accountsRef.snapshots();
+  }
+
+  @override
+  void didUpdateWidget(covariant ComptePage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.userId != widget.userId)
+      _accountsStream = _accountsRef.snapshots();
+  }
+
   CollectionReference<Map<String, dynamic>> get _accountsRef {
     return DocumentStore.instance
         .collection('users')
@@ -124,7 +142,7 @@ class _ComptePageState extends State<ComptePage> {
         label: Text(context.tr('Compte')),
       ),
       body: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-        stream: _accountsRef.snapshots(),
+        stream: _accountsStream,
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
@@ -156,24 +174,27 @@ class _ComptePageState extends State<ComptePage> {
             return _buildEmptyState();
           }
 
-          return ListView(
-            dragStartBehavior: DragStartBehavior.down,
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 96),
-            children: [
-              _buildHeader(accounts.length, totalBalance, currency, privacy),
-              const SizedBox(height: 16),
-              ...accounts.map(
-                (account) => Padding(
-                  padding: const EdgeInsets.only(bottom: 12),
-                  child: _buildAccountCard(
-                    account: account,
-                    totalBalance: totalBalance,
-                    currency: currency,
-                    privacy: privacy,
+          return AnnualAnalysisScope(
+            key: ValueKey(widget.userId),
+            builder: (context, analysis) => ListView(
+              dragStartBehavior: DragStartBehavior.down,
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 96),
+              children: [
+                _buildHeader(accounts.length, totalBalance, currency, privacy),
+                const SizedBox(height: 16),
+                ...accounts.map(
+                  (account) => Padding(
+                    padding: const EdgeInsets.only(bottom: 12),
+                    child: _buildAccountCard(
+                      account: account,
+                      analysis: analysis,
+                      currency: currency,
+                      privacy: privacy,
+                    ),
                   ),
                 ),
-              ),
-            ],
+              ],
+            ),
           );
         },
       ),
@@ -246,144 +267,44 @@ class _ComptePageState extends State<ComptePage> {
 
   Widget _buildAccountCard({
     required _AccountViewModel account,
-    required double totalBalance,
+    required Map<String, Map<String, dynamic>> analysis,
     required String currency,
     required PrivacyProvider privacy,
   }) {
-    final share = totalBalance <= 0
-        ? 0.0
-        : (account.balance / totalBalance).clamp(0.0, 1.0).toDouble();
-    final color = privacy.hideAmounts
-        ? Theme.of(context).colorScheme.onSurface.withOpacity(0.48)
-        : account.balance >= 0
-        ? Colors.green
-        : Colors.redAccent;
-
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: _panelDecoration(),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                height: 46,
-                width: 46,
-                decoration: BoxDecoration(
-                  color: color.withOpacity(0.12),
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: Icon(Icons.account_balance, color: color),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      account.name,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    if (account.description.isNotEmpty) ...[
-                      const SizedBox(height: 2),
-                      Text(
-                        account.description,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: Theme.of(
-                            context,
-                          ).colorScheme.onSurface.withOpacity(0.62),
-                        ),
-                      ),
-                    ],
-                    if (account.managedByInvestments) ...[
-                      const SizedBox(height: 6),
-                      Text(
-                        context.tr('Compte investissement auto'),
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: Theme.of(context).colorScheme.primary,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
-              ),
-              PopupMenuButton<String>(
-                onSelected: (value) {
-                  if (value == 'edit') {
-                    _openAddCompte(doc: account.snapshot);
-                  } else if (value == 'delete') {
-                    _confirmDelete(account);
-                  }
-                },
-                itemBuilder: (context) => [
-                  PopupMenuItem(
-                    value: 'edit',
-                    child: Row(
-                      children: [
-                        const Icon(Icons.edit_outlined),
-                        const SizedBox(width: 8),
-                        Text(context.tr('Modifier')),
-                      ],
-                    ),
-                  ),
-                  PopupMenuItem(
-                    value: 'delete',
-                    child: Row(
-                      children: [
-                        const Icon(
-                          Icons.delete_outline,
-                          color: Colors.redAccent,
-                        ),
-                        const SizedBox(width: 8),
-                        Text(context.tr('Supprimer')),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ],
+    return AnnualEntityRow(
+      key: ValueKey('account-${account.id}'),
+      name: account.name,
+      subtitle: account.managedByInvestments
+          ? context.tr('Compte investissement auto')
+          : account.description,
+      amount: annualEntityAmount(
+        context,
+        account.balance,
+        currency,
+        hidden: privacy.hideAmounts,
+      ),
+      percent: analysis['accounts/${account.id}']?['percent'] as num?,
+      hidden: privacy.hideAmounts,
+      icon: Icons.account_balance_outlined,
+      color: Theme.of(context).colorScheme.primary,
+      onTap: () async {
+        await Navigator.push(
+          context,
+          MaterialPageRoute(
+            settings: RouteSettings(name: '/accounts/${account.id}'),
+            builder: (_) => EntityEvolutionPage(
+              userId: widget.userId,
+              entityPath: 'accounts/${account.id}',
+              name: account.name,
+              onEdit: (doc) => _openAddCompte(doc: doc),
+            ),
           ),
-          const SizedBox(height: 16),
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  privacy.money(account.balance, currency),
-                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    color: color,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
-              Text(
-                privacy.percent(share * 100),
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  fontWeight: FontWeight.w600,
-                  color: Theme.of(
-                    context,
-                  ).colorScheme.onSurface.withOpacity(0.64),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 10),
-          LinearProgressIndicator(
-            value: privacy.hideAmounts ? 1 : share,
-            minHeight: 6,
-            color: privacy.hideAmounts
-                ? Theme.of(context).colorScheme.onSurface.withOpacity(0.18)
-                : null,
-            borderRadius: BorderRadius.circular(999),
-          ),
-        ],
+        );
+        if (mounted) setState(() {});
+      },
+      menu: EntityActionsMenu(
+        onEdit: () => _openAddCompte(doc: account.snapshot),
+        onDelete: () => _confirmDelete(account),
       ),
     );
   }

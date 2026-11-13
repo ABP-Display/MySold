@@ -1,5 +1,4 @@
 import 'package:mysold/widgets/app_design.dart';
-import 'package:mysold/screens/profile/annual_evolution_page.dart';
 import 'package:mysold/data/document_store.dart';
 import 'package:mysold/data/local_auth.dart';
 import 'package:flutter/material.dart';
@@ -293,12 +292,6 @@ class _ProfilePageState extends State<ProfilePage> {
             title: 'Simulation',
             subtitle: 'Budget, investissement et prêt',
             onTap: () => _openSimulation(context),
-          ),
-          _ToolTile(
-            icon: Icons.insights_outlined,
-            title: 'Évolution annuelle',
-            subtitle: 'Comptes, catégories et investissements',
-            onTap: () => _push(context, const AnnualEvolutionPage()),
           ),
           Divider(
             height: 1,

@@ -1,6 +1,16 @@
 # Évolution annuelle
 
-Accès : Profil > Évolution annuelle. Les trois onglets affichent les comptes, catégories et investissements, avec historique mensuel, référence au 1er janvier et variation. Le mode discret masque valeurs, pourcentages et graphiques.
+Accès : Profil > Comptes, Catégories ou Investissements. Chaque ligne affiche
+son montant actuel et son taux d’évolution annuelle, sans rubrique supplémentaire
+dans le profil. Un clic ouvre la fiche de cet élément avec ses paramètres,
+l’accès à la modification, le graphique annuel et le détail mensuel. Le mode
+discret masque valeurs, pourcentages et graphiques.
+
+Pour les comptes et investissements, le taux compare la valeur courante à la
+référence du 1er janvier. Pour les catégories, il compare le cumul à celui de la
+même période de l’année précédente ; il ne s’agit pas d’une part du total.
+Un pourcentage non calculable est représenté par un tiret, pas par zéro.
+La synthèse annuelle est partagée en cache entre les trois listes et les fiches.
 
 ## Données et cohérence
 
@@ -37,4 +47,11 @@ Les fixtures Chromium utilisent des données synthétiques et contrôlent le ren
 
 Les sources de tests restent versionnées. Seuls les résultats, captures, fichiers de couverture et sorties de debug sont ignorés par Git.
 
-Validation du 13 novembre 2026 : 402 tests Flutter et 56 tests backend réussis ; compilation Web release réussie. Chromium : contrôles de rendu à 320, 390 et 1280 px, défilement depuis le graphique vérifié à 320 et 390 px. L'analyseur conserve 16 avertissements/info préexistants, sans nouvelle erreur.
+Validation de l’intégration aux pages de gestion : 417 tests Flutter réussis et
+compilation Web release réussie. Chromium : rendu à 320, 390 et 1 280 px,
+ouverture de la bonne fiche puis du formulaire de modification existant,
+réutilisation de la synthèse annuelle sans nouvelle requête et défilement
+depuis le graphique contrôlés. L’analyseur conserve 15 avertissements/info
+préexistants, sans nouvelle erreur. La logique serveur n’a pas été modifiée
+par cette correction ; les 56 tests backend de la version précédente n’ont
+pas été relancés pour cette modification d’interface.

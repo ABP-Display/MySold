@@ -10,6 +10,10 @@ const debug = process.argv[2] || 'http://127.0.0.1:9235';
 const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
 const server = createServer(async (req, res) => {
   const name = new URL(req.url, 'http://localhost').pathname;
+  if (name === '/api/analysis/annual') {
+    res.setHeader('Content-Type','application/json');
+    return res.end(JSON.stringify({year:2026,entities:Array.from({length:60},(_,i)=>({path:'accounts/'+i,kind:'accounts',name:'Compte '+i,current:1200,opening:1000,delta:200,percent:20,estimated:true,unexplained:0,monthly:Array(12).fill(20),counts:Array(12).fill(2),closing:Array.from({length:12},(_,m)=>1000+m*20)}))}));
+  }
   if (name === '/api/documents/query') {
     let body = '';
     for await (const chunk of req) body += chunk;
@@ -66,7 +70,7 @@ const server = createServer(async (req, res) => {
     })).result.value;
     for (const width of [320,390,1280]) {
       await send('Emulation.setDeviceMetricsOverride',{width,height:900,deviceScaleFactor:1,mobile:width<760});
-      for (const page of ['simulation','categories','investments']) {
+      for (const page of ['simulation','categories','investments','annual']) {
         await send('Page.navigate',{url:'about:blank'});
         await delay(150);
         await send('Page.navigate',{url:`http://127.0.0.1:${server.address().port}/?page=${page}`});
@@ -82,6 +86,16 @@ const server = createServer(async (req, res) => {
         await delay(700);
         const error=await evaluate('document.body?.dataset.fixtureError');
         assert.ok(!error,error);
+        if (page === 'annual' && width < 760) {
+          await send('Emulation.setTouchEmulationEnabled',{enabled:true,maxTouchPoints:1});
+          const touch=(type,x,y)=>send('Input.dispatchTouchEvent',{type,touchPoints:type==='touchEnd'?[]:[{x,y,id:1}]});
+          await touch('touchStart',width/2,165); await touch('touchEnd'); await delay(350);
+          await touch('touchStart',width/2,420);
+          for(let i=1;i<=12;i++){await touch('touchMove',width/2,420-i*15);await delay(16);}
+          await touch('touchEnd'); await delay(300);
+          assert.ok(Number(await evaluate('document.body.dataset.scrollOffset || 0'))>20,'Annual list must scroll from the expanded chart');
+          console.log('Annual chart-origin scroll passed at '+width+'px');
+        }
         const shot=await send('Page.captureScreenshot',{format:'png'});
         await writeFile(path.join(output,`page-tabs-${page}-${width}.png`),Buffer.from(shot.data,'base64'));
         console.log(`${page}: ${width}px, no Flutter errors`);

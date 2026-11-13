@@ -62,3 +62,11 @@ CREATE TABLE IF NOT EXISTS mfa_challenges (
     expires_at timestamptz NOT NULL
 );
 CREATE INDEX IF NOT EXISTS mfa_challenges_user ON mfa_challenges(user_id);
+-- Derived, encrypted cache; authoritative history remains in documents/CSV.
+CREATE TABLE IF NOT EXISTS annual_analysis_cache (
+    user_id text NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    year integer NOT NULL,
+    data jsonb NOT NULL,
+    sealed_data bytea NOT NULL,
+    PRIMARY KEY(user_id, year)
+);

@@ -19,10 +19,11 @@ from werkzeug.exceptions import HTTPException
 from werkzeug.security import check_password_hash, generate_password_hash
 from origin_policy import DEFAULT_APP_ORIGIN, is_allowed_origin
 import totp
+from annual_analysis import build_analysis, effects, cents
 from encryption import INDEX_FIELDS, migrate_encryption, vault
 
 UTC = timezone.utc
-COLLECTIONS = {'accounts', 'categories', 'investments', 'transactions', 'budgetAlerts'}
+COLLECTIONS = {'accounts', 'categories', 'investments', 'transactions', 'budgetAlerts', 'balanceEvents', 'annualReferences'}
 FIELDS = {'date', 'type', 'fromAccountId', 'toAccountId', 'holdingAccountId',
           'categoryId', 'investmentId', 'name', 'balance', 'amount', 'createdAt'}
 PROFILE_FIELDS = {'firstName', 'lastName', 'phone', 'pin', 'theme', 'currency',
@@ -584,6 +585,16 @@ def validate_document(path, data):
     if len(json.dumps(data)) > 262144:
         raise Problem('Document trop volumineux.')
     collection = path.split('/')[0]
+    if collection in {'balanceEvents', 'annualReferences'}:
+        if not re.fullmatch(r'(accounts|investments)/[^/]{1,200}', str(data.get('entityPath', ''))):
+            raise Problem('Élément de référence invalide.')
+        data['amount'] = money(data.get('amount'))
+        if collection == 'balanceEvents':
+            if not isinstance(data.get('date'), dict) or data['date'].get('_type') != 'timestamp':
+                raise Problem('Date d’ajustement invalide.')
+            data['date']['value'] = parse_date(data['date'].get('value')).isoformat(timespec='milliseconds').replace('+00:00', 'Z')
+        elif type(data.get('year')) is not int or not 1900 <= data['year'] <= 2200:
+            raise Problem('Année invalide.')
     for field in ('balance', 'amount'):
         if field in data:
             data[field] = money(data[field])
@@ -602,12 +613,18 @@ def validate_document(path, data):
             raise Problem('Transaction invalide.')
         if not isinstance(data.get('date'), dict) or data['date'].get('_type') != 'timestamp':
             raise Problem('Date de transaction manquante.')
+        data['date']['value'] = parse_date(data['date'].get('value')).isoformat(timespec='milliseconds').replace('+00:00', 'Z')
         if data.get('fromAccountId') and data.get('fromAccountId') == data.get('toAccountId'):
             raise Problem('Les comptes source et destination doivent être différents.')
 
 
 def validate_links(db, uid, path, data):
     collection = path.split('/')[0]
+    if collection in {'balanceEvents', 'annualReferences'}:
+        if not load(db, uid, data['entityPath']) and not body().get('restore', False):
+            raise Problem('Élément introuvable.')
+        if collection == 'annualReferences' and path.split('/')[-1] != digest(data['entityPath'] + ':' + str(data['year'])):
+            raise Problem('Identifiant de référence invalide.')
     if collection == 'transactions':
         for field, target in (('fromAccountId', 'accounts'), ('toAccountId', 'accounts'),
                               ('categoryId', 'categories'), ('investmentId', 'investments')):
@@ -650,6 +667,8 @@ def validate_links(db, uid, path, data):
 @authenticated
 def commit():
     payload = body()
+    if 'restore' in payload and type(payload['restore']) is not bool:
+        raise Problem('Mode de restauration invalide.')
     operations, request_id = payload.get('operations'), payload.get('requestId')
     if not isinstance(operations, list) or not 1 <= len(operations) <= 500:
         raise Problem('Un lot doit contenir de 1 à 500 opérations.')
@@ -662,6 +681,11 @@ def commit():
     if db.execute('SELECT 1 FROM requests WHERE user_id=%s AND id=%s', (uid, request_id)).fetchone():
         return jsonify(ok=True)
     touched, originals, investments_changed = {}, {}, False
+    financial_change = any(isinstance(o, dict) and isinstance(o.get('path'), str) and
+        o['path'].split('/')[-2:-1] and o['path'].split('/')[-2] in
+        {'accounts', 'investments', 'transactions', 'categories', 'annualReferences', 'balanceEvents'} for o in operations)
+    before_values = {r['path']: vault(db).decode(uid, r) for r in db.execute(
+        "SELECT path,data,sealed_data FROM documents WHERE user_id=%s AND collection IN ('accounts','investments')", (uid,)).fetchall()} if financial_change else {}
     for operation in operations:
         if not isinstance(operation, dict):
             raise Problem('Opération invalide.')
@@ -721,9 +745,54 @@ def commit():
             if previous and previous.get('managedByInvestments'):
                 if db.execute("SELECT 1 FROM documents WHERE user_id=%s AND collection='investments' AND data->>'holdingAccountId'=%s LIMIT 1", (uid, path.split('/')[-1])).fetchone():
                     raise Problem('Ce compte détient encore des investissements.')
+    tx_changes = {}
+    for path, value in touched.items():
+        if path.startswith('transactions/'):
+            for sign, tx in [(-1, originals[path]), (1, value)]:
+                for entity, change in effects(tx or {}).items():
+                    tx_changes[entity] = tx_changes.get(entity, 0) + sign * change
+    # Restores carry their own history; never generate duplicate adjustments.
+    if financial_change and not payload.get('restore'):
+        for row in db.execute("SELECT path,data,sealed_data FROM documents WHERE user_id=%s AND collection IN ('accounts','investments')", (uid,)).fetchall():
+            path = row['path']
+            if path not in before_values:
+                current = vault(db).decode(uid, row)
+                save(db, uid, 'balanceEvents/' + secrets.token_hex(16), dict(entityPath=path, kind='initial', amount=current.get('balance', 0), date=timestamp()))
+                continue
+            current = vault(db).decode(uid, row)
+            residual = cents(current.get('balance')) - cents(before_values[path].get('balance')) - tx_changes.get(path, 0)
+            if residual:
+                save(db, uid, 'balanceEvents/' + secrets.token_hex(16), dict(entityPath=path, kind='adjustment', amount=residual / 100, date=timestamp()))
+    if financial_change:
+        db.execute('DELETE FROM annual_analysis_cache WHERE user_id=%s', (uid,))
     db.execute("DELETE FROM requests WHERE user_id=%s AND created_at < now() - interval '7 days'", (uid,))
     db.execute('INSERT INTO requests(user_id,id) VALUES (%s,%s)', (uid, request_id))
     return jsonify(ok=True)
+
+
+@app.post('/api/analysis/annual')
+@authenticated
+def annual_analysis():
+    year = body().get('year')
+    if type(year) is not int or not 1900 <= year <= now().year:
+        raise Problem('Année invalide.')
+    uid, db = g.user['id'], g.db
+    # Serialize cache construction with commits: never publish a stale version.
+    db.execute('SELECT id FROM users WHERE id=%s FOR UPDATE', (uid,))
+    path = 'analysis/' + str(year)
+    row = db.execute('SELECT data,sealed_data FROM annual_analysis_cache WHERE user_id=%s AND year=%s', (uid, year)).fetchone()
+    if row:
+        result = vault(db).decode(uid, dict(row, path=path))
+        if result['asOf'][:10] == min(now(), datetime(year + 1, 1, 1, tzinfo=UTC)).isoformat()[:10]:
+            return jsonify(result)
+    rows = db.execute("SELECT path,data,sealed_data FROM documents WHERE user_id=%s AND collection IN ('accounts','categories','investments','annualReferences')", (uid,)).fetchall()
+    rows += db.execute("SELECT path,data,sealed_data FROM documents WHERE user_id=%s AND collection IN ('transactions','balanceEvents') AND data->'date'->>'value'>=%s",
+                       (uid, f'{year-1:04d}-01-01T00:00:00.000Z')).fetchall()
+    docs = {r['path']: vault(db).decode(uid, r) for r in rows}
+    result = build_analysis(docs, year, now())
+    index, sealed = vault(db).encode(uid, path, result)
+    db.execute('INSERT INTO annual_analysis_cache(user_id,year,data,sealed_data) VALUES (%s,%s,%s,%s) ON CONFLICT(user_id,year) DO UPDATE SET data=excluded.data,sealed_data=excluded.sealed_data', (uid, year, Jsonb(index), sealed))
+    return jsonify(result)
 
 
 if __name__ == '__main__':

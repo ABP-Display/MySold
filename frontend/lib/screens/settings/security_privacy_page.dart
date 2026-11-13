@@ -27,6 +27,8 @@ int _compareImportDocuments(_ImportDocument a, _ImportDocument b) {
     'investments',
     'transactions',
     'budgetAlerts',
+    'balanceEvents',
+    'annualReferences',
   ];
   int priority(String path) {
     final parts = path.split('/');
@@ -62,6 +64,8 @@ class _SecurityPrivacyPageState extends State<SecurityPrivacyPage> {
     'investments',
     'transactions',
     'budgetAlerts',
+    'balanceEvents',
+    'annualReferences',
   ];
 
   DocumentReference<Map<String, dynamic>>? get _userRef {
@@ -1558,6 +1562,8 @@ class _ImportProgressPageState extends State<_ImportProgressPage> {
     'investments',
     'transactions',
     'budgetAlerts',
+    'balanceEvents',
+    'annualReferences',
   ];
 
   static const _protectedRootImportFields = {
@@ -2021,7 +2027,9 @@ class _ImportProgressPageState extends State<_ImportProgressPage> {
       final isRoot = importDoc.path == targetRoot;
       await ref.set(
         importDoc.data,
-        isRoot ? SetOptions(merge: true) : SetOptions(merge: !exists),
+        isRoot
+            ? SetOptions(merge: true, restore: true)
+            : SetOptions(merge: !exists, restore: true),
       );
       exists ? replaced++ : created++;
       await _pause();

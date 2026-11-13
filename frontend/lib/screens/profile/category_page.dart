@@ -27,12 +27,13 @@ class CategoriePage extends StatefulWidget {
 
 class _CategoriePageState extends State<CategoriePage> {
   int _selectedIndex = 0;
-  late Stream<QuerySnapshot<Map<String, dynamic>>> _categoryStream,
-      _transactionStream;
+  late Stream<QuerySnapshot<Map<String, dynamic>>> _categoryStream;
+  int? _summaryGeneration;
+  late Future<Map<String, dynamic>> _summary;
   final _search = [TextEditingController(), TextEditingController()];
   final _minimum = <double?>[null, null], _maximum = <double?>[null, null];
   final _orders = [CategoryOrder.nameAscending, CategoryOrder.nameAscending];
-  QuerySnapshot<Map<String, dynamic>>? _aggregatedSnapshot;
+  Map<String, dynamic>? _aggregatedSnapshot;
   final _totals = <String, double>{}, _counts = <String, int>{};
 
   CollectionReference<Map<String, dynamic>> get _categoriesRef {
@@ -40,13 +41,6 @@ class _CategoriePageState extends State<CategoriePage> {
         .collection('users')
         .doc(widget.userId)
         .collection('categories');
-  }
-
-  CollectionReference<Map<String, dynamic>> get _transactionsRef {
-    return DocumentStore.instance
-        .collection('users')
-        .doc(widget.userId)
-        .collection('transactions');
   }
 
   @override
@@ -57,10 +51,21 @@ class _CategoriePageState extends State<CategoriePage> {
 
   void _createStreams() {
     _categoryStream = _categoriesRef.snapshots();
-    _transactionStream = _transactionsRef.snapshots();
+    _summaryGeneration = null;
     _aggregatedSnapshot = null;
     _totals.clear();
     _counts.clear();
+  }
+
+  Future<Map<String, dynamic>> _annualSummary() {
+    final generation = DocumentStore.instance.generation;
+    if (_summaryGeneration != generation) {
+      _summaryGeneration = generation;
+      _summary = DocumentStore.instance.read('analysis/annual', {
+        'year': DateTime.now().year,
+      });
+    }
+    return _summary;
   }
 
   @override
@@ -198,55 +203,46 @@ class _CategoriePageState extends State<CategoriePage> {
       ),
       body: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
         stream: _categoryStream,
-        builder: (context, categories) =>
-            StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-              stream: _transactionStream,
-              builder: (context, transactions) {
-                if (categories.hasError || transactions.hasError)
-                  return Center(
-                    child: Text(
-                      '${context.tr('Erreur')} : ${categories.error ?? transactions.error}',
-                    ),
-                  );
-                if (!categories.hasData || !transactions.hasData)
-                  return const Center(child: CircularProgressIndicator());
-                if (!identical(_aggregatedSnapshot, transactions.data)) {
-                  _aggregatedSnapshot = transactions.data;
-                  _totals.clear();
-                  _counts.clear();
-                  for (final doc in transactions.data!.docs) {
-                    final data = doc.data();
-                    if (data['type'] != 'income' && data['type'] != 'expense')
-                      continue;
-                    final reference = data['categoryId'];
-                    final id = reference is DocumentReference
-                        ? reference.id
-                        : reference?.toString();
-                    if (id == null || id.isEmpty) continue;
-                    _totals[id] =
-                        (_totals[id] ?? 0) +
-                        (data['amount'] as num? ?? 0).toDouble();
-                    _counts[id] = (_counts[id] ?? 0) + 1;
-                  }
-                }
-                final models = categories.data!.docs
-                    .map(
-                      (doc) => _CategoryViewModel.fromFirestore(
-                        doc.id,
-                        doc.data(),
-                        doc,
-                      ),
-                    )
-                    .toList();
-                return LazyPageStack(
-                  index: _selectedIndex,
-                  children: [
-                    _buildTabContent('expense', models),
-                    _buildTabContent('income', models),
-                  ],
+        builder: (context, categories) => FutureBuilder<Map<String, dynamic>>(
+          future: _annualSummary(),
+          builder: (context, transactions) {
+            if (categories.hasError || transactions.hasError)
+              return Center(
+                child: Text(
+                  '${context.tr('Erreur')} : ${categories.error ?? transactions.error}',
+                ),
+              );
+            if (!categories.hasData || !transactions.hasData)
+              return const Center(child: CircularProgressIndicator());
+            if (!identical(_aggregatedSnapshot, transactions.data)) {
+              _aggregatedSnapshot = transactions.data;
+              _totals.clear();
+              _counts.clear();
+              for (final data in transactions.data!['entities'] as List) {
+                if (data['kind'] != 'categories') continue;
+                final id = (data['path'] as String).split('/').last;
+                _totals[id] = (data['current'] as num).toDouble();
+                _counts[id] = (data['counts'] as List).fold<int>(
+                  0,
+                  (sum, n) => sum + (n as num).toInt(),
                 );
-              },
-            ),
+              }
+            }
+            final models = categories.data!.docs
+                .map(
+                  (doc) =>
+                      _CategoryViewModel.fromFirestore(doc.id, doc.data(), doc),
+                )
+                .toList();
+            return LazyPageStack(
+              index: _selectedIndex,
+              children: [
+                _buildTabContent('expense', models),
+                _buildTabContent('income', models),
+              ],
+            );
+          },
+        ),
       ),
     );
   }
@@ -398,7 +394,7 @@ class _CategoriePageState extends State<CategoriePage> {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  '$count categorie${count > 1 ? 's' : ''} - Total ${privacy.money(totalAmount, currency)}',
+                  '$count categorie${count > 1 ? 's' : ''} - ${DateTime.now().year} : ${privacy.money(totalAmount, currency)}',
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
                     color: Theme.of(
                       context,

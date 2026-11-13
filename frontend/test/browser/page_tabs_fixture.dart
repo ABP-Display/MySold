@@ -2,6 +2,7 @@
 import 'package:flutter/material.dart';
 import 'package:mysold/providers/user_data_provider.dart';
 import 'package:mysold/screens/profile/category_page.dart';
+import 'package:mysold/screens/profile/annual_evolution_page.dart';
 import 'package:mysold/screens/profile/investment_page.dart';
 import 'package:mysold/screens/settings/currency_provider.dart';
 import 'package:mysold/screens/settings/privacy_provider.dart';
@@ -26,8 +27,17 @@ void main() {
       ],
       child: MaterialApp(
         theme: AppThemes.dark,
-        builder: (context, child) => AppTypography.readable(context, child!),
+        builder: (context, child) => NotificationListener<ScrollNotification>(
+          onNotification: (n) {
+            if (n.metrics.axis == Axis.vertical)
+              web.document.body!.dataset['scrollOffset'] =
+                  '${n.metrics.pixels}';
+            return false;
+          },
+          child: AppTypography.readable(context, child!),
+        ),
         home: switch (page) {
+          'annual' => const AnnualEvolutionPage(),
           'categories' => const CategoriePage(userId: 'fixture'),
           'investments' => const InvestmentPage(userId: 'fixture'),
           _ => const SimulationWorkspace(currency: '€'),

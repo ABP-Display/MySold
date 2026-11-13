@@ -78,7 +78,8 @@ String newDocumentId() {
 
 class SetOptions {
   final bool merge;
-  const SetOptions({this.merge = false});
+  final bool restore;
+  const SetOptions({this.merge = false, this.restore = false});
 }
 
 class DocumentStore {
@@ -105,10 +106,14 @@ class DocumentStore {
     return _cache.load(key, () => ApiClient.instance.request(route, body));
   }
 
-  Future<void> commit(List<Map<String, dynamic>> operations) async {
+  Future<void> commit(
+    List<Map<String, dynamic>> operations, {
+    bool restore = false,
+  }) async {
     await ApiClient.instance.request('documents/commit', {
       'requestId': newDocumentId(),
       'operations': operations,
+      'restore': restore,
     });
     clear();
   }
@@ -140,7 +145,7 @@ class DocumentReference<T extends Map<String, dynamic>> {
           'merge': options?.merge ?? false,
           'data': encodeValue(data),
         },
-      ]);
+      ], restore: options?.restore ?? false);
   Future<void> update(Map<String, dynamic> data) =>
       DocumentStore.instance.commit([
         {'path': path, 'action': 'update', 'data': encodeValue(data)},

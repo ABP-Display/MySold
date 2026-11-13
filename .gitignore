@@ -26,5 +26,12 @@ backend/.venv/
 .vscode/
 .DS_Store
 test-results/
+# Generated diagnostics only. Test source files stay versioned for CI.
+debug-output/
+test-artifacts/
+**/.pytest_cache/
+**/.coverage
+**/coverage/
+frontend/.debug/
 
 /mysold-keys*.tar.gz

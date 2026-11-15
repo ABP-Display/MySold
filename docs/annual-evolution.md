@@ -9,8 +9,28 @@ discret masque valeurs, pourcentages et graphiques.
 Pour les comptes et investissements, le taux compare la valeur courante à la
 référence du 1er janvier. Pour les catégories, il compare le cumul à celui de la
 même période de l’année précédente ; il ne s’agit pas d’une part du total.
-Un pourcentage non calculable est représenté par un tiret, pas par zéro.
+Pour les comptes et investissements, un pourcentage non calculable est représenté
+par un tiret, pas par zéro.
+Pour les catégories, une référence précédente nulle est signalée explicitement :
+« Nouveau » si le cumul est non nul, « Sans activité » si les deux cumuls sont
+nuls. Aucun pourcentage artificiel n’est calculé en divisant par zéro.
 La synthèse annuelle est partagée en cache entre les trois listes et les fiches.
+
+## Fiche d’un élément
+
+La partie supérieure présente le solde ou total actuel, les informations
+principales et le bouton Modifier. Elle reste indépendante de l’année consultée.
+Le graphique de la partie inférieure permet de lire les valeurs de chaque mois
+par survol, appui ou glissement horizontal, comme les statistiques mensuelles.
+Les flèches du clavier sont également disponibles lorsque le graphique a le focus.
+Un geste vertical continue de faire défiler la page. La valeur sélectionnée
+reste affichée au-dessus de la courbe, sans tableau des douze mois.
+
+Les mois futurs restent vides plutôt que d’être tracés à zéro. Le graphique
+conserve les lacunes de données historiques ; une absence de donnée n’est pas
+transformée en solde nul. Les changements de mois ne relancent aucune requête.
+La référence du 1er janvier et sa modification protégée par PIN restent dans
+un volet replié sous le graphique.
 
 ## Données et cohérence
 
@@ -47,7 +67,7 @@ Les fixtures Chromium utilisent des données synthétiques et contrôlent le ren
 
 Les sources de tests restent versionnées. Seuls les résultats, captures, fichiers de couverture et sorties de debug sont ignorés par Git.
 
-Validation de l’intégration aux pages de gestion : 417 tests Flutter réussis et
+Validation de l’intégration aux pages de gestion : 427 tests Flutter réussis et
 compilation Web release réussie. Chromium : rendu à 320, 390 et 1 280 px,
 ouverture de la bonne fiche puis du formulaire de modification existant,
 réutilisation de la synthèse annuelle sans nouvelle requête et défilement

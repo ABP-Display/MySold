@@ -1,5 +1,6 @@
 import 'package:mysold/widgets/app_design.dart';
 import 'package:mysold/widgets/annual_entity_row.dart';
+import 'package:mysold/models/category_evolution.dart';
 import 'package:mysold/services/annual_analysis_service.dart';
 import 'package:mysold/screens/profile/entity_evolution_page.dart';
 import 'package:mysold/widgets/app_page_tab_menu.dart';
@@ -428,6 +429,9 @@ class _CategoriePageState extends State<CategoriePage> {
     required bool isExpense,
     required PrivacyProvider privacy,
   }) {
+    final comparison = CategoryEvolution.fromSummary(
+      _analysis['categories/${category.id}'],
+    );
     return AnnualEntityRow(
       key: ValueKey('category-${category.id}'),
       name: category.name,
@@ -440,7 +444,9 @@ class _CategoriePageState extends State<CategoriePage> {
         currency,
         hidden: privacy.hideAmounts,
       ),
-      percent: _analysis['categories/${category.id}']?['percent'] as num?,
+      percent: comparison.percent,
+      rateLabel: comparison.label,
+      rateHint: comparison.hint,
       hidden: privacy.hideAmounts,
       category: true,
       expense: isExpense,

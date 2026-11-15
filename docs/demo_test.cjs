@@ -52,7 +52,8 @@ const server=createServer(async(req,res)=>{
       await evaluate('location.hash="accounts"');await delay(100);
       await evaluate('document.querySelector("[data-entity=accounts]").click()');await delay(100);
       assert.equal(await evaluate('document.querySelector("h1").textContent'),'Compte courant');
-      assert.ok(await evaluate('document.querySelector("main").textContent.includes("Paramètres")'));
+      assert.ok(await evaluate('!!document.querySelector("[data-demo-edit-entity]")'));
+      assert.equal(await evaluate('document.querySelectorAll("main .detail-line").length'),0);
       await evaluate('location.hash="profil"');await delay(100);
       const top=await evaluate('document.querySelector("main").getBoundingClientRect().top');
       await evaluate('document.querySelector("[data-demo-privacy]").click()');

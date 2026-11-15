@@ -13,7 +13,8 @@ let analysisRequests = 0;
 const fixtureData = {
   accounts: Array.from({length: 40}, (_, i) => ({name: i === 0 ? 'Compte titres' : 'Compte '+i, balance:1200, description:'Compte de contrôle'})),
   categories: [{name:'Alimentation',type:'expense',color:0xff22c55e},
-    {name:'Transport',type:'expense',color:0xff3b82f6}, {name:'Salaire',type:'income',color:0xff22c55e}],
+    {name:'Transport',type:'expense',color:0xff3b82f6}, {name:'Salaire',type:'income',color:0xff22c55e},
+    {name:'Sans opération',type:'expense',color:0xff94a3b8}],
   investments: [{name:'ETF Monde',investmentType:'etf',balance:3500,holdingAccountId:'0'},
     {name:'Bitcoin',investmentType:'crypto',balance:750,holdingAccountId:'0'}],
 };
@@ -21,10 +22,19 @@ const server = createServer(async (req, res) => {
   const name = new URL(req.url, 'http://localhost').pathname;
   if (name === '/api/analysis/annual') {
     analysisRequests++;
+    let body=''; for await (const chunk of req) body += chunk;
+    const year=JSON.parse(body).year, now=new Date();
+    const months=year<now.getUTCFullYear()?12:now.getUTCMonth()+1;
     res.setHeader('Content-Type','application/json');
-    return res.end(JSON.stringify({year:2026,entities:Object.entries(fixtureData).flatMap(([kind,rows])=>rows.map((row,i)=>{
-      const current=row.balance??240,opening=Math.round(current/1.2*100)/100,delta=Math.round((current-opening)*100)/100;
-      return {path:kind+'/'+i,kind,name:row.name,current,opening:kind==='categories'?null:opening,previous:kind==='categories'?200:null,delta,percent:20,estimated:true,unexplained:0,netFlows:120,valuationChange:delta-120,monthly:Array(12).fill(20),counts:Array(12).fill(2),closing:Array.from({length:12},(_,m)=>Math.round((opening+delta*(m+1)/12)*100)/100)};
+    return res.end(JSON.stringify({year,asOf:now.toISOString(),entities:Object.entries(fixtureData).flatMap(([kind,rows])=>rows.map((row,i)=>{
+      const category=kind==='categories',current=category&&i===3?0:row.balance??240,
+        opening=Math.round(current/1.2*100)/100,previous=category?(i===1||i===3?0:200):null,
+        delta=Math.round((current-(category?previous:opening))*100)/100;
+      return {path:kind+'/'+i,kind,name:row.name,current,opening:category?null:opening,previous,delta,
+        percent:category&&previous===0?null:20,estimated:true,unexplained:0,netFlows:120,valuationChange:delta-120,
+        monthly:Array.from({length:12},(_,m)=>m<months?(category?current:120)/months:0),
+        counts:Array.from({length:12},(_,m)=>m<months&&current!==0?2:0),
+        closing:Array.from({length:12},(_,m)=>m<months?Math.round((opening+delta*(m+1)/months)*100)/100:null)};
     }))}));
   }
   if (name === '/api/documents/get') {
@@ -101,6 +111,10 @@ const server = createServer(async (req, res) => {
         const shot=await send('Page.captureScreenshot',{format:'png'});
         await writeFile(path.join(output,`page-tabs-${language}-${page}-${width}.png`),Buffer.from(shot.data,'base64'));
         if (['accounts','categories','investments'].includes(page)) {
+          if(page==='categories') {
+            const labels=await evaluate(`[...document.querySelectorAll('[role="button"]')].map(e=>e.getAttribute('aria-label')||e.textContent||'').join(' | ')`);
+            assert.ok(labels.includes(({fr:'Nouveau',en:'New',de:'Neu',ja:'新規'})[language]||'Nouveau'),'A zero comparison must have an explicit status');
+          }
           const name={accounts:'Compte titres',categories:'Alimentation',investments:'ETF Monde'}[page];
           const before=analysisRequests;
           const rect=await evaluate(`(()=>{const e=[...document.querySelectorAll('[role="button"]')].find(e=>(e.getAttribute('aria-label')||'').includes(${JSON.stringify(name)})); if(!e)return null; const r=e.getBoundingClientRect(); return {x:r.x+r.width/2,y:r.y+r.height/2};})()`);
@@ -114,6 +128,15 @@ const server = createServer(async (req, res) => {
           await writeFile(path.join(output,`entity-${language}-${page}-${width}.png`),Buffer.from(detail.data,'base64'));
           assert.ok(!await evaluate('document.body?.dataset.fixtureError'));
           console.log(page+': item detail and shared analysis cache passed');
+          const chart=await evaluate(`(()=>{const e=document.querySelector('[flt-semantics-identifier="entity-annual-plot"]'); if(!e)return null; const r=e.getBoundingClientRect();return {x:r.x,y:r.y,width:r.width,height:r.height};})()`);
+          assert.ok(chart,'Missing interactive annual chart');
+          const beforeSelect=analysisRequests;
+          const point={x:chart.x+60,y:chart.y+chart.height*.5};
+          await send('Input.dispatchMouseEvent',{type:'mouseMoved',...point});
+          await send('Input.dispatchMouseEvent',{type:'mousePressed',button:'left',clickCount:1,...point});
+          for(let i=1;i<=8;i++)await send('Input.dispatchMouseEvent',{type:'mouseMoved',button:'left',buttons:1,x:point.x+(chart.width-80)*.5*i/8,y:point.y});
+          await send('Input.dispatchMouseEvent',{type:'mouseReleased',button:'left',clickCount:1,x:point.x+(chart.width-80)*.5,y:point.y});
+          assert.equal(analysisRequests,beforeSelect,'Chart interaction must not request data');
           const editLabel={fr:'Modifier',de:'Bearbeiten',ja:'編集',en:'Edit'}[language]||'Modifier';
           const edit=await evaluate(`(()=>{const e=[...document.querySelectorAll('[role="button"]')].find(e=>(e.getAttribute('aria-label')||e.textContent||'').includes(${JSON.stringify(editLabel)})); if(!e)return null; const r=e.getBoundingClientRect(); return {x:r.x+r.width/2,y:r.y+r.height/2};})()`);
           assert.ok(edit,'Missing settings edit action');
@@ -127,8 +150,9 @@ const server = createServer(async (req, res) => {
         if (page === 'annual' && width < 760) {
           await send('Emulation.setTouchEmulationEnabled',{enabled:true,maxTouchPoints:1});
           const touch=(type,x,y)=>send('Input.dispatchTouchEvent',{type,touchPoints:type==='touchEnd'?[]:[{x,y,id:1}]});
-          await touch('touchStart',width/2,620);
-          for(let i=1;i<=12;i++){await touch('touchMove',width/2,620-i*15);await delay(16);}
+          const chart=await evaluate(`(()=>{const r=document.querySelector('[flt-semantics-identifier="entity-annual-plot"]').getBoundingClientRect();return {x:r.x+r.width/2,y:r.y+r.height/2};})()`);
+          await touch('touchStart',chart.x,chart.y);
+          for(let i=1;i<=12;i++){await touch('touchMove',chart.x,chart.y-i*15);await delay(16);}
           await touch('touchEnd'); await delay(300);
           assert.ok(Number(await evaluate('document.body.dataset.scrollOffset || 0'))>20,'Annual list must scroll from the expanded chart');
           console.log('Annual chart-origin scroll passed at '+width+'px');

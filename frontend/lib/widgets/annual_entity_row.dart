@@ -21,6 +21,7 @@ class AnnualEntityRow extends StatelessWidget {
   final IconData icon;
   final Color color;
   final num? percent;
+  final String? rateLabel, rateHint;
   final bool hidden, category, expense;
   final VoidCallback onTap;
   final Widget? menu;
@@ -37,6 +38,8 @@ class AnnualEntityRow extends StatelessWidget {
     this.category = false,
     this.expense = false,
     this.menu,
+    this.rateLabel,
+    this.rateHint,
   });
 
   @override
@@ -45,6 +48,8 @@ class AnnualEntityRow extends StatelessWidget {
     final value = percent;
     final rate = hidden
         ? '••••'
+        : rateLabel != null
+        ? context.tr(rateLabel!)
         : value == null
         ? '—'
         : '${value > 0 ? '+' : ''}${NumberFormat.decimalPercentPattern(locale: Localizations.localeOf(context).toString(), decimalDigits: 1).format(value / 100)}';
@@ -116,11 +121,12 @@ class AnnualEntityRow extends StatelessWidget {
                 const SizedBox(height: 3),
                 Tooltip(
                   message: context.tr(
-                    value == null
-                        ? 'Non calculable'
-                        : category
-                        ? 'Année précédente, même période'
-                        : 'Au 1er janvier',
+                    rateHint ??
+                        (value == null
+                            ? 'Non calculable'
+                            : category
+                            ? 'Année précédente, même période'
+                            : 'Au 1er janvier'),
                   ),
                   child: Text(
                     rate,

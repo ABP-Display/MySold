@@ -6,6 +6,36 @@ import 'package:mysold/widgets/annual_entity_row.dart';
 import 'package:mysold/widgets/web_scroll_scope.dart';
 
 void main() {
+  testWidgets(
+    'Category comparison statuses replace a misleading dash and respect privacy',
+    (tester) async {
+      for (final label in ['Nouveau', 'Sans activité']) {
+        for (final hidden in [false, true]) {
+          await tester.pumpWidget(
+            MaterialApp(
+              home: Scaffold(
+                body: AnnualEntityRow(
+                  name: 'Catégorie',
+                  subtitle: '',
+                  amount: hidden ? '•••• EUR' : '25 EUR',
+                  percent: null,
+                  rateLabel: label,
+                  rateHint: 'Année précédente, même période',
+                  hidden: hidden,
+                  icon: Icons.category_outlined,
+                  color: Colors.green,
+                  onTap: () {},
+                ),
+              ),
+            ),
+          );
+          expect(find.text(hidden ? '••••' : label), findsOneWidget);
+          expect(find.text('—'), findsNothing);
+          if (hidden) expect(find.text(label), findsNothing);
+        }
+      }
+    },
+  );
   testWidgets('Currency formatting preserves cents in all six languages', (
     tester,
   ) async {

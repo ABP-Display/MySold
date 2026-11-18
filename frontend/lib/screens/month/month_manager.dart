@@ -46,6 +46,7 @@ class _MonthManagerState extends State<MonthManagerScreen> {
   Map<String, Map<String, dynamic>> _categories = {};
   Map<String, String> _accountIds = {};
   Map<String, String> _investmentIds = {};
+  Map<String, String> _investmentTypes = {};
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
   String? _selectedCategoryId;
@@ -665,20 +666,31 @@ class _MonthManagerState extends State<MonthManagerScreen> {
                       shape: const Border(),
                       collapsedShape: const Border(),
                       title: Text(
-                        _t('Répartition du mois'),
+                        _typeLabel(type),
                         style: const TextStyle(
                           fontSize: 13,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
-                      leading: const Icon(Icons.bar_chart_outlined, size: 20),
+                      leading: Icon(
+                        type == 'income'
+                            ? Icons.payments_outlined
+                            : type == 'transfer'
+                            ? Icons.swap_horiz
+                            : type == 'investment'
+                            ? Icons.trending_up
+                            : Icons.bar_chart_outlined,
+                        size: 20,
+                      ),
                       initiallyExpanded: true,
                       children: [
                         MonthGraph(
+                          month: _currentMonth,
                           transactions: filtered,
                           categories: _categories,
                           accountIds: _accountIds,
                           investmentIds: _investmentIds,
+                          investmentTypes: _investmentTypes,
                           type: type,
                         ),
                       ],
@@ -899,6 +911,7 @@ class _MonthManagerState extends State<MonthManagerScreen> {
       _categories = references.categories;
       _accountIds = references.accounts;
       _investmentIds = references.investments;
+      _investmentTypes = references.investmentTypes;
     }
 
     final monthLabel = DateFormat(

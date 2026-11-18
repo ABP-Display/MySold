@@ -543,7 +543,7 @@ class BudgetService {
     }
 
     batch.delete(txRef);
-    
+
     try {
       await batch.commit();
     } catch (e) {
@@ -802,9 +802,20 @@ class BudgetService {
   //
   // 📈 Récupérer les investissements
   Future<Map<String, String>> getInvestments() async {
+    final catalog = await getInvestmentCatalog();
+    return {
+      for (final entry in catalog.entries) entry.key: entry.value['name']!,
+    };
+  }
+
+  Future<Map<String, Map<String, String>>> getInvestmentCatalog() async {
     final snapshot = await _investments.get();
     return {
-      for (var doc in snapshot.docs) doc.id: doc.data()['name'] ?? 'Sans nom',
+      for (final doc in snapshot.docs)
+        doc.id: {
+          'name': (doc.data()['name'] ?? 'Sans nom').toString(),
+          'type': (doc.data()['investmentType'] ?? 'other').toString(),
+        },
     };
   }
 
@@ -995,4 +1006,3 @@ class BudgetService {
     });
   }
 }
-

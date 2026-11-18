@@ -16,7 +16,6 @@ class UserDataProvider extends ChangeNotifier {
   Map<String, String> _accounts = {};
   Map<String, String> _manualAccounts = {};
   Map<String, String> _investments = {};
-  Map<String, String> _investmentTypes = {};
   Map<String, Map<String, dynamic>> _categories = {};
   int _financialDataVersion = 0;
   int _referenceDataVersion = 0;
@@ -61,7 +60,6 @@ class UserDataProvider extends ChangeNotifier {
   Map<String, String> get accounts => Map.unmodifiable(_accounts);
   Map<String, String> get manualAccounts => Map.unmodifiable(_manualAccounts);
   Map<String, String> get investments => Map.unmodifiable(_investments);
-  Map<String, String> get investmentTypes => Map.unmodifiable(_investmentTypes);
   Map<String, Map<String, dynamic>> get categories =>
       Map.unmodifiable(_categories);
   int get financialDataVersion => _financialDataVersion;
@@ -95,7 +93,6 @@ class UserDataProvider extends ChangeNotifier {
     _accounts = {};
     _manualAccounts = {};
     _investments = {};
-    _investmentTypes = {};
     _categories = {};
     _notifySafely();
   }
@@ -119,7 +116,7 @@ class UserDataProvider extends ChangeNotifier {
         () async {
           final accountsFuture = service.getAccounts();
           final manualAccountsFuture = service.getManualAccounts();
-          final investmentsFuture = service.getInvestmentCatalog();
+          final investmentsFuture = service.getInvestments();
           final categoriesFuture = service.getCategoriesAsMap();
 
           final accounts = await accountsFuture;
@@ -129,14 +126,7 @@ class UserDataProvider extends ChangeNotifier {
 
           _accounts = accounts;
           _manualAccounts = manualAccounts;
-          _investments = {
-            for (final entry in investments.entries)
-              entry.key: entry.value['name']!,
-          };
-          _investmentTypes = {
-            for (final entry in investments.entries)
-              entry.key: entry.value['type']!,
-          };
+          _investments = investments;
           _categories = categories;
           _lastReferenceLoad = DateTime.now();
           _referenceDataVersion++;

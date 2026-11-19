@@ -46,6 +46,7 @@ class _MonthManagerState extends State<MonthManagerScreen> {
   Map<String, Map<String, dynamic>> _categories = {};
   Map<String, String> _accountIds = {};
   Map<String, String> _investmentIds = {};
+  Map<String, String> _investmentTypes = {};
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
   String? _selectedCategoryId;
@@ -206,8 +207,6 @@ class _MonthManagerState extends State<MonthManagerScreen> {
   String _t(String key) => context.tr(key);
 
   String _monthlyTransactionsAmount(List<TransactionModel> txs, String type) {
-    if (type == 'transfer') return '';
-
     final currency = context.watch<CurrencyProvider>().currency;
     final privacy = context.watch<PrivacyProvider>();
     final total = txs.fold<double>(
@@ -640,6 +639,12 @@ class _MonthManagerState extends State<MonthManagerScreen> {
   ) {
     final filtered = _filteredTransactions(txs, type);
     final monthlyAmount = _monthlyTransactionsAmount(filtered, type);
+    final (chartTitle, chartIcon) = switch (type) {
+      'income' => ('Origine des revenus', Icons.donut_large_outlined),
+      'investment' => ('Investissements', Icons.stacked_bar_chart_rounded),
+      'transfer' => ('Transferts', Icons.swap_horiz_rounded),
+      _ => ('Répartition des dépenses', Icons.bar_chart_outlined),
+    };
 
     return CustomScrollView(
       dragStartBehavior: DragStartBehavior.down,
@@ -664,21 +669,27 @@ class _MonthManagerState extends State<MonthManagerScreen> {
                     child: ExpansionTile(
                       shape: const Border(),
                       collapsedShape: const Border(),
+                      minTileHeight: 44,
+                      tilePadding: const EdgeInsets.symmetric(horizontal: 12),
                       title: Text(
-                        _t('Répartition du mois'),
+                        _t(chartTitle),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                         style: const TextStyle(
                           fontSize: 13,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
-                      leading: const Icon(Icons.bar_chart_outlined, size: 20),
+                      leading: Icon(chartIcon, size: 18),
                       initiallyExpanded: true,
                       children: [
                         MonthGraph(
+                          month: _currentMonth,
                           transactions: filtered,
                           categories: _categories,
                           accountIds: _accountIds,
                           investmentIds: _investmentIds,
+                          investmentTypes: _investmentTypes,
                           type: type,
                         ),
                       ],
@@ -899,6 +910,7 @@ class _MonthManagerState extends State<MonthManagerScreen> {
       _categories = references.categories;
       _accountIds = references.accounts;
       _investmentIds = references.investments;
+      _investmentTypes = references.investmentTypes;
     }
 
     final monthLabel = DateFormat(

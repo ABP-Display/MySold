@@ -4,6 +4,7 @@ import 'package:mysold/l10n/app_localizations.dart';
 import 'package:mysold/models/month_operation_charts.dart';
 import 'package:mysold/models/investment_type.dart';
 import 'app_charts.dart';
+import 'month_money_axis.dart';
 
 Color investmentSectionColor(String type) => switch (type) {
   'stock' => const Color(0xffc5a3da),
@@ -79,13 +80,15 @@ class _InvestmentSectionsChartState extends State<InvestmentSectionsChart> {
     final types = investmentChartTypes
         .where((t) => widget.sections.any((s) => (s.types[t] ?? 0) > 0))
         .toList();
+    final axis = MonthMoneyAxis(widget.sections.map((s) => s.total));
     return Column(
       children: [
         Expanded(
           child: LayoutBuilder(
             builder: (context, bounds) {
               final scale = MediaQuery.textScalerOf(context).scale(10) / 10;
-              final left = 32.0 * scale, bottom = 28.0 * scale;
+              final left = axis.width(context, widget.money),
+                  bottom = 28.0 * scale;
               return Padding(
                 padding: const EdgeInsets.only(top: 8),
                 child: Stack(
@@ -94,12 +97,12 @@ class _InvestmentSectionsChartState extends State<InvestmentSectionsChart> {
                       BarChartData(
                         alignment: BarChartAlignment.spaceAround,
                         minY: 0,
-                        maxY: 100,
+                        maxY: axis.maximum,
                         barTouchData: BarTouchData(enabled: false),
                         borderData: FlBorderData(show: false),
                         gridData: FlGridData(
                           drawVerticalLine: false,
-                          horizontalInterval: 50,
+                          horizontalInterval: axis.interval,
                           getDrawingHorizontalLine: (_) => FlLine(
                             color: colors.outlineVariant.withValues(alpha: .5),
                             strokeWidth: .7,
@@ -113,20 +116,7 @@ class _InvestmentSectionsChartState extends State<InvestmentSectionsChart> {
                           rightTitles: const AxisTitles(
                             sideTitles: SideTitles(showTitles: false),
                           ),
-                          leftTitles: AxisTitles(
-                            sideTitles: SideTitles(
-                              showTitles: true,
-                              reservedSize: left,
-                              interval: 50,
-                              getTitlesWidget: (v, _) => Text(
-                                '${v.toInt()} %',
-                                style: TextStyle(
-                                  fontSize: 9,
-                                  color: colors.onSurfaceVariant,
-                                ),
-                              ),
-                            ),
-                          ),
+                          leftTitles: axis.titles(context, widget.money),
                           bottomTitles: AxisTitles(
                             sideTitles: SideTitles(
                               showTitles: true,
@@ -152,16 +142,16 @@ class _InvestmentSectionsChartState extends State<InvestmentSectionsChart> {
                           for (var i = 0; i < 4; i++)
                             () {
                               final section = widget.sections[i];
-                              var from = 0.0;
+                              var from = 0;
                               final stacks = <BarChartRodStackItem>[];
                               for (final type in types) {
                                 final cents = section.types[type] ?? 0;
                                 if (cents == 0) continue;
-                                final to = from + cents / section.total * 100;
+                                final to = from + cents;
                                 stacks.add(
                                   BarChartRodStackItem(
-                                    from,
-                                    to,
+                                    from / 100,
+                                    to / 100,
                                     investmentSectionColor(type),
                                   ),
                                 );
@@ -171,7 +161,7 @@ class _InvestmentSectionsChartState extends State<InvestmentSectionsChart> {
                                 x: i,
                                 barRods: [
                                   BarChartRodData(
-                                    toY: section.total == 0 ? 0 : 100,
+                                    toY: section.total / 100,
                                     rodStackItems: stacks,
                                     width: ((bounds.maxWidth - left) / 4 * .42)
                                         .clamp(12.0, 40.0),

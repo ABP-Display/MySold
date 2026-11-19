@@ -8,12 +8,14 @@ class ChartPointerRegion extends StatefulWidget {
   final ValueChanged<Offset> onSelect;
   final VoidCallback? onClear;
   final MouseCursor cursor;
+  final bool excludeFromSemantics;
   const ChartPointerRegion({
     super.key,
     required this.child,
     required this.onSelect,
     this.onClear,
     this.cursor = SystemMouseCursors.precise,
+    this.excludeFromSemantics = false,
   });
 
   @override
@@ -64,6 +66,7 @@ class _ChartPointerRegionState extends State<ChartPointerRegion> {
       if (!_scrolling) widget.onSelect(event.localPosition);
     },
     child: RawGestureDetector(
+      excludeFromSemantics: widget.excludeFromSemantics,
       behavior: HitTestBehavior.opaque,
       gestures: {
         TapGestureRecognizer:

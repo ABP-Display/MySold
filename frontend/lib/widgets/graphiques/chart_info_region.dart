@@ -5,7 +5,8 @@ import 'package:flutter/material.dart';
 class ChartInfo {
   final String title, detail;
   final Color? color;
-  const ChartInfo(this.title, this.detail, {this.color});
+  final Offset? anchor;
+  const ChartInfo(this.title, this.detail, {this.color, this.anchor});
 }
 
 /// Paint information above the visible viewport, outside any inner chart clip.
@@ -14,11 +15,13 @@ class ChartInfoRegion extends StatefulWidget {
   final Widget child;
   final ChartInfo? Function(Offset position, Size viewport) resolve;
   final Listenable? changes;
+  final bool compact;
   const ChartInfoRegion({
     super.key,
     required this.child,
     required this.resolve,
     this.changes,
+    this.compact = false,
   });
   @override
   State<ChartInfoRegion> createState() => _ChartInfoRegionState();
@@ -26,6 +29,7 @@ class ChartInfoRegion extends StatefulWidget {
 
 class _ChartInfoRegionState extends State<ChartInfoRegion> {
   ChartInfo? _info;
+  Offset? _tooltipAnchor;
   Offset? _position;
   Size _viewport = Size.zero;
   Offset? _scrollPointerPosition;
@@ -47,6 +51,7 @@ class _ChartInfoRegionState extends State<ChartInfoRegion> {
       widget.changes?.addListener(_onScroll);
     }
     _info = null;
+    _tooltipAnchor = null;
     _position = null;
     _scrollPointerPosition = null;
     _scrollPointer = null;
@@ -85,11 +90,16 @@ class _ChartInfoRegionState extends State<ChartInfoRegion> {
         position == null || !(Offset.zero & _viewport).contains(position)
         ? null
         : widget.resolve(position, _viewport);
+    final nextAnchor = next == null ? null : next.anchor ?? position;
     if (_info?.title == next?.title &&
         _info?.detail == next?.detail &&
-        _info?.color == next?.color)
+        _info?.color == next?.color &&
+        (!widget.compact || _tooltipAnchor == nextAnchor))
       return;
-    setState(() => _info = next);
+    setState(() {
+      _info = next;
+      _tooltipAnchor = nextAnchor;
+    });
   }
 
   void _show(Offset position) {
@@ -115,6 +125,7 @@ class _ChartInfoRegionState extends State<ChartInfoRegion> {
       _viewport = constraints.biggest;
       final colors = Theme.of(context).colorScheme;
       final region = ChartPointerRegion(
+        excludeFromSemantics: widget.compact,
         cursor: MouseCursor.defer,
         onSelect: _show,
         onClear: () {
@@ -124,7 +135,57 @@ class _ChartInfoRegionState extends State<ChartInfoRegion> {
           fit: StackFit.expand,
           children: [
             RepaintBoundary(child: widget.child),
-            if (_info != null)
+            if (_info != null && widget.compact)
+              Positioned.fill(
+                child: IgnorePointer(
+                  child: CustomSingleChildLayout(
+                    delegate: _ChartTooltipLayout(
+                      _tooltipAnchor ?? Offset.zero,
+                    ),
+                    child: Semantics(
+                      container: true,
+                      identifier: 'chart-info-tooltip',
+                      child: Material(
+                        key: const ValueKey('chart-info-tooltip'),
+                        color: Colors.grey.shade800,
+                        elevation: 3,
+                        borderRadius: BorderRadius.circular(4),
+                        child: SingleChildScrollView(
+                          padding: const EdgeInsets.all(8),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                _info!.title,
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 12,
+                                  height: 1.3,
+                                ),
+                              ),
+                              Text(
+                                _info!.detail,
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 12,
+                                  height: 1.3,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            if (_info != null && !widget.compact)
               Positioned(
                 top: 8,
                 left: 8,
@@ -224,4 +285,35 @@ class _ChartInfoRegionState extends State<ChartInfoRegion> {
       );
     },
   );
+}
+
+class _ChartTooltipLayout extends SingleChildLayoutDelegate {
+  final Offset anchor;
+  _ChartTooltipLayout(this.anchor);
+
+  @override
+  BoxConstraints getConstraintsForChild(BoxConstraints constraints) =>
+      BoxConstraints(
+        maxWidth: math.min(240, math.max(0, constraints.maxWidth - 16)),
+        maxHeight: math.max(0, constraints.maxHeight - 16),
+      );
+
+  @override
+  Offset getPositionForChild(Size size, Size childSize) {
+    final above = anchor.dy - childSize.height - 12;
+    return Offset(
+      (anchor.dx - childSize.width / 2).clamp(
+        8.0,
+        math.max(8, size.width - childSize.width - 8),
+      ),
+      (above >= 8 ? above : anchor.dy + 12).clamp(
+        8.0,
+        math.max(8, size.height - childSize.height - 8),
+      ),
+    );
+  }
+
+  @override
+  bool shouldRelayout(covariant _ChartTooltipLayout oldDelegate) =>
+      oldDelegate.anchor != anchor;
 }

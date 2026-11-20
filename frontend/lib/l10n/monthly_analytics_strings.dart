@@ -6,6 +6,13 @@ String? monthlyAnalyticsText(String key, String language) {
 Iterable<String> get monthlyAnalyticsKeys => _texts.keys;
 
 const _texts = <String, List<String>>{
+  'Type de transaction': [
+    'Transaction type',
+    'Tipo de operación',
+    'Transaktionsart',
+    'Tipo di operazione',
+    '取引の種類',
+  ],
   'Comparaison': ['Comparison', 'Comparación', 'Vergleich', 'Confronto', '比較'],
   'Comparer avec': [
     'Compare with',

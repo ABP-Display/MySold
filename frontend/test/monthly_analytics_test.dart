@@ -222,6 +222,11 @@ void main() {
       );
       await tester.pumpAndSettle();
       for (final series in MonthlySeries.values) {
+        await tester.ensureVisible(
+          find.byKey(const ValueKey('analysis-type-menu')),
+        );
+        await tester.tap(find.byKey(const ValueKey('analysis-type-menu')));
+        await tester.pumpAndSettle();
         final control = find.byKey(ValueKey('analysis-${series.name}'));
         await tester.ensureVisible(control);
         await tester.tap(control);
@@ -238,8 +243,10 @@ void main() {
       final average = tester.widget<LineChart>(find.byType(LineChart));
       expect(average.data.lineBarsData.last.spots[3].y, 400);
       await tester.ensureVisible(
-        find.byKey(const ValueKey('analysis-remaining')),
+        find.byKey(const ValueKey('analysis-type-menu')),
       );
+      await tester.tap(find.byKey(const ValueKey('analysis-type-menu')));
+      await tester.pumpAndSettle();
       await tester.tap(find.byKey(const ValueKey('analysis-remaining')));
       await tester.pumpAndSettle();
       expect(
@@ -281,7 +288,13 @@ void main() {
       expect(box.width, closeTo(boxes.first.width, .01));
       expect(box.top, closeTo(boxes.first.top, .01));
     }
-    expect((boxes.first.left + boxes.last.right) / 2, closeTo(720, 1));
+    expect(
+      boxes.first.left,
+      greaterThan(
+        tester.getRect(find.byKey(const ValueKey('analysis-type-menu'))).right,
+      ),
+    );
+    expect(find.byKey(const ValueKey('comparison-summary')), findsOneWidget);
     await tester.tap(find.byKey(const ValueKey('analysis-daily')));
     expect(selected, false);
     await tester.tap(find.byKey(const ValueKey('analysis-cumulative')));
@@ -456,7 +469,11 @@ void main() {
       );
       await tester.pumpAndSettle();
       expect(find.text('—'), findsWidgets);
-      expect(find.text('Écart : —'), findsNWidgets(6));
+      expect(find.text('Écart : —'), findsOneWidget);
+      expect(
+        find.byKey(const ValueKey('comparison-delta-value')),
+        findsOneWidget,
+      );
       expect(
         find.text('Une des périodes n’a pas encore commencé.'),
         findsOneWidget,

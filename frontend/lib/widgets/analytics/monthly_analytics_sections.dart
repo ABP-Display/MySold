@@ -23,12 +23,14 @@ class MonthlyStatsPanel extends StatelessWidget {
   final IconData icon;
   final Widget child;
   final String? subtitle;
+  final Widget? action;
   const MonthlyStatsPanel({
     super.key,
     required this.title,
     required this.icon,
     required this.child,
     this.subtitle,
+    this.action,
   });
   @override
   Widget build(BuildContext context) => AppPanel(
@@ -36,19 +38,45 @@ class MonthlyStatsPanel extends StatelessWidget {
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Row(
-          children: [
-            Icon(icon, size: 20, color: Theme.of(context).colorScheme.primary),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Text(
-                context.tr(title),
-                style: Theme.of(
-                  context,
-                ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
-              ),
-            ),
-          ],
+        LayoutBuilder(
+          builder: (context, bounds) {
+            final titleRow = Row(
+              children: [
+                Icon(
+                  icon,
+                  size: 20,
+                  color: Theme.of(context).colorScheme.primary,
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    context.tr(title),
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ],
+            );
+            if (action == null) return titleRow;
+            if (bounds.maxWidth < 280 ||
+                MediaQuery.textScalerOf(context).scale(12) > 17) {
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [titleRow, const SizedBox(height: 10), action!],
+              );
+            }
+            return Row(
+              children: [
+                Expanded(child: titleRow),
+                const SizedBox(width: 12),
+                SizedBox(
+                  width: (bounds.maxWidth * .48).clamp(0.0, 300.0),
+                  child: action,
+                ),
+              ],
+            );
+          },
         ),
         if (subtitle != null) ...[
           const SizedBox(height: 8),

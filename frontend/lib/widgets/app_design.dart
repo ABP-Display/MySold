@@ -257,71 +257,86 @@ class AppOperationCard extends StatelessWidget {
     required this.onTap,
   });
   @override
-  Widget build(BuildContext context) => Card(
-    margin: const EdgeInsets.symmetric(vertical: 4),
-    clipBehavior: Clip.antiAlias,
-    child: InkWell(
-      onTap: onTap,
-      child: Padding(
-        padding: const EdgeInsets.all(14),
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            final colors = Theme.of(context).colorScheme;
-            final amountText = Text(
-              amount,
-              textAlign: TextAlign.right,
-              style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
-            );
-            return Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                Container(
-                  width: 38,
-                  height: 38,
-                  decoration: BoxDecoration(
-                    color: color.withValues(alpha: 0.14),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Icon(
-                    icon,
-                    size: 20,
-                    color: Theme.of(context).brightness == Brightness.light
-                        ? Color.lerp(color, colors.onSurface, 0.35)
-                        : color,
-                  ),
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final background = Color.alphaBlend(
+      color.withValues(alpha: theme.brightness == Brightness.dark ? .18 : .10),
+      theme.cardTheme.color ?? theme.colorScheme.surface,
+    );
+    final textContrast =
+        (theme.colorScheme.onSurfaceVariant.computeLuminance() + .05) /
+        (background.computeLuminance() + .05);
+    final subtitleColor = textContrast >= 4.5 || textContrast <= 1 / 4.5
+        ? theme.colorScheme.onSurfaceVariant
+        : theme.colorScheme.onSurface;
+    return Card(
+      color: background,
+      surfaceTintColor: Colors.transparent,
+      margin: const EdgeInsets.symmetric(vertical: 4),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.all(14),
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final colors = Theme.of(context).colorScheme;
+              final amountText = Text(
+                amount,
+                textAlign: TextAlign.right,
+                style: const TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w600,
                 ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        title,
-                        style: const TextStyle(fontWeight: FontWeight.w600),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        subtitle,
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: colors.onSurfaceVariant,
+              );
+              return Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Container(
+                    width: 38,
+                    height: 38,
+                    decoration: BoxDecoration(
+                      color: color.withValues(alpha: 0.14),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Icon(
+                      icon,
+                      size: 20,
+                      color: Theme.of(context).brightness == Brightness.light
+                          ? Color.lerp(color, colors.onSurface, 0.35)
+                          : color,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          title,
+                          style: const TextStyle(fontWeight: FontWeight.w600),
                         ),
-                      ),
-                    ],
+                        const SizedBox(height: 4),
+                        Text(
+                          subtitle,
+                          style: TextStyle(fontSize: 12, color: subtitleColor),
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-                const SizedBox(width: 12),
-                SizedBox(
-                  width: (constraints.maxWidth * 0.37).clamp(88.0, 180.0),
-                  child: amountText,
-                ),
-              ],
-            );
-          },
+                  const SizedBox(width: 12),
+                  SizedBox(
+                    width: (constraints.maxWidth * 0.37).clamp(88.0, 180.0),
+                    child: amountText,
+                  ),
+                ],
+              );
+            },
+          ),
         ),
       ),
-    ),
-  );
+    );
+  }
 }
 
 class AppMetricGrid extends StatelessWidget {

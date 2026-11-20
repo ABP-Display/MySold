@@ -25,6 +25,48 @@ final mean = MonthComparison.yearToDate(selected, [source(1, 100), reference]);
 
 void main() {
   testWidgets(
+    'Compact comparator keeps previous month, date picker and average one menu away',
+    (tester) async {
+      var choices = 0, resets = 0;
+      final modes = <bool>[];
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: SingleChildScrollView(
+              child: MonthlyAnalysisChart(
+                data: MonthComparison(selected, reference),
+                currency: '€',
+                hidden: false,
+                onAverageChanged: modes.add,
+                onChooseReference: () => choices++,
+                onResetReference: () => resets++,
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      for (final key in [
+        'comparison-reference-month',
+        'comparison-reference-previous',
+        'comparison-reference-average',
+      ]) {
+        await tester.tap(
+          find.byKey(const ValueKey('comparison-reference-menu')),
+        );
+        await tester.pumpAndSettle();
+        await tester.tap(find.byKey(ValueKey(key)));
+        await tester.pumpAndSettle();
+      }
+      expect(choices, 1);
+      expect(resets, 1);
+      expect(modes, [false, false, true]);
+      expect(find.byKey(const ValueKey('comparison-summary')), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    },
+  );
+
+  testWidgets(
     'Comparison mode changes reference without changing selected amounts or chart controls',
     (tester) async {
       var average = false;
@@ -38,6 +80,7 @@ void main() {
                   currency: '€',
                   hidden: false,
                   onAverageChanged: (value) => setState(() => average = value),
+                  onChooseReference: () {},
                 ),
               ),
             ),
@@ -46,6 +89,8 @@ void main() {
       );
       await tester.pumpAndSettle();
       expect(find.text('Comparaison'), findsOneWidget);
+      await tester.tap(find.byKey(const ValueKey('comparison-reference-menu')));
+      await tester.pumpAndSettle();
       await tester.tap(
         find.byKey(const ValueKey('comparison-reference-average')),
       );
@@ -67,15 +112,17 @@ void main() {
       expect(chart.data.lineBarsData.first.spots[1].y, 150);
       expect(chart.data.lineBarsData.first.spots[2].y, 0);
       await tester.ensureVisible(
-        find.byKey(const ValueKey('comparison-reference-month')),
+        find.byKey(const ValueKey('comparison-reference-menu')),
       );
+      await tester.tap(find.byKey(const ValueKey('comparison-reference-menu')));
+      await tester.pumpAndSettle();
       await tester.tap(
         find.byKey(const ValueKey('comparison-reference-month')),
       );
       await tester.pumpAndSettle();
       expect(average, isFalse);
       expect(
-        find.byKey(const ValueKey('comparison-month-reference')),
+        find.byKey(const ValueKey('comparison-reference-menu')),
         findsOneWidget,
       );
       expect(tester.takeException(), isNull);

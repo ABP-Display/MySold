@@ -65,6 +65,8 @@ class _MoveDay extends Intent {
   const _MoveDay(this.delta);
 }
 
+enum _ReferenceChoice { previous, month, average }
+
 class _MonthlyAnalysisChartState extends State<MonthlyAnalysisChart> {
   late MonthlySeries _series = widget.initialSeries;
   late bool _cumulative = widget.initialCumulative;
@@ -144,105 +146,210 @@ class _MonthlyAnalysisChartState extends State<MonthlyAnalysisChart> {
     _ => Theme.of(context).colorScheme.primary,
   };
 
-  Widget _option(
-    String label,
-    bool selected,
-    VoidCallback onTap, {
-    bool enabled = true,
-    Key? key,
-  }) {
-    if (!enabled)
-      return Semantics(
-        button: true,
-        enabled: false,
-        label: context.tr(label),
-        excludeSemantics: true,
-        child: Container(
-          constraints: const BoxConstraints(minHeight: 48),
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-          alignment: Alignment.center,
-          child: Text(
-            context.tr(label),
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              color: Theme.of(
-                context,
-              ).colorScheme.onSurface.withValues(alpha: .35),
-            ),
-          ),
-        ),
-      );
+  Widget _option(String label, bool selected, VoidCallback onTap, {Key? key}) {
     return Semantics(
       container: true,
       child: AppSelectionButton(
         key: key,
         selected: selected,
         onPressed: onTap,
-        minHeight: 48,
+        minHeight: 44,
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
         child: Center(
-          child: Text(context.tr(label), textAlign: TextAlign.center),
+          child: Text(
+            context.tr(label),
+            textAlign: TextAlign.center,
+            style: const TextStyle(fontSize: 12),
+          ),
         ),
       ),
     );
   }
 
-  Widget _pair(String label, Widget first, Widget second) => Column(
-    crossAxisAlignment: CrossAxisAlignment.stretch,
-    children: [
-      Text(
-        context.tr(label),
-        textAlign: TextAlign.center,
-        style: Theme.of(context).textTheme.labelMedium,
+  Widget _menu<T>({
+    required Key key,
+    required String label,
+    required String tooltip,
+    required T selected,
+    required List<PopupMenuEntry<T>> entries,
+    required ValueChanged<T> onSelected,
+    int maxLines = 2,
+  }) => PopupMenuButton<T>(
+    key: key,
+    tooltip: tooltip,
+    initialValue: selected,
+    onSelected: onSelected,
+    itemBuilder: (_) => entries,
+    child: Container(
+      constraints: const BoxConstraints(minHeight: 50),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      decoration: AppDesign.panel(context),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              label,
+              maxLines: maxLines,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
+            ),
+          ),
+          const SizedBox(width: 6),
+          const Icon(Icons.expand_more, size: 18),
+        ],
       ),
-      const SizedBox(height: 8),
-      Container(
-        decoration: AppDesign.panel(context),
-        padding: const EdgeInsets.all(4),
-        child: Row(
-          children: [
-            Expanded(child: first),
-            const SizedBox(width: 4),
-            Expanded(child: second),
-          ],
+    ),
+  );
+
+  Widget _referenceMenu() => _menu<_ReferenceChoice>(
+    key: const ValueKey('comparison-reference-menu'),
+    label: _referenceLabel,
+    tooltip: context.tr('Comparer avec'),
+    selected: widget.data.isAverage
+        ? _ReferenceChoice.average
+        : widget.data.previousMonth ==
+              DateTime(widget.data.month.year, widget.data.month.month - 1)
+        ? _ReferenceChoice.previous
+        : _ReferenceChoice.month,
+    entries: [
+      PopupMenuItem(
+        key: const ValueKey('comparison-reference-previous'),
+        value: _ReferenceChoice.previous,
+        enabled:
+            widget.onResetReference != null || widget.onAverageChanged != null,
+        child: _menuLabel(Icons.restore, context.tr('Mois précédent (M-1)')),
+      ),
+      PopupMenuItem(
+        key: const ValueKey('comparison-reference-month'),
+        value: _ReferenceChoice.month,
+        enabled: widget.onChooseReference != null,
+        child: _menuLabel(
+          Icons.calendar_month_outlined,
+          context.tr('Un autre mois'),
         ),
       ),
+      PopupMenuItem(
+        key: const ValueKey('comparison-reference-average'),
+        value: _ReferenceChoice.average,
+        enabled: widget.onAverageChanged != null,
+        child: _menuLabel(Icons.timeline, context.tr('Moyenne de l’année')),
+      ),
+    ],
+    onSelected: (choice) {
+      switch (choice) {
+        case _ReferenceChoice.previous:
+          widget.onAverageChanged?.call(false);
+          widget.onResetReference?.call();
+        case _ReferenceChoice.month:
+          widget.onAverageChanged?.call(false);
+          widget.onChooseReference?.call();
+        case _ReferenceChoice.average:
+          widget.onAverageChanged?.call(true);
+      }
+    },
+  );
+
+  Widget _menuLabel(IconData icon, String label, {Color? color}) => Row(
+    children: [
+      Icon(icon, size: 20, color: color),
+      const SizedBox(width: 12),
+      Flexible(child: Text(label)),
     ],
   );
-  Widget _monthChoice(
-    String label,
-    DateTime month,
-    VoidCallback? onPressed,
-    Key key,
-  ) => OutlinedButton(
-    onPressed: onPressed,
-    key: key,
-    style: OutlinedButton.styleFrom(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-    ),
-    child: Row(
-      children: [
-        const Icon(Icons.calendar_month_outlined, size: 21),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                context.tr(label),
-                style: Theme.of(context).textTheme.labelMedium,
+
+  Widget _controls() => LayoutBuilder(
+    builder: (context, bounds) {
+      final type = _menu<MonthlySeries>(
+        key: const ValueKey('analysis-type-menu'),
+        label: context.tr(_labels[_series]!),
+        tooltip: context.tr('Type de transaction'),
+        maxLines: 1,
+        selected: _series,
+        entries: [
+          for (final series in MonthlySeries.values)
+            PopupMenuItem(
+              key: ValueKey('analysis-${series.name}'),
+              value: series,
+              child: _menuLabel(
+                _icons[series]!,
+                context.tr(_labels[series]!),
+                color: _color(series),
               ),
-              const SizedBox(height: 5),
-              Text(
-                DateFormat.yMMMM(_locale).format(month),
-                style: Theme.of(context).textTheme.titleSmall,
+            ),
+        ],
+        onSelected: _chooseSeries,
+      );
+      final reading = Container(
+        decoration: AppDesign.panel(context),
+        padding: const EdgeInsets.all(3),
+        child: IntrinsicHeight(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Expanded(
+                child: _option(
+                  'Cumulé',
+                  _cumulative,
+                  () => _chooseReading(true),
+                  key: const ValueKey('analysis-cumulative'),
+                ),
+              ),
+              const SizedBox(width: 2),
+              Expanded(
+                child: _option(
+                  'Jour',
+                  !_cumulative,
+                  () => _chooseReading(false),
+                  key: const ValueKey('analysis-daily'),
+                ),
               ),
             ],
           ),
         ),
-        const SizedBox(width: 8),
-        const Icon(Icons.expand_more, size: 20),
-      ],
-    ),
+      );
+      double labelWidth(String label) {
+        final painter = TextPainter(
+          text: TextSpan(
+            text: context.tr(label),
+            style: Theme.of(
+              context,
+            ).textTheme.labelLarge!.copyWith(fontSize: 12),
+          ),
+          textScaler: MediaQuery.textScalerOf(context),
+          textDirection: Directionality.of(context),
+        )..layout();
+        final width = painter.width;
+        painter.dispose();
+        return width;
+      }
+
+      final readingWidth = math.max(
+        132.0,
+        2 * (math.max(labelWidth('Cumulé'), labelWidth('Jour')) + 18) + 8,
+      );
+      if (bounds.maxWidth - readingWidth < 110 ||
+          MediaQuery.textScalerOf(context).scale(12) > 17) {
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [type, const SizedBox(height: 8), reading],
+        );
+      }
+      return Row(
+        children: [
+          Expanded(
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 260),
+                child: type,
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+          SizedBox(width: readingWidth, child: reading),
+        ],
+      );
+    },
   );
   @override
   Widget build(BuildContext context) {
@@ -255,109 +362,32 @@ class _MonthlyAnalysisChartState extends State<MonthlyAnalysisChart> {
     return MonthlyStatsPanel(
       title: 'Comparaison',
       icon: Icons.query_stats,
-      subtitle: context.tr(
-        'Choisissez un poste pour comparer son évolution et le rythme des transactions.',
-      ),
+      action: _referenceMenu(),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Center(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 480),
-              child: _pair(
-                'Comparer avec',
-                _option(
-                  'Un autre mois',
-                  !data.isAverage,
-                  () => widget.onAverageChanged?.call(false),
-                  enabled: widget.onAverageChanged != null,
-                  key: const ValueKey('comparison-reference-month'),
-                ),
-                _option(
-                  'Moyenne de l’année',
-                  data.isAverage,
-                  () => widget.onAverageChanged?.call(true),
-                  enabled: widget.onAverageChanged != null,
-                  key: const ValueKey('comparison-reference-average'),
-                ),
-              ),
-            ),
-          ),
+          _controls(),
           const SizedBox(height: 12),
           if (data.isAverage)
+            Tooltip(
+              message: context.tr(
+                'Mois terminés depuis janvier, hors mois analysé. Les mois sans opération comptent aussi.',
+              ),
+              child: Text(
+                widget.referenceLoading
+                    ? context.tr('Chargement de vos données…')
+                    : widget.referenceFailed
+                    ? context.tr('Moyenne de l’année')
+                    : _averagePeriod,
+                key: const ValueKey('comparison-average-period'),
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+            ),
+          if (!data.isAverage && !data.canCompare)
             Text(
-              widget.referenceLoading
-                  ? context.tr('Chargement de vos données…')
-                  : widget.referenceFailed
-                  ? context.tr('Moyenne de l’année')
-                  : _averagePeriod,
-              key: const ValueKey('comparison-average-period'),
-              textAlign: TextAlign.center,
+              context.tr('Une des périodes n’a pas encore commencé.'),
               style: Theme.of(context).textTheme.bodySmall,
-            )
-          else
-            Center(
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 480),
-                child: _monthChoice(
-                  'Mois de référence',
-                  data.previousMonth,
-                  widget.onChooseReference,
-                  const ValueKey('comparison-month-reference'),
-                ),
-              ),
             ),
-          if (!data.isAverage && widget.onResetReference != null)
-            Align(
-              alignment: Alignment.center,
-              child: TextButton.icon(
-                onPressed: widget.onResetReference,
-                icon: const Icon(Icons.restore, size: 18),
-                label: Text(context.tr('Revenir à M−1')),
-              ),
-            ),
-          const SizedBox(height: 20),
-          Center(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 480),
-              child: _pair(
-                'Lecture du graphique',
-                _option(
-                  'Cumulé',
-                  _cumulative,
-                  () => _chooseReading(true),
-                  key: const ValueKey('analysis-cumulative'),
-                ),
-                _option(
-                  'Par jour',
-                  !_cumulative,
-                  () => _chooseReading(false),
-                  key: const ValueKey('analysis-daily'),
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(height: 12),
-          Text(
-            context.tr(
-              data.isAverage
-                  ? 'Mois terminés depuis janvier, hors mois analysé. Les mois sans opération comptent aussi.'
-                  : !data.canCompare
-                  ? 'Une des périodes n’a pas encore commencé.'
-                  : 'Chaque mois utilise ses journées disponibles ; le mois en cours reste incomplet.',
-            ),
-            textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 12, color: colors.onSurfaceVariant),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            context.tr(
-              'Cumulé : total progressif. Par jour : montant de chaque journée.',
-            ),
-            textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 12, color: colors.onSurfaceVariant),
-          ),
-          const SizedBox(height: 20),
           if (widget.referenceLoading) ...[
             const LinearProgressIndicator(key: ValueKey('comparison-loading')),
             const SizedBox(height: 12),
@@ -373,34 +403,7 @@ class _MonthlyAnalysisChartState extends State<MonthlyAnalysisChart> {
               ),
             ),
           ],
-          LayoutBuilder(
-            builder: (context, bounds) {
-              final large = MediaQuery.textScalerOf(context).scale(12) > 18;
-              final columns = large
-                  ? (bounds.maxWidth >= 700 ? 2 : 1)
-                  : bounds.maxWidth >= 1100
-                  ? 5
-                  : bounds.maxWidth >= 800
-                  ? 3
-                  : 2;
-              final width = (bounds.maxWidth - (columns - 1) * 10) / columns;
-              return Wrap(
-                alignment: WrapAlignment.center,
-                spacing: 10,
-                runSpacing: 10,
-                children: [
-                  for (final series in const [
-                    MonthlySeries.income,
-                    MonthlySeries.expense,
-                    MonthlySeries.investment,
-                    MonthlySeries.transfer,
-                    MonthlySeries.remaining,
-                  ])
-                    SizedBox(width: width, child: _metric(series)),
-                ],
-              );
-            },
-          ),
+          _summary(),
           if (_series == MonthlySeries.transfer) ...[
             const SizedBox(height: 10),
             Text(
@@ -410,13 +413,7 @@ class _MonthlyAnalysisChartState extends State<MonthlyAnalysisChart> {
               style: TextStyle(fontSize: 12, color: colors.onSurfaceVariant),
             ),
           ],
-          const SizedBox(height: 20),
-          Text(
-            '${context.tr(_labels[_series]!)} · ${context.tr(_cumulative ? 'Cumulé' : 'Par jour')}',
-            key: const ValueKey('monthly-analysis-series'),
-            style: Theme.of(context).textTheme.titleSmall,
-          ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 16),
           if (widget.hidden)
             const PrivacyChartMask(height: 260)
           else if (!data.hasActivity)
@@ -489,13 +486,6 @@ class _MonthlyAnalysisChartState extends State<MonthlyAnalysisChart> {
                     ),
                   ),
                   const SizedBox(height: 12),
-                  Text(
-                    context.tr(
-                      'Touchez ou survolez un jour pour voir les montants.',
-                    ),
-                    style: Theme.of(context).textTheme.bodySmall,
-                  ),
-                  const SizedBox(height: 12),
                   _detail(current, previous, color),
                 ],
               ),
@@ -506,7 +496,8 @@ class _MonthlyAnalysisChartState extends State<MonthlyAnalysisChart> {
     );
   }
 
-  Widget _metric(MonthlySeries series) {
+  Widget _summary() {
+    final series = _series;
     final colors = Theme.of(context).colorScheme;
     final current = widget.data.current.value(series),
         previous = widget.data.previous.value(series);
@@ -522,61 +513,116 @@ class _MonthlyAnalysisChartState extends State<MonthlyAnalysisChart> {
         : good
         ? Colors.green.shade600
         : colors.error;
-    return Semantics(
-      container: true,
-      child: AppSelectionButton(
-        key: ValueKey('analysis-${series.name}'),
-        selected: _series == series,
-        onPressed: () => _chooseSeries(series),
-        padding: const EdgeInsets.all(12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
+    final delta = !_canCompare
+        ? '—'
+        : '${!widget.hidden && difference > 0 ? '+' : ''}${_money(difference)}';
+    final percent = !_canCompare || widget.hidden || previous == 0
+        ? ''
+        : NumberFormat.decimalPercentPattern(
+            locale: _locale,
+            decimalDigits: 1,
+          ).format(difference / previous.abs());
+    Widget amount(String label, String value, String key, {Color? color}) =>
+        Column(
+          key: ValueKey(key),
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(
-                  child: Text(
-                    context.tr(_labels[series]!),
-                    style: const TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
+            Text(
+              label,
+              style: TextStyle(fontSize: 12, color: colors.onSurfaceVariant),
+            ),
+            const SizedBox(height: 5),
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: Alignment.centerLeft,
+              child: Text(
+                value,
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                  color: color,
                 ),
-                const SizedBox(width: 4),
-                Icon(
-                  _icons[series],
-                  size: 16,
-                  color: widget.hidden
-                      ? colors.onSurfaceVariant
-                      : _color(series),
-                ),
-              ],
-            ),
-            const SizedBox(height: 10),
-            Text(
-              widget.data.selected.isFuture ? '—' : _money(current),
-              style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
-            ),
-            const SizedBox(height: 6),
-            Text(
-              '$_referenceLabel : ${!_canCompare ? '—' : _money(previous)}',
-              style: TextStyle(fontSize: 11, color: colors.onSurfaceVariant),
-            ),
-            const SizedBox(height: 10),
-            Text(
-              !_canCompare
-                  ? '${context.tr('Écart')} : —'
-                  : '${context.tr('Écart')} : ${!widget.hidden && difference > 0 ? '+' : ''}${_money(difference)}${widget.hidden || previous == 0 ? '' : ' (${NumberFormat.decimalPercentPattern(locale: _locale, decimalDigits: 1).format(difference / previous.abs())})'}',
-              style: TextStyle(
-                fontSize: 11,
-                color: deltaColor,
-                fontWeight: FontWeight.w600,
               ),
             ),
           ],
-        ),
+        );
+    return Padding(
+      key: const ValueKey('comparison-summary'),
+      padding: const EdgeInsets.only(top: 14),
+      child: LayoutBuilder(
+        builder: (context, bounds) {
+          final first = amount(
+            _month(widget.data.month),
+            widget.data.selected.isFuture ? '—' : _money(current),
+            'comparison-current-value',
+          );
+          final second = amount(
+            _referenceLabel,
+            _canCompare ? _money(previous) : '—',
+            'comparison-reference-value',
+          );
+          if (bounds.maxWidth >= 520 &&
+              MediaQuery.textScalerOf(context).scale(12) < 18) {
+            return Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(child: first),
+                const SizedBox(width: 16),
+                Expanded(child: second),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: amount(
+                    '${context.tr('Écart')}${percent.isEmpty ? '' : ' · $percent'}',
+                    delta,
+                    'comparison-delta-value',
+                    color: deltaColor,
+                  ),
+                ),
+              ],
+            );
+          }
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(child: first),
+                  const SizedBox(width: 12),
+                  Expanded(child: second),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Wrap(
+                key: const ValueKey('comparison-delta-value'),
+                spacing: 8,
+                runSpacing: 4,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                children: [
+                  Text(
+                    context.tr('Écart'),
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: colors.onSurfaceVariant,
+                    ),
+                  ),
+                  Text(
+                    delta,
+                    style: TextStyle(
+                      color: deltaColor,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  if (percent.isNotEmpty)
+                    Text(
+                      '($percent)',
+                      style: TextStyle(fontSize: 12, color: deltaColor),
+                    ),
+                ],
+              ),
+            ],
+          );
+        },
       ),
     );
   }

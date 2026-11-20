@@ -16,15 +16,15 @@ L’utilisation du logiciel est soumise à la licence fournie dans son dépôt. 
 Le service peut être interrompu. Dans les limites du droit applicable, le logiciel est fourni sans garantie de disponibilité ni d’exactitude des prévisions. Vos droits légaux impératifs restent applicables.'''
         : '''Confidentialité de votre instance MySold
 
-Les données de profil, comptes, catégories, investissements, transactions et seuils budgétaires sont enregistrées dans la base PostgreSQL de cette instance. Aucun compte Firebase, Google ou service d’analyse externe n’est nécessaire au fonctionnement de MySold. L’accès par navigateur transmet les données au serveur choisi par l’administrateur.
+Les données de profil, comptes, catégories, investissements et transactions sont enregistrées dans la base PostgreSQL de cette instance. Les anciens seuils budgétaires peuvent être conservés dans vos sauvegardes, mais ne déclenchent plus d’alertes. Aucun compte Firebase, Google ou service d’analyse externe n’est nécessaire au fonctionnement de MySold. L’accès par navigateur transmet les données au serveur choisi par l’administrateur.
 
 L’administrateur de cette instance est votre interlocuteur pour les questions de confidentialité, de conservation et de sauvegarde. Il doit fournir ses coordonnées et, selon son usage, les informations réglementaires complémentaires. La présence de cette notice ne constitue pas à elle seule une certification de conformité au RGPD.
 
-Les mots de passe sont hachés côté serveur. Un cookie de session nécessaire à la connexion est utilisé. Le navigateur conserve certaines préférences visuelles et de notification. Le PIN verrouille l’interface et les écrans sensibles ; il ne chiffre pas la base de données et ne remplace pas votre mot de passe. Le mode discret masque l’affichage des montants.
+Les mots de passe sont hachés côté serveur. Un cookie de session nécessaire à la connexion est utilisé. Le navigateur conserve certaines préférences visuelles et du mode discret. Le PIN verrouille l’interface et les écrans sensibles ; il ne chiffre pas la base de données et ne remplace pas votre mot de passe. Le mode discret masque l’affichage des montants.
 
 Vous pouvez exporter vos données, restaurer un export compatible et supprimer votre compte depuis cette page. La suppression enlève le compte, ses données actives et ses sessions. Les copies de sauvegarde sont gérées séparément par l’administrateur, qui doit définir leur durée de conservation et leur procédure de purge.
 
-Les notifications du navigateur sont facultatives. Les vérifications budgétaires se font lorsque l’application est ouverte ; aucun service de notification push externe n’est utilisé. Les exports sont téléchargés sur votre appareil et doivent être protégés comme toute donnée financière. La connexion au serveur doit être sécurisée par HTTPS hors utilisation locale.''';
+L’application ne demande pas d’autorisation de notification et ne programme pas d’alerte budgétaire. Aucun service de notification push externe n’est utilisé. Les exports sont téléchargés sur votre appareil et doivent être protégés comme toute donnée financière. La connexion au serveur doit être sécurisée par HTTPS hors utilisation locale.''';
   }
   return key == 'legal_terms_full'
       ? '''MySold Terms of Use
@@ -38,13 +38,13 @@ Account deletion removes active data irreversibly. Backup retention is managed s
 The software is provided without a guarantee of uninterrupted service or accurate forecasts, to the extent permitted by law. Mandatory statutory rights remain unaffected.'''
       : '''MySold Instance Privacy Notice
 
-Profiles, accounts, categories, investments, transactions and budget thresholds are stored in this instance’s PostgreSQL database. MySold does not require Firebase, Google authentication or an external analytics service. Your browser communicates with the server selected by the instance administrator.
+Profiles, accounts, categories, investments and transactions are stored in this instance’s PostgreSQL database. Legacy budget thresholds may remain in backups but no longer trigger alerts. MySold does not require Firebase, Google authentication or an external analytics service. Your browser communicates with the server selected by the instance administrator.
 
 The administrator is your contact for privacy, retention and backups and must provide contact details and any additional legally required information. This notice alone does not certify GDPR compliance.
 
-Passwords are hashed on the server. A necessary session cookie supports login. Your browser stores display and notification preferences. The PIN is an interface lock; it does not encrypt the database or replace your password. Privacy mode hides displayed amounts.
+Passwords are hashed on the server. A necessary session cookie supports login. Your browser stores display and privacy-mode preferences. The PIN is an interface lock; it does not encrypt the database or replace your password. Privacy mode hides displayed amounts.
 
 You can export and restore compatible data and delete your account. Deletion removes the account, active data and sessions. Backup copies have a separate retention and purge policy determined by the administrator.
 
-Browser notifications are optional. Budget checks run while the application is open; there is no external push service. Protect downloaded exports as financial records. Use HTTPS outside local development.''';
+The application does not request notification permission or schedule budget alerts. There is no external push service. Protect downloaded exports as financial records. Use HTTPS outside local development.''';
 }

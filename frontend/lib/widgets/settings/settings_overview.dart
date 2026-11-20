@@ -185,26 +185,13 @@ class SettingsOverview extends StatelessWidget {
 }
 
 class AdvancedPreferencesContent extends StatelessWidget {
-  final bool notifications,
-      budgetAlerts,
-      hideAmounts,
-      shakeEnabled,
-      requestingMotion,
-      loading;
-  final ValueChanged<bool>? onNotifications,
-      onBudgetAlerts,
-      onHideAmounts,
-      onShake;
+  final bool hideAmounts, shakeEnabled, requestingMotion;
+  final ValueChanged<bool>? onHideAmounts, onShake;
   const AdvancedPreferencesContent({
     super.key,
-    required this.notifications,
-    required this.budgetAlerts,
     required this.hideAmounts,
     required this.shakeEnabled,
     required this.requestingMotion,
-    required this.loading,
-    required this.onNotifications,
-    required this.onBudgetAlerts,
     required this.onHideAmounts,
     required this.onShake,
   });
@@ -217,50 +204,6 @@ class AdvancedPreferencesContent extends StatelessWidget {
         dragStartBehavior: DragStartBehavior.down,
         padding: const EdgeInsets.fromLTRB(20, 20, 20, 28),
         children: [
-          SettingsSection(
-            title: 'Notifications',
-            icon: Icons.notifications_none_outlined,
-            child: Column(
-              children: [
-                if (loading) const LinearProgressIndicator(),
-                SwitchListTile.adaptive(
-                  contentPadding: EdgeInsets.zero,
-                  value: notifications,
-                  onChanged: loading ? null : onNotifications,
-                  title: Text(context.tr('Notifications locales')),
-                  subtitle: Text(
-                    context.tr(
-                      'Autoriser MySold à afficher des notifications sur cet appareil.',
-                    ),
-                  ),
-                ),
-                const Divider(height: 24),
-                SwitchListTile.adaptive(
-                  contentPadding: EdgeInsets.zero,
-                  value: budgetAlerts,
-                  onChanged: loading || !notifications ? null : onBudgetAlerts,
-                  title: Text(context.tr('Alertes budgétaires')),
-                  subtitle: Text(
-                    context.tr(
-                      'Recevoir les alertes de seuils de votre budget mensuel.',
-                    ),
-                  ),
-                ),
-                const Divider(height: 24),
-                ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  leading: const Icon(Icons.event_note_outlined),
-                  title: Text(context.tr('Rappel mensuel')),
-                  subtitle: Text(
-                    context.tr(
-                      'À venir. Aucun rappel automatique n’est programmé actuellement.',
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 20),
           SettingsSection(
             title: 'Mode discret',
             icon: Icons.visibility_off_outlined,

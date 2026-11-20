@@ -32,14 +32,15 @@ Dans le budget mensuel, les statistiques mensuelles et la vue annuelle, le séle
 le mois est abrégé sur petit écran. Si la largeur ou le texte agrandi ne permet
 plus cette disposition, le sélecteur passe dessous, aligné à droite.
 
-La navigation distingue « Stats mensuelles » et « Annuel ». Les statistiques
-chargent uniquement le mois sélectionné et M−1. La comparaison à date égale
-est proposée pour un mois en cours ; les mois terminés sont comparés en entier.
-La page est organisée en trois blocs : quatre résumés, projection de fin de mois,
-puis analyse face à M−1. Quatre cartes comparatives sélectionnent le poste à
-tracer : revenus, dépenses, investissements ou reste. Une commande supplémentaire
-donne accès aux transferts, qui n'entrent pas dans le calcul du reste.
-Le graphique affiche deux courbes : mois choisi et M−1 en pointillés. Les modes
+La navigation distingue « Stats mensuelles » et « Annuel ». La page présente
+quatre résumés, une projection de fin de mois puis « Comparaison ». Un sélecteur
+permet de choisir un autre mois (M−1 par défaut) ou la moyenne des mois terminés
+depuis janvier, avant le mois analysé et dans la même année. Les mois vides comptent
+comme zéro ; aucune moyenne n’est fabriquée en janvier. L’historique nécessaire
+est chargé uniquement à la demande, mis en cache et présenté sans masquer le résumé.
+Cinq cartes sélectionnent le poste : revenus, dépenses, investissements,
+transferts et reste. Les transferts n'entrent pas dans le calcul du reste.
+Le graphique affiche le mois choisi et sa référence en pointillés. Les modes
 « Cumulé » et « Par jour » partagent les mêmes données en mémoire. Le survol,
 l'appui ou le glissement sur la courbe sélectionne un jour ; les flèches du
 clavier permettent aussi de le changer. Les montants, l'écart et le nombre
@@ -78,10 +79,16 @@ Les paramètres conservent « Préférences rapides » en haut (thème, langue,
 devise), puis présentent les accès dans cet ordre : Sécurité et confidentialité,
 Données personnelles, Préférences avancées, Mettre à jour l’application, À propos.
 La double authentification est accessible depuis Sécurité et confidentialité.
-Les notifications et les deux réglages du mode discret sont regroupés dans
-Préférences avancées. Les préférences locales et leurs clés de stockage sont
+Les deux réglages du mode discret sont regroupés dans Préférences avancées.
+L’entrée Limites, les alertes budgétaires et les réglages de notifications ont été
+retirés ; le suivi budgétaire reste accessible dans les statistiques mensuelles.
+Les préférences locales du mode discret et leurs clés de stockage sont
 conservées. Les sous-titres reviennent à la ligne et les sélecteurs s’adaptent
 à la largeur et au texte agrandi, avec les polices locales communes.
+
+Dans le profil, « Gestion » et « Outils » partagent le même cadre à lignes :
+icônes, espacements et séparateurs sont identiques, sans cartes individuelles
+pour les comptes, catégories et investissements.
 
 Les polices de secours internes du moteur Web (Noto Sans et Noto Sans Symbols)
 sont aussi servies localement, via `fontFallbackBaseUrl`. Cela évite les

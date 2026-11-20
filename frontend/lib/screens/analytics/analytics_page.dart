@@ -38,8 +38,9 @@ class _AnalyticsPageState extends State<AnalyticsPage>
   DateTime _selected = _month(DateTime.now()),
       _calendar = _month(DateTime.now());
   late DateTime _reference = _prior(_selected);
-  final _cache = BoundedAsyncCache<DateTime, _MonthSource>(capacity: 6);
-  Future<List<_MonthSource>>? _pair;
+  final _cache = BoundedAsyncCache<DateTime, _MonthSource>(capacity: 14);
+  Future<List<_MonthSource>>? _references;
+  bool _average = false;
   bool _followPrevious = true;
   // Keep chart preferences while a newly selected month is loading.
   MonthlySeries _series = MonthlySeries.expense;
@@ -76,7 +77,7 @@ class _AnalyticsPageState extends State<AnalyticsPage>
         _selected = current;
         if (_followPrevious) _reference = _prior(current);
       }
-      if (_calendar != current) _pair = null;
+      if (_calendar != current) _references = null;
       _calendar = current;
     });
   }
@@ -102,15 +103,36 @@ class _AnalyticsPageState extends State<AnalyticsPage>
     return source;
   }
 
-  Future<List<_MonthSource>> _sources() =>
-      _pair ??= Future.wait([_load(_selected), _load(_reference)]);
+  List<DateTime> get _referenceMonths => _average
+      ? yearToDateReferenceMonths(_selected, DateTime.now())
+      : [_reference];
+
+  Future<List<_MonthSource>> _sources() => _references ??= () async {
+    final months = _referenceMonths;
+    final result = <_MonthSource>[];
+    // Bound request concurrency on small self-hosted servers. Cached months
+    // resolve immediately; historical transactions are fetched only on demand.
+    for (final month in months) {
+      result.add(await _load(month));
+    }
+    return result;
+  }();
+
+  void _selectComparison(bool average) {
+    if (_average == average) return;
+    setState(() {
+      _average = average;
+      _references = null;
+    });
+  }
+
   void _selectMonth(DateTime value) {
     final month = _month(value);
     if (month.year < 1 || month.year > 9998 || month == _selected) return;
     setState(() {
       _selected = month;
       if (_followPrevious) _reference = _prior(month);
-      _pair = null;
+      _references = null;
     });
   }
 
@@ -128,22 +150,23 @@ class _AnalyticsPageState extends State<AnalyticsPage>
     setState(() {
       _reference = _month(value);
       _followPrevious = false;
-      _pair = null;
+      _references = null;
     });
   }
 
   void _previousMonth() => setState(() {
     _reference = _prior(_selected);
     _followPrevious = true;
-    _pair = null;
+    _references = null;
   });
   Future<void> _refresh() async {
     DocumentStore.instance.clear();
     context.read<UserDataProvider>().markFinancialDataChanged();
     setState(() {
       _cache.clear();
-      _pair = null;
+      _references = null;
     });
+    await _load(_selected);
     await _sources();
   }
 
@@ -158,7 +181,7 @@ class _AnalyticsPageState extends State<AnalyticsPage>
     if (_financialVersion != user.financialDataVersion) {
       _financialVersion = user.financialDataVersion;
       _cache.clear();
-      _pair = null;
+      _references = null;
     }
     Widget header() => MonthPageHeader(
       title: context.tr('Stats mensuelles'),
@@ -172,14 +195,10 @@ class _AnalyticsPageState extends State<AnalyticsPage>
       onNext: () => _selectMonth(DateTime(_selected.year, _selected.month + 1)),
       onChoose: () => _chooseMonth(),
     );
-    final selected = _readySource(_selected),
-        reference = _readySource(_reference);
-    return FutureBuilder<List<_MonthSource>>(
-      key: ValueKey((_selected, _reference)),
-      initialData: selected != null && reference != null
-          ? [selected, reference]
-          : null,
-      future: _sources(),
+    return FutureBuilder<_MonthSource>(
+      key: ValueKey(_selected),
+      initialData: _readySource(_selected),
+      future: _load(_selected),
       builder: (context, snapshot) {
         if (snapshot.hasData || snapshot.hasError) _notifyInitialLoad();
         if (!snapshot.hasData) {
@@ -204,10 +223,7 @@ class _AnalyticsPageState extends State<AnalyticsPage>
             ],
           );
         }
-        final now = DateTime.now(),
-            first = snapshot.data![0].derive(now),
-            second = snapshot.data![1].derive(now);
-        final comparison = MonthComparison(first, second);
+        final first = snapshot.data!.derive(DateTime.now());
         final sections = <WidgetBuilder>[
           (_) => header(),
           (_) =>
@@ -217,21 +233,62 @@ class _AnalyticsPageState extends State<AnalyticsPage>
             currency: currency,
             hidden: hidden,
           ),
-          (_) => MonthlyAnalysisChart(
-            data: comparison,
-            currency: currency,
-            hidden: hidden,
-            initialSeries: _series,
-            initialCumulative: _cumulative,
-            onSeriesChanged: (value) => _series = value,
-            onCumulativeChanged: (value) => _cumulative = value,
-            onChooseReference: () => _chooseMonth(reference: true),
-            onResetReference: _followPrevious ? null : _previousMonth,
-          ),
+          (_) => _comparison(first, currency: currency, hidden: hidden),
         ];
         return RefreshIndicator(
           onRefresh: _refresh,
           child: LazySectionList(gaps: const [16, 16, 16], sections: sections),
+        );
+      },
+    );
+  }
+
+  Widget _comparison(
+    MonthlyAnalytics first, {
+    required String currency,
+    required bool hidden,
+  }) {
+    final months = _referenceMonths;
+    final ready = [for (final month in months) _readySource(month)];
+    return FutureBuilder<List<_MonthSource>>(
+      key: ValueKey((_selected, _reference, _average)),
+      initialData: ready.every((source) => source != null)
+          ? ready.cast<_MonthSource>()
+          : null,
+      future: _sources(),
+      builder: (context, snapshot) {
+        final now = DateTime.now();
+        final comparison = _average
+            ? MonthComparison.yearToDate(
+                first,
+                (snapshot.data ?? const <_MonthSource>[]).map(
+                  (s) => s.derive(now),
+                ),
+              )
+            : MonthComparison(
+                first,
+                snapshot.hasData && snapshot.data!.isNotEmpty
+                    ? snapshot.data!.first.derive(now)
+                    : MonthlyAnalytics.build(
+                        month: _reference,
+                        now: now,
+                        transactions: const [],
+                      ),
+              );
+        return MonthlyAnalysisChart(
+          data: comparison,
+          currency: currency,
+          hidden: hidden,
+          referenceLoading: !snapshot.hasData && !snapshot.hasError,
+          referenceFailed: snapshot.hasError,
+          onRetryReference: () => setState(() => _references = null),
+          onAverageChanged: _selectComparison,
+          initialSeries: _series,
+          initialCumulative: _cumulative,
+          onSeriesChanged: (value) => _series = value,
+          onCumulativeChanged: (value) => _cumulative = value,
+          onChooseReference: () => _chooseMonth(reference: true),
+          onResetReference: _followPrevious ? null : _previousMonth,
         );
       },
     );

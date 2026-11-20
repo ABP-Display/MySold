@@ -172,7 +172,9 @@ fonctionner. Voir les [garanties et limites](docs/SECURITE.md), ainsi que les
 
 Les données financières utilisent des documents JSONB PostgreSQL rattachés à un
 utilisateur, avec des collections connues (`accounts`, `categories`,
-`investments`, `transactions`, `budgetAlerts`). Ce choix conserve les identifiants,
+`investments`, `transactions`). L’ancienne collection `budgetAlerts` reste
+compatible avec les sauvegardes CSV, mais n’est plus utilisée par l’application.
+Ce choix conserve les identifiants,
 les relations et le format CSV existants. Il ne s’agit ni d’un émulateur Firebase,
 ni d’une connexion cachée à Firestore. Les comptes de connexion et les sessions
 sont dans des tables distinctes ; ils ne sont pas importables par CSV.
@@ -267,10 +269,10 @@ navigateur. Sur iOS, utiliser le menu de partage de Safari. Aucun APK n’est fo
 un véritable nom de serveur HTTPS pour bénéficier correctement de la PWA.
 
 La PWA conserve l’enveloppe publique du site. L’accès aux données et les
-modifications nécessitent une connexion au serveur de l’instance. Les seuils
-budgétaires sont enregistrés dans la base. Les notifications navigateur sont
-facultatives et déclenchées lorsque l’application est ouverte ; il n’y a pas de
-push externe ni de tâche bancaire exécutée en arrière-plan après sa fermeture.
+modifications nécessitent une connexion au serveur de l’instance. Le suivi du
+budget s’effectue dans les statistiques mensuelles. L’application ne demande pas
+d’autorisation de notification et ne programme pas d’alerte budgétaire ni de
+tâche bancaire en arrière-plan après sa fermeture.
 
 À l’ouverture de la PWA et lors de son retour au premier plan, MySold interroge
 `/version.json` sans cache. Le numéro du build installé est comparé à celui
@@ -473,10 +475,17 @@ même origine. Un simple `flutter run` sans proxy vers l’API ne suffit pas.
 ## Statistiques et vue annuelle
 
 **Stats mensuelles** résume le mois sélectionné en haut de page (mois en cours
-par défaut) : quatre cartes, projection de fin de mois, puis comparaison avec un
-mois de référence. Seul ce mois de référence possède un second sélecteur avec
+par défaut) : quatre cartes, projection de fin de mois, puis section **Comparaison**.
+Elle propose un autre mois ou la **moyenne de l’année**. Le mois de référence possède un second sélecteur avec
 son année ; il suit M−1 jusqu’au choix d’une référence personnalisée. Un bouton
 permet ensuite de revenir à M−1.
+
+La moyenne utilise les mois terminés de janvier au mois précédant le mois analysé,
+dans la même année. Le mois analysé, les mois en cours et futurs sont exclus ; un
+mois sans opération compte comme zéro. Les courbes comparent chaque jour du mois,
+en cumul ou en montant quotidien. Après la fin d’un mois court, son cumul est
+conservé et son mouvement quotidien vaut zéro. En janvier, aucune moyenne n’est
+inventée. La période et le nombre de mois utilisés sont affichés.
 
 Cinq postes sont disponibles : revenus, dépenses, investissements, transferts
 et reste. Les cartes affichent les montants et écarts sur les journées disponibles
@@ -490,8 +499,13 @@ Le survol, le toucher et les flèches du clavier sélectionnent un jour. Les val
 sans curseur séparé ni défilement horizontal. Les résumés et la projection ne
 changent pas avec le mode de lecture du comparatif.
 
-Seuls les deux mois choisis sont lus avec les index de date, puis conservés dans
-un cache borné à six mois. Changer de série ou de filtre ne relit pas la base.
+Le mode deux mois lit uniquement les périodes choisies avec les index de date.
+Les mois nécessaires à la moyenne sont chargés à la demande, sans requêtes
+concurrentes supplémentaires sur le petit serveur. La page conserve jusqu’à
+14 sources mensuelles dans un cache borné, en plus du cache de transactions
+partagé à six mois. Changer de série ou revenir à une comparaison déjà chargée
+ne relit pas la base. Le résumé et la projection restent visibles durant le
+chargement de la référence, qui dispose de son propre état d’erreur et de reprise.
 Aucun instantané annuel ni calcul d’évolution des soldes n’est stocké.
 
 **Stats annuelles** regroupe les synthèses et graphiques de l’année sélectionnée.

@@ -277,7 +277,7 @@ class _SettingsSheetState extends State<SettingsSheet> {
           SettingsAction(
             icon: Icons.tune_outlined,
             title: 'Préférences avancées',
-            subtitle: 'Notifications et mode discret',
+            subtitle: 'Mode discret',
             onTap: () => Navigator.of(context).push(
               MaterialPageRoute(
                 builder: (_) => const AdvancedPreferencesPage(),

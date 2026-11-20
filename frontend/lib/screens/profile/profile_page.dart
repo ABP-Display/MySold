@@ -6,7 +6,6 @@ import 'package:flutter/gestures.dart';
 
 import 'package:mysold/l10n/app_localizations.dart';
 import 'package:mysold/screens/profile/account_page.dart';
-import 'package:mysold/screens/profile/budget_alert_page.dart';
 import 'package:mysold/screens/profile/category_page.dart';
 import 'package:mysold/screens/profile/export_report_page.dart';
 import 'package:mysold/screens/profile/investment_page.dart';
@@ -249,35 +248,31 @@ class _ProfilePageState extends State<ProfilePage> {
             ? null
             : () => _push(context, InvestmentPage(userId: uid)),
       ),
-      _ProfileAction(
-        title: 'Limites',
-        subtitle: 'Alertes budget',
-        icon: Icons.notifications_active_outlined,
-        onTap: uid == null
-            ? null
-            : () => _push(context, BudgetAlertPage(userId: uid)),
-      ),
     ];
 
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final columns = constraints.maxWidth >= 650 ? 2 : 1;
-        final width = (constraints.maxWidth - (columns - 1) * 12) / columns;
-        return Wrap(
-          spacing: 12,
-          runSpacing: 12,
-          children: [
-            for (final action in actions)
-              SizedBox(
-                width: width,
-                child: AppPanel(
-                  padding: const EdgeInsets.all(6),
-                  child: _ProfileActionRow(action: action),
-                ),
+    return Container(
+      key: const ValueKey('profile-management-panel'),
+      padding: const EdgeInsets.all(8),
+      decoration: _panelDecoration(context),
+      child: Column(
+        children: [
+          for (var i = 0; i < actions.length; i++) ...[
+            if (i > 0)
+              Divider(
+                height: 1,
+                color: Theme.of(
+                  context,
+                ).colorScheme.outline.withValues(alpha: 0.30),
               ),
+            _ToolTile(
+              icon: actions[i].icon,
+              title: actions[i].title,
+              subtitle: actions[i].subtitle,
+              onTap: actions[i].onTap,
+            ),
           ],
-        );
-      },
+        ],
+      ),
     );
   }
 
@@ -333,58 +328,11 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 }
 
-class _ProfileActionRow extends StatelessWidget {
-  final _ProfileAction action;
-
-  const _ProfileActionRow({required this.action});
-
-  @override
-  Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-
-    return Material(
-      color: Colors.transparent,
-      borderRadius: BorderRadius.circular(16),
-      child: ListTile(
-        contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
-        leading: Container(
-          height: 44,
-          width: 44,
-          decoration: BoxDecoration(
-            color: colorScheme.primary.withOpacity(0.12),
-            borderRadius: BorderRadius.circular(15),
-          ),
-          child: Icon(action.icon, color: colorScheme.primary),
-        ),
-        title: Text(
-          context.tr(action.title),
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: Theme.of(
-            context,
-          ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
-        ),
-        subtitle: Text(
-          context.tr(action.subtitle),
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-            color: colorScheme.onSurface.withOpacity(0.62),
-          ),
-        ),
-        trailing: const Icon(Icons.chevron_right),
-        onTap: action.onTap,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      ),
-    );
-  }
-}
-
 class _ToolTile extends StatelessWidget {
   final IconData icon;
   final String title;
   final String subtitle;
-  final VoidCallback onTap;
+  final VoidCallback? onTap;
 
   const _ToolTile({
     required this.icon,

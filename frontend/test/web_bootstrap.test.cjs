@@ -13,8 +13,9 @@ test('The PWA explicitly selects full CanvasKit to avoid the deprecated Chromium
   assert.equal(loaded.config.canvasKitVariant, 'full');
   assert.equal(loaded.config.canvasKitBaseUrl, '/canvaskit/');
   assert.equal(loaded.config.fontFallbackBaseUrl, '/font-fallbacks/');
-  assert.equal(typeof window.mysoldNotify, 'function');
-  assert.equal(typeof window.mysoldRequestNotifications, 'function');
+  assert.equal(window.mysoldNotify, undefined);
+  assert.equal(window.mysoldRequestNotifications, undefined);
+  assert.doesNotMatch(source, /Notification\.requestPermission|showNotification/);
 });
 
 test('Engine fallback fonts are shipped locally with their licenses', () => {

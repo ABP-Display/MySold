@@ -37,6 +37,9 @@ class MonthlyAnalysisChart extends StatefulWidget {
   final bool initialCumulative;
   final ValueChanged<MonthlySeries>? onSeriesChanged;
   final ValueChanged<bool>? onCumulativeChanged;
+  final ValueChanged<bool>? onAverageChanged;
+  final bool referenceLoading, referenceFailed;
+  final VoidCallback? onRetryReference;
   const MonthlyAnalysisChart({
     super.key,
     required this.data,
@@ -46,6 +49,10 @@ class MonthlyAnalysisChart extends StatefulWidget {
     this.initialCumulative = true,
     this.onSeriesChanged,
     this.onCumulativeChanged,
+    this.onAverageChanged,
+    this.referenceLoading = false,
+    this.referenceFailed = false,
+    this.onRetryReference,
     this.onChooseReference,
     this.onResetReference,
   });
@@ -83,7 +90,8 @@ class _MonthlyAnalysisChartState extends State<MonthlyAnalysisChart> {
     super.didUpdateWidget(oldWidget);
     _selection.value =
         (oldWidget.data.month != widget.data.month ||
-            oldWidget.data.previousMonth != widget.data.previousMonth)
+            oldWidget.data.previousMonth != widget.data.previousMonth ||
+            oldWidget.data.isAverage != widget.data.isAverage)
         ? math.max(1, widget.data.elapsedDays)
         : _day.clamp(1, _lastDay);
   }
@@ -105,6 +113,25 @@ class _MonthlyAnalysisChartState extends State<MonthlyAnalysisChart> {
 
   String get _locale => Localizations.localeOf(context).toString();
   String _month(DateTime date) => DateFormat.yMMM(_locale).format(date);
+  bool get _canCompare =>
+      widget.data.canCompare &&
+      !widget.referenceLoading &&
+      !widget.referenceFailed;
+  String get _referenceLabel => widget.data.isAverage
+      ? context.tr('Moyenne de l’année')
+      : _month(widget.data.previousMonth);
+  String get _averagePeriod {
+    final months = widget.data.averageMonths;
+    if (months.isEmpty)
+      return context.tr('Aucun mois terminé à comparer dans cette année.');
+    return context.trParams('Moyenne sur {count} mois · {period}', {
+      'count': '${months.length}',
+      'period': months.length == 1
+          ? _month(months.first)
+          : '${DateFormat.MMM(_locale).format(months.first)} – ${_month(months.last)}',
+    });
+  }
+
   String _money(double value) => widget.hidden
       ? '•••• ${widget.currency}'
       : NumberFormat.currency(
@@ -221,14 +248,12 @@ class _MonthlyAnalysisChartState extends State<MonthlyAnalysisChart> {
   Widget build(BuildContext context) {
     final data = widget.data, colors = Theme.of(context).colorScheme;
     final current = data.values(_series, cumulative: _cumulative);
-    final previous = data.values(
-      _series,
-      previous: true,
-      cumulative: _cumulative,
-    );
+    final previous = widget.referenceLoading || widget.referenceFailed
+        ? const <double>[]
+        : data.values(_series, previous: true, cumulative: _cumulative);
     final color = _color(_series);
     return MonthlyStatsPanel(
-      title: 'Comparaison entre deux mois',
+      title: 'Comparaison',
       icon: Icons.query_stats,
       subtitle: context.tr(
         'Choisissez un poste pour comparer son évolution et le rythme des transactions.',
@@ -239,15 +264,50 @@ class _MonthlyAnalysisChartState extends State<MonthlyAnalysisChart> {
           Center(
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 480),
-              child: _monthChoice(
-                'Mois de référence',
-                data.previousMonth,
-                widget.onChooseReference,
-                const ValueKey('comparison-month-reference'),
+              child: _pair(
+                'Comparer avec',
+                _option(
+                  'Un autre mois',
+                  !data.isAverage,
+                  () => widget.onAverageChanged?.call(false),
+                  enabled: widget.onAverageChanged != null,
+                  key: const ValueKey('comparison-reference-month'),
+                ),
+                _option(
+                  'Moyenne de l’année',
+                  data.isAverage,
+                  () => widget.onAverageChanged?.call(true),
+                  enabled: widget.onAverageChanged != null,
+                  key: const ValueKey('comparison-reference-average'),
+                ),
               ),
             ),
           ),
-          if (widget.onResetReference != null)
+          const SizedBox(height: 12),
+          if (data.isAverage)
+            Text(
+              widget.referenceLoading
+                  ? context.tr('Chargement de vos données…')
+                  : widget.referenceFailed
+                  ? context.tr('Moyenne de l’année')
+                  : _averagePeriod,
+              key: const ValueKey('comparison-average-period'),
+              textAlign: TextAlign.center,
+              style: Theme.of(context).textTheme.bodySmall,
+            )
+          else
+            Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 480),
+                child: _monthChoice(
+                  'Mois de référence',
+                  data.previousMonth,
+                  widget.onChooseReference,
+                  const ValueKey('comparison-month-reference'),
+                ),
+              ),
+            ),
+          if (!data.isAverage && widget.onResetReference != null)
             Align(
               alignment: Alignment.center,
               child: TextButton.icon(
@@ -280,7 +340,9 @@ class _MonthlyAnalysisChartState extends State<MonthlyAnalysisChart> {
           const SizedBox(height: 12),
           Text(
             context.tr(
-              !data.canCompare
+              data.isAverage
+                  ? 'Mois terminés depuis janvier, hors mois analysé. Les mois sans opération comptent aussi.'
+                  : !data.canCompare
                   ? 'Une des périodes n’a pas encore commencé.'
                   : 'Chaque mois utilise ses journées disponibles ; le mois en cours reste incomplet.',
             ),
@@ -296,6 +358,21 @@ class _MonthlyAnalysisChartState extends State<MonthlyAnalysisChart> {
             style: TextStyle(fontSize: 12, color: colors.onSurfaceVariant),
           ),
           const SizedBox(height: 20),
+          if (widget.referenceLoading) ...[
+            const LinearProgressIndicator(key: ValueKey('comparison-loading')),
+            const SizedBox(height: 12),
+          ],
+          if (widget.referenceFailed) ...[
+            Text(context.tr('Impossible de charger la comparaison.')),
+            Align(
+              alignment: Alignment.center,
+              child: TextButton.icon(
+                onPressed: widget.onRetryReference,
+                icon: const Icon(Icons.refresh),
+                label: Text(context.tr('Réessayer')),
+              ),
+            ),
+          ],
           LayoutBuilder(
             builder: (context, bounds) {
               final large = MediaQuery.textScalerOf(context).scale(12) > 18;
@@ -355,11 +432,8 @@ class _MonthlyAnalysisChartState extends State<MonthlyAnalysisChart> {
               runSpacing: 8,
               children: [
                 _legend(_month(data.month), color, false),
-                _legend(
-                  _month(data.previousMonth),
-                  colors.onSurfaceVariant,
-                  true,
-                ),
+                if (_canCompare)
+                  _legend(_referenceLabel, colors.onSurfaceVariant, true),
               ],
             ),
             const SizedBox(height: 14),
@@ -371,6 +445,7 @@ class _MonthlyAnalysisChartState extends State<MonthlyAnalysisChart> {
                 children: [
                   Semantics(
                     container: true,
+                    identifier: 'monthly-comparison-chart',
                     label: context.tr('Analyse quotidienne'),
                     value: '${context.tr('Jour')} $_day',
                     increasedValue: _day < _lastDay
@@ -442,7 +517,7 @@ class _MonthlyAnalysisChartState extends State<MonthlyAnalysisChart> {
         ? difference < 0
         : difference > 0;
     final deltaColor =
-        widget.hidden || !widget.data.canCompare || difference == 0 || neutral
+        widget.hidden || !_canCompare || difference == 0 || neutral
         ? colors.onSurfaceVariant
         : good
         ? Colors.green.shade600
@@ -486,12 +561,12 @@ class _MonthlyAnalysisChartState extends State<MonthlyAnalysisChart> {
             ),
             const SizedBox(height: 6),
             Text(
-              '${_month(widget.data.previousMonth)} : ${widget.data.reference.isFuture ? '—' : _money(previous)}',
+              '$_referenceLabel : ${!_canCompare ? '—' : _money(previous)}',
               style: TextStyle(fontSize: 11, color: colors.onSurfaceVariant),
             ),
             const SizedBox(height: 10),
             Text(
-              !widget.data.canCompare
+              !_canCompare
                   ? '${context.tr('Écart')} : —'
                   : '${context.tr('Écart')} : ${!widget.hidden && difference > 0 ? '+' : ''}${_money(difference)}${widget.hidden || previous == 0 ? '' : ' (${NumberFormat.decimalPercentPattern(locale: _locale, decimalDigits: 1).format(difference / previous.abs())})'}',
               style: TextStyle(
@@ -692,7 +767,8 @@ class _MonthlyAnalysisChartState extends State<MonthlyAnalysisChart> {
 
   Widget _detail(List<double> current, List<double> previous, Color color) {
     final colors = Theme.of(context).colorScheme;
-    final available = _day <= current.length && _day <= previous.length;
+    final available =
+        _canCompare && _day <= current.length && _day <= previous.length;
     final difference = available
         ? current[_day - 1] - previous[_day - 1]
         : null;
@@ -722,12 +798,19 @@ class _MonthlyAnalysisChartState extends State<MonthlyAnalysisChart> {
                 runSpacing: 14,
                 children: [
                   for (final period in [
-                    (widget.data.month, current, widget.data.dailyCount, color),
                     (
-                      widget.data.previousMonth,
-                      previous,
+                      _month(widget.data.month),
+                      current,
+                      widget.data.dailyCount,
+                      color,
+                      false,
+                    ),
+                    (
+                      _referenceLabel,
+                      _canCompare ? previous : const <double>[],
                       widget.data.previousDailyCount,
                       colors.onSurfaceVariant,
+                      widget.data.isAverage,
                     ),
                   ])
                     SizedBox(
@@ -736,7 +819,7 @@ class _MonthlyAnalysisChartState extends State<MonthlyAnalysisChart> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            _month(period.$1),
+                            period.$1,
                             style: TextStyle(
                               fontSize: 12,
                               color: colors.onSurfaceVariant,
@@ -754,7 +837,7 @@ class _MonthlyAnalysisChartState extends State<MonthlyAnalysisChart> {
                           ),
                           const SizedBox(height: 6),
                           Text(
-                            '${context.tr('Opérations ce jour')} : ${_day <= period.$3.length ? period.$3[_day - 1] : '—'}',
+                            '${context.tr(period.$5 ? 'Opérations moyennes ce jour' : 'Opérations ce jour')} : ${_day <= period.$3.length ? NumberFormat.decimalPattern(_locale).format(period.$3[_day - 1]) : '—'}',
                             style: TextStyle(
                               fontSize: 12,
                               color: colors.onSurfaceVariant,

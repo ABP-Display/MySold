@@ -51,7 +51,7 @@ void main() {
                         SettingsAction(
                           title: _titles[i],
                           subtitle: i == 2
-                              ? 'Notifications et mode discret'
+                              ? 'Mode discret'
                               : 'Personnalisez votre application et vos préférences.',
                           icon: Icons.tune,
                           onTap: () => opened.add(i),
@@ -88,7 +88,7 @@ void main() {
       }
     }
     testWidgets(
-      '${theme.key}: notifications and privacy are grouped in advanced preferences',
+      '${theme.key}: advanced preferences keep privacy controls without budget notifications',
       (tester) async {
         tester.view.physicalSize = const Size(320, 900);
         tester.view.devicePixelRatio = 1;
@@ -101,14 +101,9 @@ void main() {
             home: Scaffold(
               body: StatefulBuilder(
                 builder: (context, setState) => AdvancedPreferencesContent(
-                  notifications: false,
-                  budgetAlerts: true,
                   hideAmounts: hide,
                   shakeEnabled: shake,
                   requestingMotion: false,
-                  loading: false,
-                  onNotifications: (_) {},
-                  onBudgetAlerts: (_) {},
                   onHideAmounts: (value) => setState(() => hide = value),
                   onShake: (value) => setState(() => shake = value),
                 ),
@@ -117,12 +112,14 @@ void main() {
           ),
         );
         await tester.pumpAndSettle();
-        expect(find.text('Notifications'), findsOneWidget);
-        final alerts = tester.widget<SwitchListTile>(
-          find.widgetWithText(SwitchListTile, 'Alertes budgétaires'),
-        );
-        expect(alerts.onChanged, isNull);
-        for (final title in ['Masquer les montants', 'Retourner pour masquer']) {
+        expect(find.text('Notifications'), findsNothing);
+        expect(find.text('Alertes budgétaires'), findsNothing);
+        expect(find.text('Rappel mensuel'), findsNothing);
+        expect(find.byType(SwitchListTile), findsNWidgets(2));
+        for (final title in [
+          'Masquer les montants',
+          'Retourner pour masquer',
+        ]) {
           await tester.scrollUntilVisible(find.text(title), 250);
           await tester.ensureVisible(find.text(title));
           await tester.pumpAndSettle();

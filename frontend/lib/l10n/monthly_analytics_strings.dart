@@ -6,6 +6,63 @@ String? monthlyAnalyticsText(String key, String language) {
 Iterable<String> get monthlyAnalyticsKeys => _texts.keys;
 
 const _texts = <String, List<String>>{
+  'Comparaison': ['Comparison', 'Comparación', 'Vergleich', 'Confronto', '比較'],
+  'Comparer avec': [
+    'Compare with',
+    'Comparar con',
+    'Vergleichen mit',
+    'Confronta con',
+    '比較対象',
+  ],
+  'Un autre mois': [
+    'Another month',
+    'Otro mes',
+    'Anderer Monat',
+    'Un altro mese',
+    '別の月',
+  ],
+  'Moyenne de l’année': [
+    'Year-to-date average',
+    'Media del año',
+    'Jahresdurchschnitt',
+    'Media dell’anno',
+    '年初来の月平均',
+  ],
+  'Moyenne sur {count} mois · {period}': [
+    'Average over {count} months · {period}',
+    'Media de {count} meses · {period}',
+    'Durchschnitt aus {count} Monaten · {period}',
+    'Media su {count} mesi · {period}',
+    '{count}か月の平均 · {period}',
+  ],
+  'Aucun mois terminé à comparer dans cette année.': [
+    'No completed month to compare in this year yet.',
+    'Todavía no hay meses completos para comparar en este año.',
+    'Noch kein abgeschlossener Monat dieses Jahres zum Vergleichen.',
+    'Nessun mese concluso da confrontare in questo anno.',
+    'この年には比較できる完了した月がまだありません。',
+  ],
+  'Mois terminés depuis janvier, hors mois analysé. Les mois sans opération comptent aussi.': [
+    'Completed months since January, excluding the selected month. Months without transactions also count.',
+    'Meses completos desde enero, sin el mes analizado. También cuentan los meses sin operaciones.',
+    'Abgeschlossene Monate seit Januar, ohne den ausgewählten Monat. Monate ohne Buchungen zählen mit.',
+    'Mesi conclusi da gennaio, escluso il mese analizzato. Sono inclusi anche i mesi senza operazioni.',
+    '選択した月を除く、1月からの完了した月の平均です。取引のない月も含みます。',
+  ],
+  'Opérations moyennes ce jour': [
+    'Average transactions this day',
+    'Operaciones medias ese día',
+    'Durchschnittliche Buchungen an diesem Tag',
+    'Operazioni medie del giorno',
+    'この日の平均取引件数',
+  ],
+  'Impossible de charger la comparaison.': [
+    'Unable to load the comparison.',
+    'No se puede cargar la comparación.',
+    'Vergleich konnte nicht geladen werden.',
+    'Impossibile caricare il confronto.',
+    '比較を読み込めません。',
+  ],
   'Retourner pour masquer': [
     'Turn to hide',
     'Girar para ocultar',

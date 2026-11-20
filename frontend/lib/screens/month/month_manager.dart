@@ -25,8 +25,6 @@ import 'package:mysold/widgets/transactions/tile/transfer_tile.dart';
 import 'package:mysold/widgets/transactions/tile/investment_tile.dart';
 import 'package:mysold/screens/settings/currency_provider.dart';
 import 'package:mysold/screens/settings/privacy_provider.dart';
-import 'package:mysold/services/budget_alert_service.dart';
-import 'package:mysold/services/local_notification_service.dart';
 
 class MonthManagerScreen extends StatefulWidget {
   final VoidCallback? onInitialLoad;
@@ -109,9 +107,6 @@ class _MonthManagerState extends State<MonthManagerScreen> {
       });
 
       _notifyInitialLoad();
-      if (forceRefresh) {
-        await _checkBudgetAlerts();
-      }
     } catch (e) {
       if (!mounted || request != _transactionLoad) return;
       setState(() {
@@ -128,29 +123,6 @@ class _MonthManagerState extends State<MonthManagerScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) widget.onInitialLoad?.call();
     });
-  }
-
-  Future<void> _checkBudgetAlerts() async {
-    final currentUser = user;
-    if (currentUser == null) return;
-
-    final triggered = await BudgetAlertService(
-      userId: currentUser.uid,
-    ).checkCurrentMonthAlerts();
-
-    if (!mounted || triggered.isEmpty) return;
-
-    for (final alert in triggered) {
-      await LocalNotificationService.showBudgetAlert(alert);
-    }
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          '${triggered.length} alerte budgetaire declenchee${triggered.length > 1 ? 's' : ''}',
-        ),
-      ),
-    );
   }
 
   DateTime _monthStart(DateTime date) => DateTime(date.year, date.month, 1);

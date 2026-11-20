@@ -25,7 +25,6 @@ import 'package:mysold/screens/settings/privacy_provider.dart';
 import 'package:mysold/screens/settings/theme_provider.dart';
 import 'package:mysold/services/auth_service.dart';
 import 'package:mysold/login_page.dart';
-import 'package:mysold/services/local_notification_service.dart';
 import 'package:mysold/widgets/icon_loader.dart';
 import 'package:mysold/widgets/pwa_update_prompt.dart';
 import 'package:mysold/widgets/app_workspace.dart';
@@ -92,8 +91,6 @@ void main() async {
     );
     return;
   }
-  await LocalNotificationService.initialize();
-
   if (kIsWeb) {
     IconLoader.load();
   }

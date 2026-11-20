@@ -2,7 +2,6 @@ import 'package:mysold/widgets/app_design.dart';
 import 'package:mysold/widgets/annual_analysis_scope.dart';
 import 'package:mysold/widgets/annual_entity_row.dart';
 import 'package:mysold/screens/profile/entity_evolution_page.dart';
-import 'package:mysold/widgets/app_page_tab_menu.dart';
 import 'package:mysold/data/document_store.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/gestures.dart';
@@ -17,6 +16,7 @@ import 'package:mysold/screens/settings/currency_provider.dart';
 import 'package:mysold/screens/settings/privacy_provider.dart';
 import 'package:mysold/services/security_gate.dart';
 import 'investment_categories_page.dart';
+import 'investment_filter_dialog.dart';
 
 class InvestmentPage extends StatefulWidget {
   final String userId;
@@ -26,29 +26,11 @@ class InvestmentPage extends StatefulWidget {
   State<InvestmentPage> createState() => _InvestmentPageState();
 }
 
-class _InvestmentPageState extends State<InvestmentPage>
-    with TickerProviderStateMixin {
-  late TabController _tabController;
+class _InvestmentPageState extends State<InvestmentPage> {
   List<InvestmentTypeOption> _typeOptions = investmentTypeOptions;
+  Set<String> _selectedTypes = {};
   late Stream<QuerySnapshot<Map<String, dynamic>>> _accountsStream,
       _investmentsStream;
-  static const _allType = 'all';
-
-  List<String> get _tabs => [
-    _allType,
-    ..._typeOptions.map((option) => option.value),
-  ];
-
-  List<String> get _tabLabels => _tabs
-      .map(
-        (type) => type == _allType
-            ? context.tr('Tous')
-            : investmentCategoryLabel(
-                context,
-                investmentTypeOption(type, options: _typeOptions),
-              ),
-      )
-      .toList();
 
   CollectionReference<Map<String, dynamic>> get _investmentsRef {
     return DocumentStore.instance
@@ -60,7 +42,6 @@ class _InvestmentPageState extends State<InvestmentPage>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: _tabs.length, vsync: this);
     _accountsStream = _accountsRef.snapshots();
     _investmentsStream = _investmentsRef.snapshots();
   }
@@ -68,22 +49,24 @@ class _InvestmentPageState extends State<InvestmentPage>
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    final options = context.watch<UserDataProvider>().investmentCategories;
-    final oldIds = _typeOptions.map((o) => o.value).join(',');
-    final newIds = options.map((o) => o.value).join(',');
-    if (oldIds != newIds) {
-      final selected = _tabs[_tabController.index];
-      _tabController.dispose();
-      _typeOptions = options;
-      final index = _tabs.indexOf(selected);
-      _tabController = TabController(
-        length: _tabs.length,
-        vsync: this,
-        initialIndex: index < 0 ? 0 : index,
+    _typeOptions = context.watch<UserDataProvider>().investmentCategories;
+    _selectedTypes.retainAll(_typeOptions.map((o) => o.value));
+  }
+
+  Future<void> _openFilter() async {
+    final selected = await showDialog<Set<String>>(
+      context: context,
+      builder: (_) => InvestmentFilterDialog(
+        options: _typeOptions,
+        selected: _selectedTypes,
+      ),
+    );
+    if (selected == null || !mounted) return;
+    setState(() {
+      _selectedTypes = selected.intersection(
+        _typeOptions.map((o) => o.value).toSet(),
       );
-    } else {
-      _typeOptions = options;
-    }
+    });
   }
 
   void _manageCategories(Set<String> usedTypes) {
@@ -105,15 +88,10 @@ class _InvestmentPageState extends State<InvestmentPage>
   void didUpdateWidget(covariant InvestmentPage oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.userId != widget.userId) {
+      _selectedTypes = {};
       _accountsStream = _accountsRef.snapshots();
       _investmentsStream = _investmentsRef.snapshots();
     }
-  }
-
-  @override
-  void dispose() {
-    _tabController.dispose();
-    super.dispose();
   }
 
   CollectionReference<Map<String, dynamic>> get _accountsRef {
@@ -209,34 +187,38 @@ class _InvestmentPageState extends State<InvestmentPage>
     final privacy = context.watch<PrivacyProvider>();
 
     return Scaffold(
-      extendBody: true,
       appBar: appPageBar(
         context,
         title: Text(context.tr('Gestion des investissements')),
       ),
-      bottomNavigationBar: AnimatedBuilder(
-        animation: _tabController,
-        builder: (context, _) => AppPageTabMenu(
-          keyPrefix: 'investment',
-          labels: _tabLabels,
-          icons: _tabs
-              .map(
-                (type) => type == _allType
-                    ? Icons.grid_view_rounded
-                    : investmentTypeOption(type, options: _typeOptions).icon,
-              )
-              .toList(),
-          scrollable: true,
-          translateLabels: false,
-          iconColors: [null, ..._typeOptions.map((o) => o.color)],
-          selectedIndex: _tabController.index,
-          onSelected: (index) => _tabController.animateTo(index),
+      floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
+      floatingActionButton: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            FloatingActionButton(
+              key: const ValueKey('investment-filter'),
+              heroTag: 'investment-filter',
+              tooltip: context.tr('Filtres'),
+              onPressed: _openFilter,
+              child: Badge(
+                isLabelVisible: _selectedTypes.isNotEmpty,
+                label: Text('${_selectedTypes.length}'),
+                child: Icon(
+                  _selectedTypes.isEmpty
+                      ? Icons.filter_list
+                      : Icons.filter_list_alt,
+                ),
+              ),
+            ),
+            FloatingActionButton.extended(
+              onPressed: () => _openAddInvestment(),
+              icon: const Icon(Icons.add),
+              label: Text(context.tr('Actif')),
+            ),
+          ],
         ),
-      ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => _openAddInvestment(),
-        icon: const Icon(Icons.add),
-        label: Text(context.tr('Actif')),
       ),
       body: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
         stream: _accountsStream,
@@ -262,66 +244,50 @@ class _InvestmentPageState extends State<InvestmentPage>
               final investments = (snapshot.data?.docs ?? []).map((doc) {
                 return _InvestmentViewModel.fromFirestore(doc, accounts);
               }).toList()..sort((a, b) => b.balance.compareTo(a.balance));
+              final filtered = investments.where((investment) {
+                return _selectedTypes.isEmpty ||
+                    _selectedTypes.contains(
+                      investmentTypeOption(
+                        investment.investmentType,
+                        options: _typeOptions,
+                      ).value,
+                    );
+              }).toList();
+              final filteredTotal = filtered.fold(
+                0.0,
+                (sum, investment) => sum + investment.balance,
+              );
 
               return AnnualAnalysisScope(
                 key: ValueKey(widget.userId),
-                builder: (context, analysis) => TabBarView(
-                  controller: _tabController,
-                  physics: const NeverScrollableScrollPhysics(),
-                  children: _tabs.map((type) {
-                    final filtered = type == _allType
-                        ? investments
-                        : investments.where((investment) {
-                            return investmentTypeOption(
-                                  investment.investmentType,
-                                  options: _typeOptions,
-                                ).value ==
-                                type;
-                          }).toList();
-                    final filteredTotal = filtered.fold(0.0, (sum, investment) {
-                      return sum + investment.balance;
-                    });
-
-                    return ListView(
-                      key: PageStorageKey('investment-list-$type'),
-                      dragStartBehavior: DragStartBehavior.down,
-                      padding: EdgeInsets.fromLTRB(
-                        16,
-                        12,
-                        16,
-                        96 +
-                            AppPageTabMenu.clearance(
-                              context,
-                              _tabLabels,
-                              scrollable: true,
-                            ),
-                      ),
-                      children: [
-                        _buildHeader(
-                          count: filtered.length,
-                          total: filteredTotal,
+                builder: (context, analysis) => ListView(
+                  key: const PageStorageKey('investment-list'),
+                  dragStartBehavior: DragStartBehavior.down,
+                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 96),
+                  children: [
+                    _buildHeader(
+                      count: filtered.length,
+                      total: filteredTotal,
+                      currency: currency,
+                      privacy: privacy,
+                      usedTypes: investments
+                          .map((i) => i.investmentType)
+                          .toSet(),
+                    ),
+                    const SizedBox(height: 16),
+                    if (filtered.isEmpty) _buildEmptyState(),
+                    ...filtered.map(
+                      (investment) => Padding(
+                        padding: const EdgeInsets.only(bottom: 12),
+                        child: _buildInvestmentCard(
+                          investment: investment,
+                          analysis: analysis,
                           currency: currency,
                           privacy: privacy,
-                          usedTypes: investments
-                              .map((i) => i.investmentType)
-                              .toSet(),
                         ),
-                        const SizedBox(height: 16),
-                        if (filtered.isEmpty) _buildEmptyState(type: type),
-                        ...filtered.map(
-                          (investment) => Padding(
-                            padding: const EdgeInsets.only(bottom: 12),
-                            child: _buildInvestmentCard(
-                              investment: investment,
-                              analysis: analysis,
-                              currency: currency,
-                              privacy: privacy,
-                            ),
-                          ),
-                        ),
-                      ],
-                    );
-                  }).toList(),
+                      ),
+                    ),
+                  ],
                 ),
               );
             },
@@ -438,12 +404,8 @@ class _InvestmentPageState extends State<InvestmentPage>
     );
   }
 
-  Widget _buildEmptyState({String type = _allType}) {
-    final isFiltered = type != _allType;
-    final option = isFiltered
-        ? investmentTypeOption(type, options: _typeOptions)
-        : null;
-
+  Widget _buildEmptyState() {
+    final isFiltered = _selectedTypes.isNotEmpty;
     return Padding(
       padding: EdgeInsets.fromLTRB(28, 28, 28, 28),
       child: Column(
@@ -464,9 +426,7 @@ class _InvestmentPageState extends State<InvestmentPage>
           ),
           const SizedBox(height: 18),
           Text(
-            isFiltered
-                ? '${context.tr('Aucun actif')} ${investmentCategoryLabel(context, option!)}'
-                : context.tr('Aucun actif'),
+            context.tr('Aucun actif'),
             style: Theme.of(
               context,
             ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w600),

@@ -3,6 +3,13 @@ import 'report_strings.dart';
 // Application-owned text only. Never translate user-entered names or notes.
 const featureStrings = <String, List<String>>{
   ...reportStrings,
+  'Tout afficher': [
+    'Show all',
+    'Mostrar todo',
+    'Alle anzeigen',
+    'Mostra tutto',
+    'すべて表示',
+  ],
   'Catégories d’investissement': [
     'Investment categories',
     'Categorías de inversión',

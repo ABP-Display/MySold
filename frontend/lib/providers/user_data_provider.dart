@@ -3,6 +3,7 @@ import 'package:flutter/scheduler.dart';
 import 'package:mysold/data/bounded_async_cache.dart';
 import 'package:mysold/data/document_store.dart';
 import 'package:mysold/models/transaction_model.dart';
+import 'package:mysold/models/investment_type.dart';
 
 import 'package:mysold/services/budget_service.dart';
 
@@ -17,6 +18,7 @@ class UserDataProvider extends ChangeNotifier {
   Map<String, String> _manualAccounts = {};
   Map<String, String> _investments = {};
   Map<String, String> _investmentTypes = {};
+  List<InvestmentTypeOption> _investmentCategories = investmentTypeOptions;
   Map<String, Map<String, dynamic>> _categories = {};
   int _financialDataVersion = 0;
   int _referenceDataVersion = 0;
@@ -62,6 +64,7 @@ class UserDataProvider extends ChangeNotifier {
   Map<String, String> get manualAccounts => Map.unmodifiable(_manualAccounts);
   Map<String, String> get investments => Map.unmodifiable(_investments);
   Map<String, String> get investmentTypes => Map.unmodifiable(_investmentTypes);
+  List<InvestmentTypeOption> get investmentCategories => _investmentCategories;
   Map<String, Map<String, dynamic>> get categories =>
       Map.unmodifiable(_categories);
   int get financialDataVersion => _financialDataVersion;
@@ -96,6 +99,7 @@ class UserDataProvider extends ChangeNotifier {
     _manualAccounts = {};
     _investments = {};
     _investmentTypes = {};
+    _investmentCategories = investmentTypeOptions;
     _categories = {};
     _notifySafely();
   }
@@ -121,11 +125,16 @@ class UserDataProvider extends ChangeNotifier {
           final manualAccountsFuture = service.getManualAccounts();
           final investmentsFuture = service.getInvestmentCatalog();
           final categoriesFuture = service.getCategoriesAsMap();
+          final profileFuture = DocumentStore.instance
+              .doc('users/$userId')
+              .get();
 
           final accounts = await accountsFuture;
           final manualAccounts = await manualAccountsFuture;
           final investments = await investmentsFuture;
           final categories = await categoriesFuture;
+          final profile = await profileFuture;
+          if (_userId != userId) return;
 
           _accounts = accounts;
           _manualAccounts = manualAccounts;
@@ -138,6 +147,9 @@ class UserDataProvider extends ChangeNotifier {
               entry.key: entry.value['type']!,
           };
           _categories = categories;
+          _investmentCategories = investmentCategoriesFromProfile(
+            profile.data()?['investmentCategories'],
+          );
           _lastReferenceLoad = DateTime.now();
           _referenceDataVersion++;
           _notifySafely();
@@ -182,6 +194,20 @@ class UserDataProvider extends ChangeNotifier {
 
   void invalidateReferences() {
     _lastReferenceLoad = null;
+    _referenceDataVersion++;
+    _notifySafely();
+  }
+
+  Future<void> saveInvestmentCategories(
+    List<InvestmentTypeOption> options,
+  ) async {
+    final uid = _userId;
+    if (uid == null) throw StateError('Utilisateur déconnecté');
+    await DocumentStore.instance.doc('users/$uid').set({
+      'investmentCategories': options.map((o) => o.toMap()).toList(),
+    }, SetOptions(merge: true));
+    if (_userId != uid) return;
+    _investmentCategories = List.unmodifiable(options);
     _referenceDataVersion++;
     _notifySafely();
   }

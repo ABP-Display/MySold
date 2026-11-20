@@ -13,8 +13,9 @@ class InvestmentSection {
 List<InvestmentSection> investmentSections(
   DateTime month,
   Iterable<MonthChartEntry> entries,
-  Map<String, String> assetTypes,
-) {
+  Map<String, String> assetTypes, {
+  Iterable<String> categoryTypes = investmentChartTypes,
+}) {
   final typeTotals = List.generate(4, (_) => <String, int>{});
   final assetTotals = List.generate(4, (_) => <String?, int>{});
   for (final entry in entries) {
@@ -26,7 +27,7 @@ List<InvestmentSection> investmentSections(
     if (cents == 0) continue;
     final index = ((entry.date.day - 1) ~/ 7).clamp(0, 3);
     final rawType = assetTypes[entry.group];
-    final type = investmentChartTypes.contains(rawType) ? rawType! : 'other';
+    final type = categoryTypes.contains(rawType) ? rawType! : 'other';
     typeTotals[index][type] = (typeTotals[index][type] ?? 0) + cents;
     assetTotals[index][entry.group] =
         (assetTotals[index][entry.group] ?? 0) + cents;

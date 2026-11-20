@@ -6,23 +6,22 @@ import 'package:mysold/models/investment_type.dart';
 import 'app_charts.dart';
 import 'month_money_axis.dart';
 
-Color investmentSectionColor(String type) => switch (type) {
-  'stock' => const Color(0xffc5a3da),
-  'etf' => const Color(0xff8daee0),
-  'crypto' => const Color(0xffd5b778),
-  'bond' => const Color(0xff77b8ae),
-  _ => const Color(0xff8a96a1),
-};
+Color investmentSectionColor(
+  String type, {
+  List<InvestmentTypeOption> options = investmentTypeOptions,
+}) => investmentTypeOption(type, options: options).color;
 
 class InvestmentSectionsChart extends StatefulWidget {
   final List<InvestmentSection> sections;
   final Widget Function(BuildContext, int) detailBuilder;
   final String Function(int) money;
+  final List<InvestmentTypeOption> options;
   const InvestmentSectionsChart({
     super.key,
     required this.sections,
     required this.detailBuilder,
     required this.money,
+    this.options = investmentTypeOptions,
   });
   @override
   State<InvestmentSectionsChart> createState() =>
@@ -77,7 +76,8 @@ class _InvestmentSectionsChartState extends State<InvestmentSectionsChart> {
         ],
       );
     }
-    final types = investmentChartTypes
+    final types = widget.options
+        .map((o) => o.value)
         .where((t) => widget.sections.any((s) => (s.types[t] ?? 0) > 0))
         .toList();
     final axis = MonthMoneyAxis(widget.sections.map((s) => s.total));
@@ -152,7 +152,10 @@ class _InvestmentSectionsChartState extends State<InvestmentSectionsChart> {
                                   BarChartRodStackItem(
                                     from / 100,
                                     to / 100,
-                                    investmentSectionColor(type),
+                                    investmentSectionColor(
+                                      type,
+                                      options: widget.options,
+                                    ),
                                   ),
                                 );
                                 from = to;
@@ -221,12 +224,18 @@ class _InvestmentSectionsChartState extends State<InvestmentSectionsChart> {
                     height: 7,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      color: investmentSectionColor(type),
+                      color: investmentSectionColor(
+                        type,
+                        options: widget.options,
+                      ),
                     ),
                   ),
                   const SizedBox(width: 5),
                   Text(
-                    context.tr(investmentTypeOption(type).label),
+                    investmentCategoryLabel(
+                      context,
+                      investmentTypeOption(type, options: widget.options),
+                    ),
                     style: const TextStyle(fontSize: 10),
                   ),
                 ],

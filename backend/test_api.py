@@ -70,6 +70,29 @@ class ApiTests(unittest.TestCase):
         }).status_code, 403)
         self.assertEqual(self.get('user')['firstName'], 'Test')
 
+    def test_investment_categories_are_private_and_deletion_is_protected(self):
+        self.seed()
+        def cat(ident, name):
+            return {'id': ident, 'name': name, 'color': 0xff77b8ae, 'icon': 0xe047}
+        custom = 'a' * 32
+        catalog = [cat('other', 'Autres'), cat(custom, 'Métaux précieux')]
+        self.assertEqual(self.commit([self.operation('user', {'investmentCategories': catalog}, 'update')]).status_code, 200)
+        self.assertEqual(self.get('user')['investmentCategories'], catalog)
+        other_profile = self.other.post('/api/documents/get', headers=HEADERS,
+            json={'path': self.path('user', self.other_uid)})
+        self.assertNotIn('investmentCategories', other_profile.json['data'])
+        self.assertEqual(self.commit([self.operation('investments/gold', {'investmentType': custom}, 'update')]).status_code, 200)
+        blocked = self.commit([self.operation('user', {'investmentCategories': catalog[:1]}, 'update')])
+        self.assertEqual(blocked.status_code, 409, blocked.json)
+        self.assertEqual(self.get('user')['investmentCategories'], catalog)
+        self.assertEqual(self.commit([self.operation('investments/gold', {'investmentType': 'other'}, 'update'),
+                                     self.operation('user', {'investmentCategories': catalog[:1]}, 'update')]).status_code, 200)
+        self.assertEqual(self.get('accounts/holding')['balance'], 0)
+        invalid = self.commit([self.operation('investments/gold', {'investmentType': custom}, 'update')])
+        self.assertEqual(invalid.status_code, 400)
+        invalid = self.commit([self.operation('user', {'investmentCategories': []}, 'update')])
+        self.assertEqual(invalid.status_code, 400)
+
     def test_csrf_and_unknown_collections(self):
         self.assertEqual(self.client.post('/api/auth/logout', json={}).status_code, 403)
         self.assertEqual(self.client.post('/api/auth/logout', headers={'Origin': 'https://example.test'}, json={}).status_code, 403)

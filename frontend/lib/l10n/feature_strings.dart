@@ -3,6 +3,62 @@ import 'report_strings.dart';
 // Application-owned text only. Never translate user-entered names or notes.
 const featureStrings = <String, List<String>>{
   ...reportStrings,
+  'Catégories d’investissement': [
+    'Investment categories',
+    'Categorías de inversión',
+    'Anlagekategorien',
+    'Categorie di investimento',
+    '投資カテゴリー',
+  ],
+  'Gérer les catégories d’investissement': [
+    'Manage investment categories',
+    'Gestionar categorías de inversión',
+    'Anlagekategorien verwalten',
+    'Gestisci le categorie di investimento',
+    '投資カテゴリーを管理',
+  ],
+  'Nouvelle catégorie d’investissement': [
+    'New investment category',
+    'Nueva categoría de inversión',
+    'Neue Anlagekategorie',
+    'Nuova categoria di investimento',
+    '新しい投資カテゴリー',
+  ],
+  'Modifier la catégorie d’investissement': [
+    'Edit investment category',
+    'Editar categoría de inversión',
+    'Anlagekategorie bearbeiten',
+    'Modifica categoria di investimento',
+    '投資カテゴリーを編集',
+  ],
+  'Catégorie de secours': [
+    'Fallback category',
+    'Categoría de reserva',
+    'Auffangkategorie',
+    'Categoria predefinita di riserva',
+    '予備カテゴリー',
+  ],
+  'Cette catégorie contient des actifs.': [
+    'This category contains assets.',
+    'Esta categoría contiene activos.',
+    'Diese Kategorie enthält Anlagen.',
+    'Questa categoria contiene attività.',
+    'このカテゴリーには資産があります。',
+  ],
+  'Un nom unique est requis.': [
+    'A unique name is required.',
+    'Se requiere un nombre único.',
+    'Ein eindeutiger Name ist erforderlich.',
+    'È richiesto un nome univoco.',
+    '重複しない名前が必要です。',
+  ],
+  'Supprimer la catégorie ?': [
+    'Delete this category?',
+    '¿Eliminar la categoría?',
+    'Kategorie löschen?',
+    'Eliminare la categoria?',
+    'カテゴリーを削除しますか？',
+  ],
   'Départ': ['From', 'Origen', 'Von', 'Da', '送金元'],
   'Arrivée': ['To', 'Destino', 'Nach', 'A', '送金先'],
   'Retour au graphique': [

@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 import 'package:mysold/l10n/app_localizations.dart';
 import 'package:mysold/models/month_chart_series.dart';
 import 'package:mysold/models/month_operation_charts.dart';
+import 'package:mysold/models/investment_type.dart';
 import 'package:mysold/widgets/graphiques/investment_sections_chart.dart';
 import 'package:mysold/widgets/graphiques/transfer_sankey_chart.dart';
 import 'package:mysold/models/transaction_model.dart';
@@ -25,6 +26,7 @@ class MonthGraph extends StatefulWidget {
   final Map<String, Map<String, dynamic>> categories;
   final Map<String, String> accountIds, investmentIds;
   final Map<String, String> investmentTypes;
+  final List<InvestmentTypeOption> investmentCategories;
   final String type;
   const MonthGraph({
     super.key,
@@ -35,6 +37,7 @@ class MonthGraph extends StatefulWidget {
     required this.investmentIds,
     required this.type,
     this.investmentTypes = const {},
+    this.investmentCategories = investmentTypeOptions,
   });
   @override
   State<MonthGraph> createState() => _MonthGraphState();
@@ -81,6 +84,7 @@ class _MonthGraphState extends State<MonthGraph> {
       now.year,
       now.month,
       now.day,
+      for (final option in widget.investmentCategories) option.value,
       for (final entry in widget.investmentTypes.entries)
         (entry.key, entry.value),
       for (final t in widget.transactions)
@@ -124,6 +128,7 @@ class _MonthGraphState extends State<MonthGraph> {
         widget.month,
         current.map((t) => MonthChartEntry(t.date, t.amount, t.investmentId)),
         widget.investmentTypes,
+        categoryTypes: widget.investmentCategories.map((o) => o.value),
       );
     }
     if (widget.type == 'transfer') {
@@ -247,6 +252,7 @@ class _MonthGraphState extends State<MonthGraph> {
                   'investment' => InvestmentSectionsChart(
                     key: ValueKey((widget.month.year, widget.month.month)),
                     sections: _sections,
+                    options: widget.investmentCategories,
                     money: (cents) => _money(context, cents),
                     detailBuilder: (context, index) {
                       final section = _sections[index];
@@ -267,6 +273,7 @@ class _MonthGraphState extends State<MonthGraph> {
                             e.value,
                             investmentSectionColor(
                               widget.investmentTypes[e.key] ?? 'other',
+                              options: widget.investmentCategories,
                             ),
                           ),
                         if (entries.length > 5)

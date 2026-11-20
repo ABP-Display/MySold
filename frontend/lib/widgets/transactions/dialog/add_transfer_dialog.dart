@@ -11,6 +11,7 @@ import 'package:mysold/models/transaction_model.dart';
 import 'package:mysold/services/budget_service.dart';
 import 'package:mysold/l10n/app_localizations.dart';
 import 'package:mysold/providers/user_data_provider.dart';
+import 'package:mysold/widgets/investment_asset_options.dart';
 
 /// --- DIALOG PRINCIPAL POUR CHOISIR LE TYPE ---
 Future<void> showAddOperationDialog(BuildContext context) async {
@@ -58,6 +59,7 @@ class _AddTransferDialogState extends State<AddTransferDialog> {
   Map<String, String> _accounts = {};
   Map<String, String> _investments = {};
   Map<String, String> _investmentHoldingAccounts = {};
+  Map<String, String> _investmentTypes = {};
 
   bool _isSaving = false;
 
@@ -93,6 +95,10 @@ class _AddTransferDialogState extends State<AddTransferDialog> {
       for (final doc in investmentsSnapshot.docs)
         doc.id: (doc.data()['name'] ?? 'Sans nom').toString(),
     };
+    final investmentTypes = {
+      for (final doc in investmentsSnapshot.docs)
+        doc.id: (doc.data()['investmentType'] ?? 'other').toString(),
+    };
     final holdingAccounts = {
       for (final doc in investmentsSnapshot.docs)
         if ((doc.data()['holdingAccountId'] ?? '').toString().isNotEmpty)
@@ -104,6 +110,7 @@ class _AddTransferDialogState extends State<AddTransferDialog> {
       _accounts = comptes;
       _investments = investments;
       _investmentHoldingAccounts = holdingAccounts;
+      _investmentTypes = investmentTypes;
       _sourceAccountId ??= comptes.keys.firstOrNull;
       _destinationAccountId ??= comptes.keys.length > 1
           ? comptes.keys.elementAt(1)
@@ -288,6 +295,7 @@ class _AddTransferDialogState extends State<AddTransferDialog> {
   @override
   Widget build(BuildContext context) {
     final currency = Provider.of<CurrencyProvider>(context).currency;
+    final categories = context.watch<UserDataProvider>().investmentCategories;
     return Dialog(
       child: Padding(
         padding: const EdgeInsets.all(20),
@@ -372,11 +380,12 @@ class _AddTransferDialogState extends State<AddTransferDialog> {
                         ? _sourceInvestmentId
                         : null,
                     hint: context.tr('Selectionner un investissement'),
-                    options: _investments.entries
-                        .map(
-                          (e) => AppSelectOption(value: e.key, label: e.value),
-                        )
-                        .toList(),
+                    options: investmentAssetOptions(
+                      context,
+                      investments: _investments,
+                      assetTypes: _investmentTypes,
+                      categories: categories,
+                    ),
                     onChanged: (v) => setState(() => _sourceInvestmentId = v),
                     validator: (v) {
                       if (v == null) {

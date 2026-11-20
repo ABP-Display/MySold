@@ -20,6 +20,7 @@ from werkzeug.security import check_password_hash, generate_password_hash
 from origin_policy import DEFAULT_APP_ORIGIN, is_allowed_origin
 import totp
 from annual_analysis import build_analysis, effects, cents
+from investment_categories import validate_categories, category_ids
 from encryption import INDEX_FIELDS, migrate_encryption, vault
 
 UTC = timezone.utc
@@ -29,7 +30,7 @@ FIELDS = {'date', 'type', 'fromAccountId', 'toAccountId', 'holdingAccountId',
 PROFILE_FIELDS = {'firstName', 'lastName', 'phone', 'pin', 'theme', 'currency',
                   'currencyCode', 'language', 'languageCode', 'reconnectionFrequency',
                   'lockDelayMinutes', 'createdAt', 'lastConnection', 'updatedAt',
-                  'hideAmounts', 'email', 'authProvider'}
+                  'hideAmounts', 'email', 'authProvider', 'investmentCategories'}
 app = Flask(__name__)
 app.config['MAX_CONTENT_LENGTH'] = 4 * 1024 * 1024
 
@@ -603,11 +604,21 @@ def validate_document(path, data):
             raise Problem('Champ de profil non autorisé.')
         if data.get('pin') is not None and not re.fullmatch(r'[a-fA-F0-9]{64}', str(data['pin'])):
             raise Problem('PIN invalide.')
+        if 'investmentCategories' in data:
+            try:
+                data['investmentCategories'] = validate_categories(data['investmentCategories'])
+            except ValueError as error:
+                raise Problem(str(error))
     elif collection in {'accounts', 'categories', 'investments'}:
         if not isinstance(data.get('name'), str) or not data['name'].strip() or len(data['name']) > 200:
             raise Problem('Le nom doit contenir de 1 à 200 caractères.')
         if collection == 'categories' and data.get('type') not in {'expense', 'income'}:
             raise Problem('Type de catégorie invalide.')
+        if collection == 'investments':
+            if data.get('investmentType') is None:
+                data['investmentType'] = 'other'
+            if not isinstance(data['investmentType'], str) or not re.fullmatch(r'[A-Za-z0-9_-]{1,80}', data['investmentType']):
+                raise Problem('Catégorie d’investissement invalide.')
     elif collection == 'transactions':
         if data.get('type') not in {'expense', 'income', 'investment', 'transfer'} or data.get('amount', 0) <= 0:
             raise Problem('Transaction invalide.')
@@ -618,8 +629,14 @@ def validate_document(path, data):
             raise Problem('Les comptes source et destination doivent être différents.')
 
 
-def validate_links(db, uid, path, data):
+def validate_links(db, uid, path, data, previous=None):
     collection = path.split('/')[0]
+    if path == 'user':
+        removed = category_ids(previous) - category_ids(data)
+        if removed:
+            rows = db.execute("SELECT path,data,sealed_data FROM documents WHERE user_id=%s AND collection='investments'", (uid,)).fetchall()
+            if any(vault(db).decode(uid, row).get('investmentType', 'other') in removed for row in rows):
+                raise Problem('Cette catégorie contient des actifs. Réaffectez-les avant de la supprimer.', 'in-use', 409)
     if collection in {'balanceEvents', 'annualReferences'}:
         if not load(db, uid, data['entityPath']) and not body().get('restore', False):
             raise Problem('Élément introuvable.')
@@ -661,6 +678,10 @@ def validate_links(db, uid, path, data):
             raise Problem('Un compte support géré par les investissements est requis.')
         if data.get('balance', 0) < 0:
             raise Problem('La valeur d’un actif ne peut pas être négative.')
+        kind = data.get('investmentType', 'other')
+        if kind not in category_ids(load(db, uid, 'user')) and not body().get('restore', False):
+            if previous is None or previous.get('investmentType', 'other') != kind:
+                raise Problem('Catégorie d’investissement introuvable.')
 
 
 @app.post('/api/documents/commit')
@@ -717,7 +738,7 @@ def commit():
         investments_changed |= path.startswith('investments/')
     for path, data in touched.items():
         if data is not None:
-            validate_links(db, uid, path, data)
+            validate_links(db, uid, path, data, originals[path])
         elif path.split('/')[0] in {'accounts', 'categories', 'investments'}:
             fields = {'accounts': ['fromAccountId', 'toAccountId', 'holdingAccountId'],
                       'categories': ['categoryId'], 'investments': ['investmentId']}[path.split('/')[0]]

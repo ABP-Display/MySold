@@ -8,6 +8,7 @@ import 'package:mysold/services/budget_service.dart';
 import 'package:mysold/l10n/app_localizations.dart';
 import 'package:mysold/models/transaction_model.dart';
 import 'package:mysold/providers/user_data_provider.dart';
+import 'package:mysold/models/investment_type.dart';
 import 'package:mysold/screens/settings/currency_provider.dart';
 import 'package:mysold/screens/settings/privacy_provider.dart';
 import 'package:mysold/widgets/transactions/dialog/add_investment_dialog.dart';
@@ -30,6 +31,11 @@ class InvestmentTransactionTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final currency = context.watch<CurrencyProvider>().currency;
     final privacy = context.watch<PrivacyProvider>();
+    final references = context.watch<UserDataProvider>();
+    final category = investmentTypeOption(
+      references.investmentTypes[t.investmentId],
+      options: references.investmentCategories,
+    );
     final formattedDate = DateFormat('dd/MM/yyyy').format(t.date);
     final source = accounts[t.fromAccountId] ?? context.tr('Compte source');
     final destination =
@@ -41,8 +47,8 @@ class InvestmentTransactionTile extends StatelessWidget {
       title: investment,
       subtitle: '$source → $destination · $formattedDate',
       amount: '+${privacy.money(t.amount, currency)}',
-      icon: Icons.trending_up_outlined,
-      color: Theme.of(context).colorScheme.primary,
+      icon: category.icon,
+      color: category.color,
       onTap: () => _showOptions(context),
     );
   }
@@ -50,6 +56,11 @@ class InvestmentTransactionTile extends StatelessWidget {
   void _showOptions(BuildContext context) {
     final currency = context.read<CurrencyProvider>().currency;
     final privacy = context.read<PrivacyProvider>();
+    final references = context.read<UserDataProvider>();
+    final category = investmentTypeOption(
+      references.investmentTypes[t.investmentId],
+      options: references.investmentCategories,
+    );
     final formattedDate = DateFormat('dd/MM/yyyy').format(t.date);
     final source = accounts[t.fromAccountId] ?? context.tr('Compte source');
     final destination =
@@ -67,14 +78,27 @@ class InvestmentTransactionTile extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Text(
-                  investment,
-                  style: Theme.of(
-                    context,
-                  ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w600),
+                Row(
+                  children: [
+                    Icon(category.icon, color: category.color),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        investment,
+                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
                 const SizedBox(height: 14),
                 _detailRow(context, context.tr('Date'), formattedDate),
+                _detailRow(
+                  context,
+                  context.tr('Catégorie'),
+                  investmentCategoryLabel(context, category),
+                ),
                 _detailRow(context, context.tr('Compte source'), source),
                 _detailRow(context, context.tr('Compte support'), destination),
                 _detailRow(

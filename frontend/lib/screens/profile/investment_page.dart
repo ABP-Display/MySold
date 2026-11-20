@@ -16,6 +16,7 @@ import 'package:mysold/providers/user_data_provider.dart';
 import 'package:mysold/screens/settings/currency_provider.dart';
 import 'package:mysold/screens/settings/privacy_provider.dart';
 import 'package:mysold/services/security_gate.dart';
+import 'investment_categories_page.dart';
 
 class InvestmentPage extends StatefulWidget {
   final String userId;
@@ -26,22 +27,26 @@ class InvestmentPage extends StatefulWidget {
 }
 
 class _InvestmentPageState extends State<InvestmentPage>
-    with SingleTickerProviderStateMixin {
-  late final TabController _tabController;
+    with TickerProviderStateMixin {
+  late TabController _tabController;
+  List<InvestmentTypeOption> _typeOptions = investmentTypeOptions;
   late Stream<QuerySnapshot<Map<String, dynamic>>> _accountsStream,
       _investmentsStream;
   static const _allType = 'all';
 
   List<String> get _tabs => [
     _allType,
-    ...investmentTypeOptions.map((option) => option.value),
+    ..._typeOptions.map((option) => option.value),
   ];
 
   List<String> get _tabLabels => _tabs
       .map(
-        (type) => context.tr(
-          type == _allType ? 'Tous' : investmentTypeOption(type).label,
-        ),
+        (type) => type == _allType
+            ? context.tr('Tous')
+            : investmentCategoryLabel(
+                context,
+                investmentTypeOption(type, options: _typeOptions),
+              ),
       )
       .toList();
 
@@ -58,6 +63,42 @@ class _InvestmentPageState extends State<InvestmentPage>
     _tabController = TabController(length: _tabs.length, vsync: this);
     _accountsStream = _accountsRef.snapshots();
     _investmentsStream = _investmentsRef.snapshots();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final options = context.watch<UserDataProvider>().investmentCategories;
+    final oldIds = _typeOptions.map((o) => o.value).join(',');
+    final newIds = options.map((o) => o.value).join(',');
+    if (oldIds != newIds) {
+      final selected = _tabs[_tabController.index];
+      _tabController.dispose();
+      _typeOptions = options;
+      final index = _tabs.indexOf(selected);
+      _tabController = TabController(
+        length: _tabs.length,
+        vsync: this,
+        initialIndex: index < 0 ? 0 : index,
+      );
+    } else {
+      _typeOptions = options;
+    }
+  }
+
+  void _manageCategories(Set<String> usedTypes) {
+    final provider = context.read<UserDataProvider>();
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => InvestmentCategoriesPage(
+          options: _typeOptions,
+          usedTypes: usedTypes,
+          onSave: provider.saveInvestmentCategories,
+          createId: newDocumentId,
+        ),
+      ),
+    );
   }
 
   @override
@@ -88,7 +129,7 @@ class _InvestmentPageState extends State<InvestmentPage>
       MaterialPageRoute(
         builder: (context) => AddInvestmentPage(
           userId: widget.userId,
-          existingData: doc?.data() as Map<String, dynamic>?,
+          existingData: doc?.data(),
           investmentId: doc?.id,
         ),
       ),
@@ -182,10 +223,12 @@ class _InvestmentPageState extends State<InvestmentPage>
               .map(
                 (type) => type == _allType
                     ? Icons.grid_view_rounded
-                    : investmentTypeOption(type).icon,
+                    : investmentTypeOption(type, options: _typeOptions).icon,
               )
               .toList(),
           scrollable: true,
+          translateLabels: false,
+          iconColors: [null, ..._typeOptions.map((o) => o.color)],
           selectedIndex: _tabController.index,
           onSelected: (index) => _tabController.animateTo(index),
         ),
@@ -220,10 +263,6 @@ class _InvestmentPageState extends State<InvestmentPage>
                 return _InvestmentViewModel.fromFirestore(doc, accounts);
               }).toList()..sort((a, b) => b.balance.compareTo(a.balance));
 
-              if (investments.isEmpty) {
-                return _buildEmptyState();
-              }
-
               return AnnualAnalysisScope(
                 key: ValueKey(widget.userId),
                 builder: (context, analysis) => TabBarView(
@@ -233,17 +272,18 @@ class _InvestmentPageState extends State<InvestmentPage>
                     final filtered = type == _allType
                         ? investments
                         : investments.where((investment) {
-                            return investment.investmentType == type;
+                            return investmentTypeOption(
+                                  investment.investmentType,
+                                  options: _typeOptions,
+                                ).value ==
+                                type;
                           }).toList();
                     final filteredTotal = filtered.fold(0.0, (sum, investment) {
                       return sum + investment.balance;
                     });
 
-                    if (filtered.isEmpty) {
-                      return _buildEmptyState(type: type);
-                    }
-
                     return ListView(
+                      key: PageStorageKey('investment-list-$type'),
                       dragStartBehavior: DragStartBehavior.down,
                       padding: EdgeInsets.fromLTRB(
                         16,
@@ -262,8 +302,12 @@ class _InvestmentPageState extends State<InvestmentPage>
                           total: filteredTotal,
                           currency: currency,
                           privacy: privacy,
+                          usedTypes: investments
+                              .map((i) => i.investmentType)
+                              .toSet(),
                         ),
                         const SizedBox(height: 16),
+                        if (filtered.isEmpty) _buildEmptyState(type: type),
                         ...filtered.map(
                           (investment) => Padding(
                             padding: const EdgeInsets.only(bottom: 12),
@@ -292,6 +336,7 @@ class _InvestmentPageState extends State<InvestmentPage>
     required double total,
     required String currency,
     required PrivacyProvider privacy,
+    required Set<String> usedTypes,
   }) {
     return Container(
       padding: const EdgeInsets.all(18),
@@ -317,6 +362,8 @@ class _InvestmentPageState extends State<InvestmentPage>
               children: [
                 Text(
                   context.tr('Portefeuille investi'),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
                   style: Theme.of(
                     context,
                   ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w600),
@@ -333,6 +380,12 @@ class _InvestmentPageState extends State<InvestmentPage>
               ],
             ),
           ),
+          IconButton(
+            key: const ValueKey('manage-investment-categories'),
+            tooltip: context.tr('Gérer les catégories d’investissement'),
+            onPressed: () => _manageCategories(usedTypes),
+            icon: const Icon(Icons.edit_outlined, size: 20),
+          ),
         ],
       ),
     );
@@ -344,11 +397,15 @@ class _InvestmentPageState extends State<InvestmentPage>
     required String currency,
     required PrivacyProvider privacy,
   }) {
+    final option = investmentTypeOption(
+      investment.investmentType,
+      options: _typeOptions,
+    );
     return AnnualEntityRow(
       key: ValueKey('investment-${investment.id}'),
       name: investment.name,
       subtitle:
-          '${context.tr(investment.typeOption.label)} · ${investment.holdingAccountName}',
+          '${investmentCategoryLabel(context, option)} · ${investment.holdingAccountName}',
       amount: annualEntityAmount(
         context,
         investment.balance,
@@ -357,8 +414,8 @@ class _InvestmentPageState extends State<InvestmentPage>
       ),
       percent: analysis['investments/${investment.id}']?['percent'] as num?,
       hidden: privacy.hideAmounts,
-      icon: investment.typeOption.icon,
-      color: Theme.of(context).colorScheme.primary,
+      icon: option.icon,
+      color: option.color,
       onTap: () async {
         await Navigator.push(
           context,
@@ -383,63 +440,56 @@ class _InvestmentPageState extends State<InvestmentPage>
 
   Widget _buildEmptyState({String type = _allType}) {
     final isFiltered = type != _allType;
-    final option = isFiltered ? investmentTypeOption(type) : null;
+    final option = isFiltered
+        ? investmentTypeOption(type, options: _typeOptions)
+        : null;
 
-    return Center(
-      child: SingleChildScrollView(
-        padding: EdgeInsets.fromLTRB(
-          28,
-          28,
-          28,
-          96 + AppPageTabMenu.clearance(context, _tabLabels, scrollable: true),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              height: 72,
-              width: 72,
-              decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.primary.withOpacity(0.12),
-                borderRadius: BorderRadius.circular(24),
-              ),
-              child: Icon(
-                Icons.trending_up_outlined,
-                color: Theme.of(context).colorScheme.primary,
-                size: 34,
-              ),
+    return Padding(
+      padding: EdgeInsets.fromLTRB(28, 28, 28, 28),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            height: 72,
+            width: 72,
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.primary.withOpacity(0.12),
+              borderRadius: BorderRadius.circular(24),
             ),
-            const SizedBox(height: 18),
-            Text(
+            child: Icon(
+              Icons.trending_up_outlined,
+              color: Theme.of(context).colorScheme.primary,
+              size: 34,
+            ),
+          ),
+          const SizedBox(height: 18),
+          Text(
+            isFiltered
+                ? '${context.tr('Aucun actif')} ${investmentCategoryLabel(context, option!)}'
+                : context.tr('Aucun actif'),
+            style: Theme.of(
+              context,
+            ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w600),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            context.tr(
               isFiltered
-                  ? '${context.tr('Aucun actif')} ${context.tr(option!.label)}'
-                  : context.tr('Aucun actif'),
-              style: Theme.of(
-                context,
-              ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w600),
+                  ? 'Ajoutez un actif dans cette categorie pour le retrouver ici.'
+                  : 'Ajoutez OR, ETF, crypto ou tout autre support pour suivre votre portefeuille.',
             ),
-            const SizedBox(height: 8),
-            Text(
-              context.tr(
-                isFiltered
-                    ? 'Ajoutez un actif dans cette categorie pour le retrouver ici.'
-                    : 'Ajoutez OR, ETF, crypto ou tout autre support pour suivre votre portefeuille.',
-              ),
-              textAlign: TextAlign.center,
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: Theme.of(
-                  context,
-                ).colorScheme.onSurface.withOpacity(0.65),
-              ),
+            textAlign: TextAlign.center,
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.65),
             ),
-            const SizedBox(height: 18),
-            ElevatedButton.icon(
-              onPressed: () => _openAddInvestment(),
-              icon: const Icon(Icons.add),
-              label: Text(context.tr('Ajouter un actif')),
-            ),
-          ],
-        ),
+          ),
+          const SizedBox(height: 18),
+          ElevatedButton.icon(
+            onPressed: () => _openAddInvestment(),
+            icon: const Icon(Icons.add),
+            label: Text(context.tr('Ajouter un actif')),
+          ),
+        ],
       ),
     );
   }

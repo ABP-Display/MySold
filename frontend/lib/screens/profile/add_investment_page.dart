@@ -308,29 +308,29 @@ class _AddInvestmentPageState extends State<AddInvestmentPage> {
               ),
             ),
             const SizedBox(height: 14),
-            DropdownButtonFormField<String>(
-              value: _investmentType,
-              items: investmentTypeOptions.map((option) {
-                return DropdownMenuItem(
-                  value: option.value,
-                  child: Row(
-                    children: [
-                      Icon(option.icon, size: 18),
-                      const SizedBox(width: 8),
-                      Text(context.tr(option.label)),
-                    ],
-                  ),
-                );
-              }).toList(),
+            AppSelectField<String>(
+              value: investmentTypeOption(
+                _investmentType,
+                options: context.watch<UserDataProvider>().investmentCategories,
+              ).value,
+              options: context
+                  .watch<UserDataProvider>()
+                  .investmentCategories
+                  .map((option) {
+                    return AppSelectOption(
+                      value: option.value,
+                      label: investmentCategoryLabel(context, option),
+                      icon: option.icon,
+                      color: option.color,
+                    );
+                  })
+                  .toList(),
               onChanged: (value) {
                 if (value == null) return;
                 setState(() => _investmentType = value);
               },
-              decoration: InputDecoration(
-                labelText: context.tr('Type d actif'),
-                prefixIcon: const Icon(Icons.category_outlined),
-                border: const OutlineInputBorder(),
-              ),
+              label: context.tr('Type d actif'),
+              icon: Icons.category_outlined,
             ),
             const SizedBox(height: 14),
             TextFormField(

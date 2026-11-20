@@ -690,6 +690,9 @@ class _MonthManagerState extends State<MonthManagerScreen> {
                           accountIds: _accountIds,
                           investmentIds: _investmentIds,
                           investmentTypes: _investmentTypes,
+                          investmentCategories: context
+                              .watch<UserDataProvider>()
+                              .investmentCategories,
                           type: type,
                         ),
                       ],

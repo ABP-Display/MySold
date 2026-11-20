@@ -11,6 +11,7 @@ import 'package:mysold/screens/settings/currency_provider.dart';
 import 'package:mysold/services/budget_service.dart';
 import 'package:mysold/l10n/app_localizations.dart';
 import 'package:mysold/providers/user_data_provider.dart';
+import 'package:mysold/widgets/investment_asset_options.dart';
 
 /// --- DIALOG PRINCIPAL POUR CHOISIR LE TYPE ---
 Future<void> showAddOperationDialog(BuildContext context) async {
@@ -48,13 +49,13 @@ class _AddInvestmentDialogState extends State<AddInvestmentDialog> {
   final _amountCtrl = TextEditingController();
   DateTime _selectedDate = DateTime.now();
   String? _sourceAccountId;
-  String? _destinationAccountId;
   String? _destinationInvestmentId;
 
   Map<String, String> _sourceAccounts = {};
   Map<String, String> _supportAccounts = {};
   Map<String, String> _investments = {};
   Map<String, String> _investmentHoldingAccounts = {};
+  Map<String, String> _investmentTypes = {};
   bool _isSaving = false;
 
   double _parseMoney(String value) {
@@ -70,7 +71,6 @@ class _AddInvestmentDialogState extends State<AddInvestmentDialog> {
       _amountCtrl.text = existing.amount.toStringAsFixed(2);
       _selectedDate = existing.date;
       _sourceAccountId = existing.fromAccountId;
-      _destinationAccountId = existing.toAccountId;
       _destinationInvestmentId = existing.investmentId;
     }
     _loadDropdownData();
@@ -103,6 +103,10 @@ class _AddInvestmentDialogState extends State<AddInvestmentDialog> {
       for (final doc in investmentsSnapshot.docs)
         doc.id: (doc.data()['name'] ?? 'Sans nom').toString(),
     };
+    final investmentTypes = {
+      for (final doc in investmentsSnapshot.docs)
+        doc.id: (doc.data()['investmentType'] ?? 'other').toString(),
+    };
     final investmentHoldingAccounts = {
       for (final doc in investmentsSnapshot.docs)
         if ((doc.data()['holdingAccountId'] ?? '').toString().isNotEmpty)
@@ -119,6 +123,7 @@ class _AddInvestmentDialogState extends State<AddInvestmentDialog> {
       _supportAccounts = supportAccounts;
       _investments = investissements;
       _investmentHoldingAccounts = investmentHoldingAccounts;
+      _investmentTypes = investmentTypes;
       _sourceAccountId = _sourceAccounts.containsKey(_sourceAccountId)
           ? _sourceAccountId
           : _sourceAccounts.keys.firstOrNull;
@@ -126,9 +131,6 @@ class _AddInvestmentDialogState extends State<AddInvestmentDialog> {
           investissements.containsKey(_destinationInvestmentId)
           ? _destinationInvestmentId
           : investissements.keys.firstOrNull;
-      _destinationAccountId = _destinationInvestmentId == null
-          ? null
-          : _investmentHoldingAccounts[_destinationInvestmentId];
     });
   }
 
@@ -261,6 +263,7 @@ class _AddInvestmentDialogState extends State<AddInvestmentDialog> {
   @override
   Widget build(BuildContext context) {
     final currency = Provider.of<CurrencyProvider>(context).currency;
+    final categories = context.watch<UserDataProvider>().investmentCategories;
 
     return Dialog(
       child: Padding(
@@ -327,12 +330,14 @@ class _AddInvestmentDialogState extends State<AddInvestmentDialog> {
                 const SizedBox(height: 12),
                 AppSelectField<String>(
                   value: _destinationInvestmentId,
-                  options: _buildSelectOptions(_investments),
+                  options: investmentAssetOptions(
+                    context,
+                    investments: _investments,
+                    assetTypes: _investmentTypes,
+                    categories: categories,
+                  ),
                   onChanged: (v) => setState(() {
                     _destinationInvestmentId = v;
-                    _destinationAccountId = v == null
-                        ? null
-                        : _investmentHoldingAccounts[v];
                   }),
                   label: context.tr('Destination (action, fonds...)'),
                   icon: Icons.trending_up,

@@ -418,6 +418,7 @@ class _SecurityPrivacyPageState extends State<SecurityPrivacyPage> {
   };
 
   static const _allowedRootImportFields = {
+    'investmentCategories',
     'firstName',
     'lastName',
     'phone',
@@ -1575,6 +1576,7 @@ class _ImportProgressPageState extends State<_ImportProgressPage> {
   };
 
   static const _allowedRootImportFields = {
+    'investmentCategories',
     'firstName',
     'lastName',
     'phone',

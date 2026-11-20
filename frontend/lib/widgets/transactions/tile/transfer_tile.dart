@@ -8,6 +8,7 @@ import 'package:mysold/services/budget_service.dart';
 import 'package:mysold/l10n/app_localizations.dart';
 import 'package:mysold/models/transaction_model.dart';
 import 'package:mysold/providers/user_data_provider.dart';
+import 'package:mysold/models/investment_type.dart';
 import 'package:mysold/screens/settings/currency_provider.dart';
 import 'package:mysold/screens/settings/privacy_provider.dart';
 import 'package:mysold/widgets/transactions/dialog/add_transfer_dialog.dart';
@@ -32,6 +33,11 @@ class TransferTransactionTile extends StatelessWidget {
     final privacy = context.watch<PrivacyProvider>();
     final formattedDate = DateFormat('dd/MM/yyyy').format(t.date);
     final isInvestmentWithdrawal = t.investmentId != null;
+    final references = context.watch<UserDataProvider>();
+    final category = investmentTypeOption(
+      references.investmentTypes[t.investmentId],
+      options: references.investmentCategories,
+    );
     final fromAccount = isInvestmentWithdrawal
         ? investments[t.investmentId] ?? context.tr('Investissement')
         : accounts[t.fromAccountId] ?? context.tr('Compte inconnu');
@@ -43,8 +49,10 @@ class TransferTransactionTile extends StatelessWidget {
           : t.description,
       subtitle: '$fromAccount → $toAccount · $formattedDate',
       amount: privacy.money(t.amount.abs(), currency),
-      icon: Icons.sync_alt,
-      color: Theme.of(context).colorScheme.secondary,
+      icon: isInvestmentWithdrawal ? category.icon : Icons.sync_alt,
+      color: isInvestmentWithdrawal
+          ? category.color
+          : Theme.of(context).colorScheme.secondary,
       onTap: () => _showOptions(context),
     );
   }
@@ -54,6 +62,11 @@ class TransferTransactionTile extends StatelessWidget {
     final privacy = context.read<PrivacyProvider>();
     final formattedDate = DateFormat('dd/MM/yyyy').format(t.date);
     final isInvestmentWithdrawal = t.investmentId != null;
+    final references = context.read<UserDataProvider>();
+    final category = investmentTypeOption(
+      references.investmentTypes[t.investmentId],
+      options: references.investmentCategories,
+    );
     final fromAccount = isInvestmentWithdrawal
         ? investments[t.investmentId] ?? context.tr('Investissement')
         : accounts[t.fromAccountId] ?? context.tr('Compte inconnu');
@@ -69,16 +82,32 @@ class TransferTransactionTile extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Text(
-                  isInvestmentWithdrawal
-                      ? context.tr('Retrait investissement')
-                      : t.description,
-                  style: Theme.of(
-                    context,
-                  ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w600),
+                Row(
+                  children: [
+                    if (isInvestmentWithdrawal) ...[
+                      Icon(category.icon, color: category.color),
+                      const SizedBox(width: 12),
+                    ],
+                    Expanded(
+                      child: Text(
+                        isInvestmentWithdrawal
+                            ? context.tr('Retrait investissement')
+                            : t.description,
+                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
                 const SizedBox(height: 14),
                 _detailRow(context, context.tr('Date'), formattedDate),
+                if (isInvestmentWithdrawal)
+                  _detailRow(
+                    context,
+                    context.tr('Catégorie'),
+                    investmentCategoryLabel(context, category),
+                  ),
                 _detailRow(
                   context,
                   isInvestmentWithdrawal

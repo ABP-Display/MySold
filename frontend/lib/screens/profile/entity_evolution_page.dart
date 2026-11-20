@@ -7,6 +7,7 @@ import 'package:provider/provider.dart';
 import 'package:mysold/data/document_store.dart';
 import 'package:mysold/l10n/app_localizations.dart';
 import 'package:mysold/models/investment_type.dart';
+import 'package:mysold/providers/user_data_provider.dart';
 import 'package:mysold/models/category_evolution.dart';
 import 'package:mysold/screens/settings/currency_provider.dart';
 import 'package:mysold/screens/settings/privacy_provider.dart';
@@ -474,10 +475,14 @@ class _EntityEvolutionPageState extends State<EntityEvolutionPage> {
               if (_investment) ...[
                 (
                   'Type',
-                  context.tr(
+                  investmentCategoryLabel(
+                    context,
                     investmentTypeOption(
                       data['investmentType']?.toString() ?? 'other',
-                    ).label,
+                      options: context
+                          .watch<UserDataProvider>()
+                          .investmentCategories,
+                    ),
                   ),
                 ),
                 (

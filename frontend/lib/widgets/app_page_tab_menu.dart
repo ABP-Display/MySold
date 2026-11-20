@@ -11,6 +11,8 @@ class AppPageTabMenu extends StatelessWidget {
   final ValueChanged<int> onSelected;
   final String keyPrefix;
   final bool scrollable;
+  final bool translateLabels;
+  final List<Color?>? iconColors;
 
   const AppPageTabMenu({
     super.key,
@@ -20,6 +22,8 @@ class AppPageTabMenu extends StatelessWidget {
     required this.onSelected,
     required this.keyPrefix,
     this.scrollable = false,
+    this.translateLabels = true,
+    this.iconColors,
   });
 
   static const _style = TextStyle(
@@ -68,7 +72,9 @@ class AppPageTabMenu extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final labels = this.labels.map(context.tr).toList();
+    final labels = translateLabels
+        ? this.labels.map(context.tr).toList()
+        : this.labels;
     if (MediaQuery.viewInsetsOf(context).bottom > 0)
       return const SizedBox.shrink();
     final height = heightOf(context, labels, scrollable: scrollable);
@@ -86,7 +92,7 @@ class AppPageTabMenu extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(icons[index], size: 22),
+            Icon(icons[index], size: 22, color: iconColors?[index]),
             const SizedBox(height: 6),
             Text(
               labels[index],

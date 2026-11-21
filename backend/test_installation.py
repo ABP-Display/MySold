@@ -152,6 +152,9 @@ class InstallationTests(unittest.TestCase):
             'email': 'installation@example.test', 'password': password,
             'profile': {'firstName': 'Installation', 'pin': hashlib.sha256(b'123456').hexdigest()},
         }, client)['user']
+        with client.open(self.url + '/', timeout=20) as response:
+            self.assertEqual(response.url, self.url + '/app/')
+            self.assertIn(b'flutter_bootstrap.js', response.read())
         self.request('/api/documents/commit', {'requestId': uuid.uuid4().hex, 'operations': [{
             'path': 'users/' + user['uid'] + '/accounts/restore-test', 'action': 'set',
             'data': {'name': 'Private restore fixture', 'balance': 123.45},

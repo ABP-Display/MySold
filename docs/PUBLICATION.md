@@ -6,11 +6,15 @@ de recherche. Les API restent soumises à leur authentification et à leur contr
 d’accès. `robots.txt` n’est pas une protection des données.
 
 La page d’accueil publique **`/`** présente MySold en HTML rendu côté serveur, sans
-charger Flutter, JavaScript, session ou données utilisateur. C’est cette adresse
+charger Flutter, JavaScript ou données utilisateur pour un visiteur anonyme. C’est cette adresse
 qui est destinée aux recherches et au partage. Elle contient titre, description,
 URL canonique, aperçu Open Graph/Twitter, favicon, image descriptive et liens vers
 les notices publiques. Le bouton « Accéder à l’application » ouvre `/app/` :
-connexion pour les visiteurs, parcours habituel pour les sessions existantes.
+connexion pour les visiteurs. Quand le navigateur envoie un cookie de session
+valide sur l’accueil, le serveur redirige directement vers `/app/`, où l’écran
+PIN prend le relais. Le cookie de session conserve `SameSite=Strict` ; il peut
+ne pas accompagner une première visite provenant d’un autre site.
+La présentation reste accessible à `/?presentation=1`, même avec une session.
 L’ancienne URL `/decouvrir/` redirige vers l’accueil.
 Les captures WebP montrent l’application locale avec un compte et des données
 fictives : dépenses et revenus du mois, statistiques mensuelles et annuelles.

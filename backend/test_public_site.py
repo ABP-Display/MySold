@@ -5,6 +5,8 @@ import unittest
 from unittest.mock import patch
 from xml.etree import ElementTree
 
+from psycopg import OperationalError
+
 from app import app
 from public_site import PAGES
 
@@ -31,8 +33,8 @@ class PublicSiteTests(unittest.TestCase):
         })
         self.config.start()
         self.addCleanup(self.config.stop)
-        sql = patch('app.connect', side_effect=AssertionError('Public pages must not access the DB'))
-        sql.start()
+        sql = patch('app.connect', side_effect=AssertionError('Anonymous pages must not access the DB'))
+        self.connect = sql.start()
         self.addCleanup(sql.stop)
         self.client = app.test_client()
 
@@ -153,11 +155,46 @@ class PublicSiteTests(unittest.TestCase):
             self.assertNotIn('Location', response.headers)
 
     def test_home_links_to_app_and_old_discover_url_redirects(self):
-        self.assertIn(b'href="/app/"', self.client.get('/').data)
+        response = self.client.get('/')
+        self.assertIn(b'href="/app/"', response.data)
+        self.assertEqual(response.headers['Cache-Control'], 'private, no-store')
+        self.assertIn('Cookie', response.vary)
         for path in ('/decouvrir', '/decouvrir/'):
             response = self.client.get(path)
             self.assertEqual(response.status_code, 301)
             self.assertEqual(response.headers['Location'], '/')
+
+    def test_active_session_redirects_to_the_pin_entry_without_caching(self):
+        self.client.set_cookie('mysold_session', 'a' * 43)
+        self.connect.side_effect = None
+        lookup = self.connect.return_value.__enter__.return_value.execute
+        lookup.return_value.fetchone.return_value = {'id': 'fixture', 'email': 'fixture@example.test'}
+        for method in ('GET', 'HEAD'):
+            response = self.client.open('/', method=method)
+            self.assertEqual(response.status_code, 302)
+            self.assertEqual(response.headers['Location'], '/app/')
+            self.assertEqual(response.headers['Cache-Control'], 'private, no-store')
+            self.assertIn('Cookie', response.vary)
+            self.assertNotIn(b'fixture@example.test', response.data)
+        self.assertEqual(lookup.call_count, 2)
+
+    def test_revoked_session_or_unavailable_database_shows_public_home(self):
+        self.client.set_cookie('mysold_session', 'a' * 43)
+        self.connect.side_effect = None
+        lookup = self.connect.return_value.__enter__.return_value.execute
+        lookup.return_value.fetchone.return_value = None
+        self.assertEqual(self.client.get('/').status_code, 200)
+        self.connect.side_effect = OperationalError('test database unavailable')
+        with self.assertLogs(level='WARNING'):
+            self.assertEqual(self.client.get('/').status_code, 200)
+
+    def test_public_pages_and_explicit_showcase_ignore_the_session(self):
+        self.client.set_cookie('mysold_session', 'a' * 43)
+        self.assertEqual(self.client.get('/?presentation=1').status_code, 200)
+        self.assertEqual(self.client.get('/confidentialite/').status_code, 200)
+        self.client.set_cookie('mysold_session', 'invalid')
+        self.assertEqual(self.client.get('/').status_code, 200)
+        self.connect.assert_not_called()
 
     def test_session_cookie_and_technical_storage_are_described_honestly(self):
         response = self.client.get('/cookies/')

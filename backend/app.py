@@ -12,7 +12,7 @@ from functools import wraps
 from pathlib import Path
 
 import psycopg
-from flask import Flask, g, jsonify, request
+from flask import Flask, g, jsonify, redirect, request
 from psycopg.rows import dict_row
 from psycopg.types.json import Jsonb
 from werkzeug.exceptions import HTTPException
@@ -108,7 +108,10 @@ def require_application_header():
 
 @app.after_request
 def no_cache(response):
-    if request.blueprint != 'public_site':
+    if request.endpoint == 'public_site.discover':
+        response.headers['Cache-Control'] = 'private, no-store'
+        response.vary.add('Cookie')
+    elif request.blueprint != 'public_site':
         response.headers['Cache-Control'] = 'no-store'
     elif not request.path.startswith('/site-assets/'):
         response.headers['Cache-Control'] = 'public, max-age=0, must-revalidate'
@@ -126,6 +129,25 @@ def session_user(db):
     return db.execute('''SELECT u.id, u.email, s.verified_at FROM sessions s
         JOIN users u ON u.id = s.user_id WHERE s.token_hash = %s AND s.expires_at > now()''',
                       (digest(token),)).fetchone()
+
+
+@app.before_request
+def redirect_signed_in_home():
+    if (request.endpoint != 'public_site.discover' or request.method not in {'GET', 'HEAD'}
+            or request.args.get('presentation') == '1'):
+        return None
+    token = request.cookies.get('mysold_session', '')
+    if not re.fullmatch(r'[A-Za-z0-9_-]{43}', token):
+        return None
+    try:
+        with connect() as db:
+            user = session_user(db)
+    except psycopg.Error:
+        logging.warning('Could not check the session on the public home page.')
+        return None
+    if user:
+        return redirect('/app/', code=302)
+    return None
 
 
 def authenticated(function):

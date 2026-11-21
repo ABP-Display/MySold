@@ -117,14 +117,19 @@ class NginxTlsTests(unittest.TestCase):
         return int(output.splitlines()[0].rsplit(':', 1)[1])
 
     @classmethod
-    def wait_http(cls, container):
-        port = cls.port(container, 8080)
+    def wait_web(cls, container, *, tls=False):
+        port = cls.port(container, 8443 if tls else 8080)
+        cafile = cls.base / 'ca.pem' if tls else None
         for _ in range(60):
             try:
-                with socket.create_connection(('127.0.0.1', port), timeout=1):
+                status, _, _, _ = cls.request(port, tls=tls, cafile=cafile, path='/app/')
+                if status == 200:
                     return port
+            except ssl.SSLCertVerificationError:
+                raise
             except OSError:
-                time.sleep(.1)
+                pass
+            time.sleep(.1)
         raise AssertionError('Fixture did not start: ' + cls.run_command([DOCKER, 'logs', container]).stderr[-1500:])
 
     @staticmethod
@@ -147,7 +152,7 @@ class NginxTlsTests(unittest.TestCase):
 
     def test_http_default_starts_without_any_certificates(self):
         container = self.start_web('http')
-        port = self.wait_http(container)
+        port = self.wait_web(container)
         status, headers, body, _ = self.request(port, path='/app/')
         self.assertEqual(status, 200)
         self.assertIn(b'MySold TLS fixture', body)
@@ -160,8 +165,8 @@ class NginxTlsTests(unittest.TestCase):
 
     def test_tls_verifies_certificate_and_hostname_while_http_keeps_working(self):
         container = self.start_web('https', self.certs)
-        http_port = self.wait_http(container)
-        https_port = self.port(container, 8443)
+        http_port = self.wait_web(container)
+        https_port = self.wait_web(container, tls=True)
         status, headers, body, _ = self.request(https_port, tls=True, cafile=self.base / 'ca.pem',
                                                path='/app/')
         self.assertEqual(status, 200)
@@ -203,8 +208,7 @@ class NginxTlsTests(unittest.TestCase):
         rotation = self.base / 'rotation'
         shutil.copytree(self.certs, rotation)
         container = self.start_web('rotation', rotation)
-        self.wait_http(container)
-        port = self.port(container, 8443)
+        port = self.wait_web(container, tls=True)
         self.assertEqual(self.request(port, tls=True, cafile=self.base / 'ca.pem')[3]['serialNumber'], '01')
         for name in ('fullchain.pem', 'privkey.pem'):
             shutil.copyfile(self.renewed / name, rotation / name)

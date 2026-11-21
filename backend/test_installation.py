@@ -1,5 +1,6 @@
 """Opt-in full Compose installation test; uses its own project and storage only."""
 import hashlib
+from html.parser import HTMLParser
 import http.cookiejar
 import json
 import os
@@ -13,6 +14,16 @@ import uuid
 
 ROOT = Path(__file__).resolve().parents[1]
 DOCKER = shutil.which('docker')
+
+
+class PageHeadings(HTMLParser):
+    def __init__(self):
+        super().__init__()
+        self.h1_count = 0
+
+    def handle_starttag(self, tag, attrs):
+        if tag == 'h1':
+            self.h1_count += 1
 
 
 @unittest.skipUnless(os.getenv('MYSOLD_INSTALLATION_TEST') == '1' and DOCKER,
@@ -118,7 +129,10 @@ class InstallationTests(unittest.TestCase):
             with urllib.request.urlopen(self.url + path, timeout=20) as response:
                 self.assertEqual(response.status, 200)
                 self.assertNotIn('Set-Cookie', response.headers)
-                self.assertIn(b'<h1>', response.read())
+                self.assertEqual(response.headers.get_content_type(), 'text/html', path)
+                headings = PageHeadings()
+                headings.feed(response.read().decode('utf-8'))
+                self.assertEqual(headings.h1_count, 1, path)
         with urllib.request.urlopen(self.url + '/', timeout=20) as response:
             page = response.read()
             self.assertIn(b'href="/app/"', page)

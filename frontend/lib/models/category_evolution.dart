@@ -60,10 +60,23 @@ List<double?> annualChartValues(
       (entity['kind'] == 'categories' ? entity['monthly'] : entity['closing'])
           as List? ??
       const [];
+  final category = entity['kind'] == 'categories';
+  var totalCents = 0;
+  var complete = true;
   return List.generate(12, (index) {
-    if (index >= months || index >= source.length || source[index] is! num)
+    if (index >= months) return null;
+    if (index >= source.length || source[index] is! num) {
+      if (category) complete = false;
       return null;
+    }
     final value = (source[index] as num).toDouble();
-    return value.isFinite ? value : null;
+    if (!value.isFinite) {
+      if (category) complete = false;
+      return null;
+    }
+    if (!category) return value;
+    if (!complete) return null;
+    totalCents += (value * 100).round();
+    return totalCents / 100;
   });
 }

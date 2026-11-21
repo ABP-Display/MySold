@@ -1,5 +1,3 @@
-import 'dart:convert';
-import 'package:crypto/crypto.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/gestures.dart';
 import 'package:intl/intl.dart';
@@ -12,7 +10,6 @@ import 'package:mysold/models/category_evolution.dart';
 import 'package:mysold/screens/settings/currency_provider.dart';
 import 'package:mysold/screens/settings/privacy_provider.dart';
 import 'package:mysold/services/annual_analysis_service.dart';
-import 'package:mysold/services/security_gate.dart';
 import 'package:mysold/widgets/app_design.dart';
 import 'package:mysold/widgets/graphiques/entity_annual_chart.dart';
 
@@ -74,93 +71,6 @@ class _EntityEvolutionPageState extends State<EntityEvolutionPage> {
       });
   }
 
-  Future<void> _reference(Map<String, dynamic> entity) async {
-    if (!await SecurityGate.requestPin(
-          context,
-          title: context.tr('Référence annuelle'),
-          message: context.tr(
-            'Confirmez votre PIN pour modifier la valeur au 1er janvier.',
-          ),
-        ) ||
-        !mounted)
-      return;
-    String? value;
-    final form = GlobalKey<FormState>();
-    final amount = await showDialog<double>(
-      context: context,
-      builder: (dialog) => AlertDialog(
-        title: Text(
-          context.trParams('Valeur au 1er janvier {year}', {'year': _year}),
-        ),
-        content: Form(
-          key: form,
-          child: TextFormField(
-            initialValue: (entity['opening'] as num).toStringAsFixed(2),
-            keyboardType: const TextInputType.numberWithOptions(
-              decimal: true,
-              signed: true,
-            ),
-            onChanged: (text) => value = text,
-            validator: (text) {
-              final number = double.tryParse((text ?? '').replaceAll(',', '.'));
-              return number == null || !number.isFinite || number.abs() > 1e12
-                  ? context.tr('Montant invalide')
-                  : null;
-            },
-            decoration: InputDecoration(
-              labelText: context.tr('Montant de référence'),
-            ),
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialog),
-            child: Text(context.tr('Annuler')),
-          ),
-          FilledButton(
-            onPressed: () {
-              if (form.currentState!.validate())
-                Navigator.pop(
-                  dialog,
-                  double.parse(
-                    (value ?? entity['opening'].toString()).replaceAll(
-                      ',',
-                      '.',
-                    ),
-                  ),
-                );
-            },
-            child: Text(context.tr('Enregistrer')),
-          ),
-        ],
-      ),
-    );
-    if (amount == null || !mounted) return;
-    try {
-      final id = sha256
-          .convert(utf8.encode('${widget.entityPath}:$_year'))
-          .toString();
-      await DocumentStore.instance
-          .collection('users')
-          .doc(widget.userId)
-          .collection('annualReferences')
-          .doc(id)
-          .set({
-            'entityPath': widget.entityPath,
-            'year': _year,
-            'amount': amount,
-          });
-      if (mounted) setState(() => _summary = readAnnualAnalysis(_year));
-    } catch (_) {
-      if (mounted)
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(context.tr('Référence non enregistrée. Réessayez.')),
-          ),
-        );
-    }
-  }
-
   String _money(num? value) {
     if (context.read<PrivacyProvider>().hideAmounts) return '••••';
     if (value == null) return '—';
@@ -170,12 +80,6 @@ class _EntityEvolutionPageState extends State<EntityEvolutionPage> {
       decimalDigits: 2,
     ).format(value);
   }
-
-  String _rate(num? value) => context.read<PrivacyProvider>().hideAmounts
-      ? '••••'
-      : value == null
-      ? context.tr('Non calculable')
-      : '${value > 0 ? '+' : ''}${NumberFormat.decimalPercentPattern(locale: Localizations.localeOf(context).toString(), decimalDigits: 1).format(value / 100)}';
 
   @override
   Widget build(BuildContext context) {
@@ -196,185 +100,160 @@ class _EntityEvolutionPageState extends State<EntityEvolutionPage> {
             dragStartBehavior: DragStartBehavior.down,
             padding: const EdgeInsets.fromLTRB(20, 8, 20, 36),
             children: [
-              _overview(),
-              const Divider(height: 40),
-              Wrap(
-                alignment: WrapAlignment.spaceBetween,
-                crossAxisAlignment: WrapCrossAlignment.center,
-                spacing: 16,
-                runSpacing: 8,
-                children: [
-                  Text(
-                    context.tr('Évolution annuelle'),
-                    style: Theme.of(context).textTheme.titleMedium,
-                  ),
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      IconButton(
-                        tooltip: context.tr('Année précédente'),
-                        icon: const Icon(Icons.chevron_left),
-                        onPressed: _year <= 1900
-                            ? null
-                            : () => _changeYear(_year - 1),
-                      ),
-                      Text(
-                        '$_year',
-                        style: Theme.of(context).textTheme.titleMedium,
-                      ),
-                      IconButton(
-                        tooltip: context.tr('Année suivante'),
-                        icon: const Icon(Icons.chevron_right),
-                        onPressed: _year >= DateTime.now().toUtc().year
-                            ? null
-                            : () => _changeYear(_year + 1),
-                      ),
-                    ],
-                  ),
-                ],
+              Semantics(
+                container: true,
+                identifier: 'entity-configuration-section',
+                child: _overview(),
               ),
-              const SizedBox(height: 20),
-              FutureBuilder<Map<String, dynamic>>(
-                future: _summary,
-                builder: (context, snapshot) {
-                  if (snapshot.hasError)
-                    return _retry(
-                      () =>
-                          setState(() => _summary = readAnnualAnalysis(_year)),
-                    );
-                  if (snapshot.connectionState != ConnectionState.done)
-                    return const SizedBox(
-                      height: 290,
-                      child: Center(child: CircularProgressIndicator()),
-                    );
-                  final entity = annualEntities(
-                    snapshot.data,
-                  )[widget.entityPath];
-                  if (entity == null)
-                    return Text(
-                      context.tr('Aucun élément pour cette période.'),
-                    );
-                  final asOf =
-                      DateTime.tryParse(
-                        snapshot.data?['asOf']?.toString() ?? '',
-                      ) ??
-                      DateTime.now().toUtc();
-                  final comparison = _category
-                      ? CategoryEvolution.fromSummary(entity)
-                      : null;
-                  return Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      EntityAnnualChart(
-                        year: _year,
-                        values: annualChartValues(entity, _year, asOf),
-                        currency: currency,
-                        hidden: hidden,
-                        zeroBased: _category,
-                      ),
-                      const SizedBox(height: 24),
-                      _metrics(
-                        [
-                          (
-                            _category
-                                ? 'Année précédente, même période'
-                                : 'Au 1er janvier',
-                            _money(
-                              (_category
-                                      ? entity['previous']
-                                      : entity['opening'])
-                                  as num?,
+              const SizedBox(height: 28),
+              const Divider(height: 1),
+              const SizedBox(height: 24),
+              Semantics(
+                container: true,
+                identifier: 'entity-analysis-section',
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Wrap(
+                      alignment: WrapAlignment.spaceBetween,
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      spacing: 16,
+                      runSpacing: 8,
+                      children: [
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.query_stats,
+                              size: 20,
+                              color: Theme.of(context).colorScheme.primary,
                             ),
-                          ),
-                          ('Variation', _money(entity['delta'] as num?)),
-                        ],
-                        details: {
-                          'Variation': hidden
-                              ? '••••'
-                              : comparison?.label != null
-                              ? context.tr(comparison!.label!)
-                              : _rate(
-                                  comparison?.percent ??
-                                      entity['percent'] as num?,
-                                ),
-                        },
-                      ),
-                      if (_category &&
-                          comparison!.label != null &&
-                          !hidden) ...[
-                        const SizedBox(height: 12),
-                        Text(
-                          context.tr(comparison.hint),
-                          style: Theme.of(context).textTheme.bodySmall,
+                            const SizedBox(width: 10),
+                            Flexible(
+                              child: Text(
+                                context.tr('Analyse annuelle'),
+                                style: Theme.of(context).textTheme.titleMedium
+                                    ?.copyWith(fontWeight: FontWeight.w600),
+                              ),
+                            ),
+                          ],
+                        ),
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            IconButton(
+                              tooltip: context.tr('Année précédente'),
+                              icon: const Icon(Icons.chevron_left),
+                              onPressed: _year <= 1900
+                                  ? null
+                                  : () => _changeYear(_year - 1),
+                            ),
+                            Text(
+                              '$_year',
+                              style: Theme.of(context).textTheme.titleMedium,
+                            ),
+                            IconButton(
+                              tooltip: context.tr('Année suivante'),
+                              icon: const Icon(Icons.chevron_right),
+                              onPressed: _year >= DateTime.now().toUtc().year
+                                  ? null
+                                  : () => _changeYear(_year + 1),
+                            ),
+                          ],
                         ),
                       ],
-                      if (!_category) ...[
-                        const SizedBox(height: 20),
-                        ExpansionTile(
-                          key: const ValueKey('entity-reference-settings'),
-                          tilePadding: EdgeInsets.zero,
-                          childrenPadding: const EdgeInsets.only(bottom: 12),
-                          title: Text(
-                            context.tr('Référence annuelle'),
-                            style: Theme.of(context).textTheme.bodyMedium,
-                          ),
-                          subtitle: Text(
-                            context.tr(
-                              entity['estimated'] == true
-                                  ? 'Valeur reconstituée, à confirmer'
-                                  : 'Référence renseignée',
+                    ),
+                    const SizedBox(height: 20),
+                    FutureBuilder<Map<String, dynamic>>(
+                      future: _summary,
+                      builder: (context, snapshot) {
+                        if (snapshot.hasError)
+                          return _retry(
+                            () => setState(
+                              () => _summary = readAnnualAnalysis(_year),
                             ),
-                          ),
+                          );
+                        if (snapshot.connectionState != ConnectionState.done)
+                          return const SizedBox(
+                            height: 290,
+                            child: Center(child: CircularProgressIndicator()),
+                          );
+                        final entity = annualEntities(
+                          snapshot.data,
+                        )[widget.entityPath];
+                        if (entity == null)
+                          return Text(
+                            context.tr('Aucun élément pour cette période.'),
+                          );
+                        final asOf =
+                            DateTime.tryParse(
+                              snapshot.data?['asOf']?.toString() ?? '',
+                            ) ??
+                            DateTime.now().toUtc();
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
-                            if ((entity['unexplained'] as num).abs() > .01)
+                            EntityAnnualChart(
+                              year: _year,
+                              values: annualChartValues(entity, _year, asOf),
+                              currency: currency,
+                              hidden: hidden,
+                              zeroBased: _category,
+                              opening: _category
+                                  ? 0
+                                  : (entity['opening'] as num?)?.toDouble(),
+                            ),
+                            if (!_category && entity['estimated'] == true) ...[
+                              const SizedBox(height: 12),
+                              Text(
+                                context.tr(
+                                  'Valeur au 1er janvier estimée d’après les mouvements enregistrés.',
+                                ),
+                                style: Theme.of(context).textTheme.bodySmall,
+                              ),
+                            ],
+                            if (!_category &&
+                                ((entity['unexplained'] as num?) ?? 0).abs() >
+                                    .01) ...[
+                              const SizedBox(height: 12),
                               Text(
                                 context.trParams(
                                   'Écart non historisé : {amount}',
                                   {
                                     'amount': _money(
-                                      entity['unexplained'] as num,
+                                      entity['unexplained'] as num?,
                                     ),
                                   },
                                 ),
+                                style: Theme.of(context).textTheme.bodySmall,
                               ),
-                            Align(
-                              alignment: Alignment.centerLeft,
-                              child: TextButton.icon(
-                                icon: const Icon(Icons.edit_outlined),
-                                onPressed: () => _reference(entity),
-                                label: Text(
-                                  context.tr(
-                                    'Renseigner la référence annuelle',
-                                  ),
+                            ],
+                            if (_investment) ...[
+                              const SizedBox(height: 16),
+                              _metrics([
+                                (
+                                  'Versements nets',
+                                  _money(entity['netFlows'] as num?),
                                 ),
+                                (
+                                  'Valorisation',
+                                  _money(entity['valuationChange'] as num?),
+                                ),
+                              ]),
+                              const SizedBox(height: 12),
+                              Text(
+                                context.tr(
+                                  'La variation inclut les versements et retraits : ce n’est pas un rendement financier.',
+                                ),
+                                style: Theme.of(context).textTheme.bodySmall,
                               ),
-                            ),
+                            ],
                           ],
-                        ),
-                      ],
-                      if (_investment) ...[
-                        const SizedBox(height: 16),
-                        _metrics([
-                          (
-                            'Versements nets',
-                            _money(entity['netFlows'] as num?),
-                          ),
-                          (
-                            'Valorisation',
-                            _money(entity['valuationChange'] as num?),
-                          ),
-                        ]),
-                        const SizedBox(height: 12),
-                        Text(
-                          context.tr(
-                            'La variation inclut les versements et retraits : ce n’est pas un rendement financier.',
-                          ),
-                          style: Theme.of(context).textTheme.bodySmall,
-                        ),
-                      ],
-                    ],
-                  );
-                },
+                        );
+                      },
+                    ),
+                  ],
+                ),
               ),
             ],
           ),
@@ -404,11 +283,24 @@ class _EntityEvolutionPageState extends State<EntityEvolutionPage> {
             runSpacing: 10,
             crossAxisAlignment: WrapCrossAlignment.center,
             children: [
-              Text(
-                context.tr(_category ? 'Total annuel' : 'Solde actuel'),
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                ),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    Icons.tune_outlined,
+                    size: 20,
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
+                  const SizedBox(width: 10),
+                  Flexible(
+                    child: Text(
+                      context.tr('Informations'),
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ],
               ),
               OutlinedButton.icon(
                 icon: const Icon(Icons.edit_outlined, size: 18),
@@ -433,6 +325,11 @@ class _EntityEvolutionPageState extends State<EntityEvolutionPage> {
                 label: Text(context.tr('Modifier')),
               ),
             ],
+          ),
+          const SizedBox(height: 16),
+          Text(
+            context.tr(_category ? 'Total annuel' : 'Solde actuel'),
+            style: Theme.of(context).textTheme.bodySmall,
           ),
           const SizedBox(height: 4),
           FutureBuilder<Map<String, dynamic>>(

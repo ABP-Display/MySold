@@ -3,6 +3,41 @@ import 'report_strings.dart';
 // Application-owned text only. Never translate user-entered names or notes.
 const featureStrings = <String, List<String>>{
   ...reportStrings,
+  'Informations': [
+    'Details',
+    'Información',
+    'Informationen',
+    'Informazioni',
+    '基本情報',
+  ],
+  'Analyse annuelle': [
+    'Annual analysis',
+    'Análisis anual',
+    'Jahresanalyse',
+    'Analisi annuale',
+    '年間分析',
+  ],
+  'Montant cumulé': [
+    'Cumulative amount',
+    'Importe acumulado',
+    'Kumulierter Betrag',
+    'Importo cumulato',
+    '累計金額',
+  ],
+  'Variation depuis le 1er janvier': [
+    'Change since January 1',
+    'Variación desde el 1 de enero',
+    'Änderung seit dem 1. Januar',
+    'Variazione dal 1° gennaio',
+    '1月1日からの変化',
+  ],
+  'Valeur au 1er janvier estimée d’après les mouvements enregistrés.': [
+    'January 1 value reconstructed from recorded movements.',
+    'Valor al 1 de enero estimado a partir de los movimientos registrados.',
+    'Wert zum 1. Januar anhand erfasster Bewegungen geschätzt.',
+    'Valore al 1° gennaio stimato dai movimenti registrati.',
+    '記録された入出金から1月1日時点の金額を推定しています。',
+  ],
   'Tout afficher': [
     'Show all',
     'Mostrar todo',

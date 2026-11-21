@@ -2,6 +2,46 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mysold/models/category_evolution.dart';
 
 void main() {
+  test(
+    'Category annual graph starts at zero and accumulates monthly flows in cents',
+    () {
+      expect(
+        annualChartValues(
+          {
+            'kind': 'categories',
+            'monthly': [29.14, 48.3, 0, .01, 999],
+          },
+          2026,
+          DateTime.utc(2026, 4, 15),
+        ),
+        [
+          29.14,
+          77.44,
+          77.44,
+          77.45,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+        ],
+      );
+      expect(
+        annualChartValues(
+          {
+            'kind': 'categories',
+            'monthly': [10, null, 50],
+          },
+          2026,
+          DateTime.utc(2026, 4, 15),
+        ).take(3),
+        [10, null, null],
+      );
+    },
+  );
   test('Category rates compare the same period without dividing by zero', () {
     final growth = CategoryEvolution.fromSummary({
       'current': 150,

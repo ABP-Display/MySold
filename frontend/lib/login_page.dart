@@ -437,7 +437,7 @@ class _LoginPageState extends State<LoginPage> {
             alignment: WrapAlignment.center,
             children: [
               TextButton(
-                onPressed: () => openPublicDocument('/decouvrir/'),
+                onPressed: () => openPublicDocument('/'),
                 child: Text(context.tr('Découvrir MySold')),
               ),
               TextButton(

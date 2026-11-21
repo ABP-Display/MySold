@@ -86,7 +86,7 @@ La clé doit être utilisable sans mot de passe interactif par Nginx.
 Créer un groupe dédié, puis installer les fichiers avec des droits restreints :
 
 ```bash
-cd ~/MySold
+cd /home/ubuntu/MySold
 getent group mysold-tls || sudo groupadd --system mysold-tls
 sudo install -d -o root -g mysold-tls -m 0750 "$PWD/data/tls"
 sudo install -o root -g mysold-tls -m 0640 "$HOME/mysold-tls-incoming/fullchain.pem" "$PWD/data/tls/fullchain.pem"
@@ -134,7 +134,7 @@ le dépôt à jour. Ne pas exécuter le pull si des modifications locales empêc
 l’avance rapide : examiner d’abord les différences.
 
 ```bash
-cd ~/MySold
+cd /home/ubuntu/MySold
 git pull --ff-only
 sudo docker compose -f compose.yaml -f compose.https.yaml config --quiet
 sudo docker compose -f compose.yaml -f compose.https.yaml build web
@@ -234,20 +234,53 @@ le contrôle de santé ; il ne traverse plus Internet.
 
 ## 8. Renouvellement et mises à jour
 
+### Remplacer un certificat renouvelé
+
 **NPM renouvelle sa copie, pas automatiquement celle d’Oracle.** Après chaque
-renouvellement, répéter le transfert SSH et l’installation des deux fichiers,
-puis valider/recharger sans arrêter le service :
+renouvellement, répéter le transfert SSH et l’installation des **deux fichiers
+correspondants**, comme aux étapes 2 et 3 :
+
+- `/home/ubuntu/MySold/data/tls/fullchain.pem` : certificat et chaîne complète.
+- `/home/ubuntu/MySold/data/tls/privkey.pem` : clé privée correspondant au certificat.
+
+Adapter ce chemin si le dépôt est installé ailleurs. Utiliser le chemin absolu
+évite que `~/MySold` désigne `/root/MySold` dans un terminal root. Ne jamais
+transmettre la clé privée dans une conversation ou un ticket.
+
+Une fois les deux fichiers remplacés, réappliquer leurs permissions et
+valider/recharger sans arrêter le service :
 
 ```bash
-cd ~/MySold
-sudo docker compose -f compose.yaml -f compose.https.yaml exec -T web nginx -t
+cd /home/ubuntu/MySold
+sudo chown root:mysold-tls data/tls/fullchain.pem data/tls/privkey.pem
+sudo chmod 640 data/tls/fullchain.pem data/tls/privkey.pem
+
+sudo docker compose -f compose.yaml -f compose.https.yaml exec -T web nginx -t &&
 sudo docker compose -f compose.yaml -f compose.https.yaml exec -T web nginx -s reload
+```
+
+Le `&&` empêche le rechargement si la validation échoue. **Aucun rebuild ni
+redémarrage du conteneur n’est nécessaire pour ce seul remplacement** : le
+répertoire des certificats est monté en lecture seule dans le conteneur et
+Nginx relit les fichiers au rechargement. Les connexions en cours peuvent finir
+sur les anciens processus.
+
+Vérifier ensuite le certificat réellement présenté par Oracle :
+
+```bash
 curl --fail --head --resolve mysold.ydoxide.fr:28443:127.0.0.1 https://mysold.ydoxide.fr:28443/
 ```
 
-Ne recharger que si `nginx -t` réussit. Si la validation échoue, le processus
-actuel conserve le certificat précédemment chargé ; corriger les fichiers avant
-le prochain redémarrage. Le renouvellement a été testé avec une paire temporaire
+Ce test doit renvoyer `HTTP/1.1 200 OK`, sans option `-k`. Pour lire la nouvelle
+date d’expiration du fichier sans afficher la clé :
+
+```bash
+sudo openssl x509 -in data/tls/fullchain.pem -noout -dates
+```
+
+Si la validation échoue, le processus actuel conserve le certificat précédemment
+chargé ; corriger la paire de fichiers ou ses permissions avant le prochain
+redémarrage. Le renouvellement a été testé avec une paire temporaire
 dans des conteneurs isolés, pas avec le certificat de production.
 
 Avant une utilisation durable, prévoir une synchronisation SSH automatisée
@@ -256,6 +289,8 @@ d’expiration. Aucun job de synchronisation distant n’est configuré par ce d
 Ne pas supprimer les copies temporaires avant validation ; ensuite, les retirer
 des dossiers de transfert/téléchargement et sauvegarder les clés uniquement dans
 un emplacement privé protégé.
+
+### Mettre à jour l’application
 
 Pour les futures mises à jour, conserver le `.env`, les clés et les certificats :
 
@@ -272,6 +307,7 @@ une configuration privée `compose.override.yaml` contenant des secrets.
 ## Références
 
 - [Nginx : configuration HTTPS](https://nginx.org/en/docs/http/configuring_https_servers.html).
+- [Nginx : rechargement de la configuration](https://nginx.org/en/docs/control.html).
 - [Nginx : validation du certificat amont](https://nginx.org/en/docs/http/ngx_http_proxy_module.html#proxy_ssl_verify).
 - [Docker : fusion de fichiers Compose](https://docs.docker.com/compose/how-tos/multiple-compose-files/merge/).
 - [Docker : interaction avec UFW](https://docs.docker.com/engine/network/packet-filtering-firewalls/#docker-and-ufw).

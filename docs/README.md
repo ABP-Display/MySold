@@ -1,61 +1,41 @@
-# Démonstration statique MySold
+# Présentation de MySold
 
-Le [guide de publication](PUBLICATION.md) concerne le site officiel, ses pages
-légales et son référencement. Cette démo indépendante est volontairement
-marquée `noindex` et renvoie vers la présentation officielle.
+[MySold sur GitHub Pages](https://abp-display.github.io/MySold/) présente
+l’application et ses fonctionnalités à partir de captures de l’interface
+Flutter Web locale. Elles utilisent des comptes et opérations fictifs.
 
-Pour installer l’application complète sur un serveur, suivre le
-[guide d’installation Docker](INSTALLATION.md). Les instructions ci-dessous
-concernent uniquement la vitrine de démonstration. Le [guide des données](DONNEES.md)
-décrit les sauvegardes et le déplacement d’une instance.
-Le [guide des traductions](TRADUCTIONS.md) décrit la langue de l’application
-complète, indépendamment de cette vitrine.
+`index.html` est la version statique de la page d’accueil officielle. Elle
+fonctionne sans JavaScript, API, connexion ni stockage navigateur. Le bouton
+« Accéder à l’application » ouvre la connexion sur l’instance officielle.
+Il ne s’agit pas d’une démo interactive.
 
-Ouvrir `index.html` dans un navigateur. Aucun serveur applicatif, compilation
-Flutter, conteneur Docker ou base de données n’est nécessaire pour cette vitrine.
-Les fichiers et ressources sont tous locaux et utilisent des chemins relatifs,
-compatibles avec une publication dans le sous-dossier d’un site.
+## Publier et mettre à jour
 
-La démo reprend les vues Mois, Stats mensuelles, Stats annuelles et Profil,
-ainsi que la gestion des comptes, catégories, investissements, simulations,
-évolutions annuelles et l’aperçu des rapports. Sur mobile, la navigation et les
-sélecteurs de section flottent en bas de l’écran, comme dans la PWA actuelle.
-Le bouton de sortie du mode discret apparaît en superposition, sans déplacer
-le contenu. Les menus gardent leur fond opaque.
+Dans GitHub : **Settings → Pages → Deploy from a branch → main → /docs**.
+La page utilise des chemins relatifs pour ses ressources et reste
+`noindex`, avec le [site officiel](https://mysold.ydoxide.fr/) comme canonique.
 
-Elle utilise un jeu de données
-entièrement fictif, arrêté au 22 octobre 2026. Elle est indépendante de l’instance
-MySold et de son API : aucune connexion, création de compte ou écriture n’est
-possible. Les noms, comptes, opérations et montants sont des exemples intégrés
-au JavaScript, jamais des données exportées d’un utilisateur.
+La source commune se trouve dans `backend/templates/public/discover.html`.
+Les captures compressées et la feuille de style sont dans
+`backend/public_assets/`. Après modification, régénérer la copie statique
+depuis la racine du dépôt, dans un environnement Python disposant des
+dépendances de `backend/requirements.txt` :
 
-Les onglets, types d’opération, détails, recherche, thèmes et mode discret
-fonctionnent pour présenter l’interface. Les changements sont uniquement en
-mémoire et disparaissent au rechargement. La démo ne crée ni cookie, ni
-localStorage, ni IndexedDB, ni service worker. Elle n’appelle aucune API et
-n’intègre aucun outil de suivi. Les éventuels journaux techniques de l’hébergeur
-restent indépendants de ces fichiers.
+```sh
+python backend/generate_showcase.py
+python backend/generate_showcase.py --check
+```
 
-La simulation utilise des calculs d’exemple en mémoire. Le rapport affiche un
-aperçu fictif, sans téléchargement PDF ni import/export de données réelles.
-Cette vitrine reste en français ; le choix de langue de l’application complète
-est indépendant.
+La génération ne contacte ni la base ni l’instance de production.
+Pour remplacer les captures, utiliser exclusivement un compte local de test
+rempli de données fictives. Ne pas publier une capture issue d’un compte réel.
+Le script `frontend/tool/compress_public_preview.py` (avec Pillow) produit les
+versions WebP bureau et mobile ainsi que l’aperçu social à partir des PNG
+`gallery-{expenses,income,monthly,year}[-mobile].png`.
 
-## Vérification de la démo
+## Guides
 
-`node docs/demo_test.cjs http://127.0.0.1:9235` vérifie les dix vues aux largeurs
-320, 390 et 1 280 px, l’absence de stockage navigateur, les thèmes et le mode
-discret. Cette commande nécessite un navigateur Chromium de test avec son port
-de débogage ouvert. Les captures sont écrites dans `test-results/`.
-
-## GitHub Pages
-
-Après publication des fichiers dans le dépôt, sélectionner dans ses paramètres :
-**Pages → Deploy from a branch → main → /docs**. Le site de démo sera servi
-séparément du déploiement Docker. Aucune publication automatique n’est configurée.
-
-La page fonctionne également comme un simple fichier HTML local.
-
-Le code et les ressources propres à MySold restent soumis à la licence du dépôt.
-Roboto et Material Icons conservent leurs licences tierces, précisées dans
-`assets/NOTICE.txt` et `assets/Apache-2.0.txt`.
+- [Installation Docker](INSTALLATION.md)
+- [Publication et référencement](PUBLICATION.md)
+- [Sauvegardes et restauration](DONNEES.md)
+- [Traductions](TRADUCTIONS.md)

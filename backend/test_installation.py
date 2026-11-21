@@ -114,11 +114,19 @@ class InstallationTests(unittest.TestCase):
         (self.directory / '.env').write_text(configured, encoding='utf-8')
         self.start()
         self.assertEqual(self.request('/api/health'), {'status': 'ok'})
-        for path in ('/decouvrir/', '/conditions/', '/confidentialite/', '/cookies/', '/mentions-legales/'):
+        for path in ('/', '/decouvrir/', '/conditions/', '/confidentialite/', '/cookies/', '/mentions-legales/'):
             with urllib.request.urlopen(self.url + path, timeout=20) as response:
                 self.assertEqual(response.status, 200)
                 self.assertNotIn('Set-Cookie', response.headers)
                 self.assertIn(b'<h1>', response.read())
+        with urllib.request.urlopen(self.url + '/', timeout=20) as response:
+            page = response.read()
+            self.assertIn(b'href="/app/"', page)
+            self.assertNotIn(b'flutter_bootstrap.js', page)
+        with urllib.request.urlopen(self.url + '/app', timeout=20) as response:
+            self.assertEqual(response.url, self.url + '/app/')
+            self.assertIn('noindex', response.headers['X-Robots-Tag'])
+            self.assertIn(b'flutter_bootstrap.js', response.read())
         first_secret = self.secret_fingerprint()
         first_key = self.compose('exec', '-T', 'api', 'python', '-c',
                                  'from encryption import read_master; import hashlib; print(hashlib.sha256(read_master()).hexdigest())').stdout

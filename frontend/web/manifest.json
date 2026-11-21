@@ -1,7 +1,7 @@
 {
   "name": "MySold",
   "short_name": "MySold",
-  "start_url": "/",
+  "start_url": "/app/",
   "display": "standalone",
   "background_color": "#000000",
   "theme_color": "#000000",

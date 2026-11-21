@@ -15,13 +15,13 @@
   <meta property="og:title" content="{{ title }}">
   <meta property="og:description" content="{{ description }}">
   {% if canonical %}<meta property="og:url" content="{{ canonical }}">{% endif %}
-  {% if origin %}<meta property="og:image" content="{{ origin }}/site-assets/preview.jpg">
+  {% if social_image %}<meta property="og:image" content="{{ social_image }}">
   <meta property="og:image:type" content="image/jpeg">
   <meta property="og:image:width" content="1200"><meta property="og:image:height" content="630">
   <meta property="og:image:alt" content="MySold : aperçu du suivi de budget avec des données fictives">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="{{ title }}"><meta name="twitter:description" content="{{ description }}">
-  <meta name="twitter:image" content="{{ origin }}/site-assets/preview.jpg">
+  <meta name="twitter:image" content="{{ social_image }}">
   <meta name="twitter:image:alt" content="Aperçu de MySold avec des données fictives">{% endif %}
   <link rel="icon" type="image/png" href="/favicon.png">
   <link rel="apple-touch-icon" href="/icons/Icon-192.png">
@@ -30,12 +30,12 @@
 <body>
   <a class="skip-link" href="#contenu">Aller au contenu</a>
   <header class="site-header wrap">
-    <a class="brand" href="/decouvrir/" aria-label="MySold, présentation"><img src="/icons/Icon-192.png" width="40" height="40" alt="">MySold</a>
-    <nav aria-label="Navigation principale"><a href="/decouvrir/" {% if page == 'discover' %}aria-current="page"{% endif %}>Découvrir</a><a class="button" href="/">Ouvrir l’application</a></nav>
+    <a class="brand" href="/" aria-label="MySold, accueil"><img src="/icons/Icon-192.png" width="40" height="40" alt="">MySold</a>
+    <nav aria-label="Navigation principale"><a href="{{ '#fonctionnalites' if page == 'discover' else '/#fonctionnalites' }}">Fonctionnalités</a><a class="button" href="/app/">Accéder à l’application</a></nav>
   </header>
   <main id="contenu" class="wrap" tabindex="-1">{% block content %}{% endblock %}</main>
   <footer class="site-footer wrap">
-    <a class="brand" href="/decouvrir/">MySold</a>
+    <a class="brand" href="/">MySold</a>
     <nav aria-label="Informations légales"><a href="/confidentialite/">Confidentialité</a><a href="/conditions/">Conditions d’utilisation</a><a href="/mentions-legales/">Mentions légales</a><a href="/cookies/">Cookies</a><a href="{{ repository }}" rel="noopener noreferrer">Code source</a></nav>
     <p>Application de suivi personnel. Les projections et simulations sont indicatives.</p>
   </footer>

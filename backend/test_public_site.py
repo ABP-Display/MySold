@@ -61,12 +61,20 @@ class PublicSiteTests(unittest.TestCase):
                         result.close()
 
     def test_assets_are_compressed_formats_and_not_private_documents(self):
-        response = self.client.get('/site-assets/preview.webp')
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.mimetype, 'image/webp')
-        self.assertLess(len(response.data), 150_000)
-        self.assertIn('max-age=3600', response.headers['Cache-Control'])
-        response.close()
+        for view in ('expenses', 'income', 'monthly', 'year'):
+            for suffix in ('', '-mobile'):
+                filename = f'showcase-{view}{suffix}.webp'
+                with self.subTest(filename=filename):
+                    response = self.client.get('/site-assets/' + filename)
+                    self.assertEqual(response.status_code, 200)
+                    self.assertEqual(response.mimetype, 'image/webp')
+                    self.assertLess(len(response.data), 150_000)
+                    self.assertIn('max-age=3600', response.headers['Cache-Control'])
+                    response.close()
+        with self.client.get('/site-assets/showcase-share.jpg') as response:
+            self.assertEqual(response.status_code, 200)
+            self.assertEqual(response.mimetype, 'image/jpeg')
+        self.assertEqual(self.client.get('/site-assets/preview.webp').status_code, 404)
         self.assertEqual(self.client.get('/site-assets/../../.env').status_code, 404)
         self.assertEqual(self.client.get('/site-assets/nonexistent.css').status_code, 404)
 
@@ -83,12 +91,12 @@ class PublicSiteTests(unittest.TestCase):
         self.assertNotIn('Disallow: /\n', robots)
 
     def test_untrusted_host_and_proxy_headers_cannot_poison_canonical_urls(self):
-        response = self.client.get('/decouvrir/', headers={
+        response = self.client.get('/', headers={
             'Host': 'attacker.example', 'X-Forwarded-Host': 'attacker.example',
             'X-Forwarded-Proto': 'http',
         })
         self.assertNotIn(b'attacker.example', response.data)
-        self.assertIn(b'https://mysold.ydoxide.fr/decouvrir/', response.data)
+        self.assertIn(b'href="https://mysold.ydoxide.fr/"', response.data)
 
     def test_local_private_and_invalid_configurations_do_not_advertise_indexing(self):
         for environment in (
@@ -99,7 +107,7 @@ class PublicSiteTests(unittest.TestCase):
             {'PUBLIC_SITE_URL': 'javascript:alert(1)'},
         ):
             with self.subTest(environment=environment), patch.dict(os.environ, environment):
-                response = self.client.get('/decouvrir/')
+                response = self.client.get('/')
                 self.assertIn('noindex', response.headers['X-Robots-Tag'])
                 self.assertNotIn(b'javascript:', response.data)
                 self.assertNotIn(b'attacker.example', response.data)
@@ -108,10 +116,10 @@ class PublicSiteTests(unittest.TestCase):
 
     def test_multiple_allowed_origins_prefer_https_and_explicit_valid_origin_wins(self):
         with patch.dict(os.environ, {'APP_ORIGIN': 'http://localhost:28085,https://mysold.ydoxide.fr'}):
-            self.assertIn(b'https://mysold.ydoxide.fr/decouvrir/', self.client.get('/decouvrir/').data)
+            self.assertIn(b'href="https://mysold.ydoxide.fr/"', self.client.get('/').data)
         with patch.dict(os.environ, {'APP_ORIGIN': 'https://one.example,https://two.example',
                                     'PUBLIC_SITE_URL': 'https://two.example'}):
-            self.assertIn(b'https://two.example/decouvrir/', self.client.get('/decouvrir/').data)
+            self.assertIn(b'href="https://two.example/"', self.client.get('/').data)
             self.assertNotIn(b'<strong>ydoxide</strong>', self.client.get('/mentions-legales/').data)
 
     def test_operator_fields_are_escaped_and_contact_cannot_execute_script(self):
@@ -138,9 +146,18 @@ class PublicSiteTests(unittest.TestCase):
 
     def test_no_slash_does_not_redirect_https_visitors_to_internal_http(self):
         for path, _, _ in PAGES.values():
+            if path == '/':
+                continue
             response = self.client.get(path.rstrip('/'))
             self.assertEqual(response.status_code, 200)
             self.assertNotIn('Location', response.headers)
+
+    def test_home_links_to_app_and_old_discover_url_redirects(self):
+        self.assertIn(b'href="/app/"', self.client.get('/').data)
+        for path in ('/decouvrir', '/decouvrir/'):
+            response = self.client.get(path)
+            self.assertEqual(response.status_code, 301)
+            self.assertEqual(response.headers['Location'], '/')
 
     def test_session_cookie_and_technical_storage_are_described_honestly(self):
         response = self.client.get('/cookies/')

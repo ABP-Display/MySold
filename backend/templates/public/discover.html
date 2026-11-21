@@ -1,15 +1,144 @@
-{% extends 'public/base.html' %}
-{% block content %}
-<section class="intro">
-  <h1>MySold</h1>
-  <p class="lead">Votre budget, vos comptes et vos investissements au même endroit.</p>
-  <p>Suivez vos dépenses, vos revenus et votre patrimoine depuis votre navigateur. MySold est la version web auto-hébergée de SoldUp, installable sur mobile et ordinateur en PWA.</p>
-  <div class="actions"><a class="button primary" href="/">Accéder à MySold</a><a href="https://abp-display.github.io/MySold/" rel="noopener noreferrer">Essayer la démonstration</a></div>
-</section>
-<figure class="preview"><img src="/site-assets/preview.webp" width="1200" height="630" fetchpriority="high" alt="Vue mensuelle MySold : répartition des dépenses et liste d’opérations, avec des données entièrement fictives"><figcaption>Aperçu de démonstration : aucun compte ni montant réel.</figcaption></figure>
-<section class="band" aria-labelledby="budget"><h2 id="budget">Un suivi clair, du mois à l’année</h2>
-  <dl class="features"><div><dt>Comptes et transactions</dt><dd>Dépenses, revenus, investissements et transferts, avec catégories personnalisées et recherche.</dd></div><div><dt>Budget et patrimoine</dt><dd>Statistiques mensuelles et annuelles, comparaisons et évolution des comptes et investissements.</dd></div><div><dt>Import et rapports</dt><dd>Export et restauration CSV, rapports PDF et simulations financières, dont le calcul de prêt.</dd></div><div><dt>Mobile et ordinateur</dt><dd>Une interface responsive, des thèmes, plusieurs langues et une installation PWA depuis un navigateur compatible.</dd></div></dl>
-</section>
-<section class="band" aria-labelledby="hebergement"><h2 id="hebergement">Vos données, sur l’instance que vous choisissez</h2><p>MySold fonctionne avec une API Flask et une base PostgreSQL, déployées avec Docker Compose. Aucun compte Firebase, connexion Google ni service cloud applicatif n’est obligatoire. Les transactions sont saisies ou importées par l’utilisateur : MySold ne se connecte pas automatiquement à votre banque.</p><p>La connexion utilise un mot de passe, avec une double authentification TOTP facultative. Les documents financiers sont chiffrés au repos côté serveur ; ce n’est pas un chiffrement de bout en bout. L’exploitant de l’instance gère l’hébergement et les sauvegardes.</p><p><a href="{{ repository }}#readme" rel="noopener noreferrer">Consulter le projet et son installation</a> · <a href="/confidentialite/">Comprendre l’utilisation des données</a></p></section>
-<section class="band" aria-labelledby="questions"><h2 id="questions">Questions fréquentes</h2><details><summary>Faut-il installer une application Android ?</summary><p>Non. MySold fonctionne dans le navigateur. L’installation en PWA est facultative et conserve l’utilisation du serveur de cette instance.</p></details><details><summary>La démonstration utilise-t-elle mes données ?</summary><p>Non. La démonstration séparée utilise des comptes et opérations fictifs. Ses changements restent en mémoire et disparaissent au rechargement.</p></details><details><summary>Puis-je récupérer mes informations ?</summary><p>L’application propose un export CSV, une restauration compatible et des rapports PDF. La suppression du compte et des données actives est disponible dans les paramètres de sécurité. Exportez vos données avant une suppression.</p></details><details><summary>Le code est-il librement redistribuable ?</summary><p>Le code source est consultable. Les droits d’utilisation, de modification et de redistribution sont définis par la <a href="{{ repository }}/blob/main/LICENSE" rel="noopener noreferrer">licence du dépôt</a>.</p></details></section>
-{% endblock %}
+{%- macro screenshot(name, height, alt, loading='lazy') -%}
+<picture>
+  <source media="(max-width: 640px)" srcset="{{ asset_base }}/showcase-{{ name }}-mobile.webp" width="390" height="740">
+  <img src="{{ asset_base }}/showcase-{{ name }}.webp" width="1200" height="{{ height }}" alt="{{ alt }}"{% if loading == 'lazy' %} loading="lazy"{% else %} fetchpriority="high"{% endif %}>
+</picture>
+{%- endmacro -%}
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#f6f8f3">
+  <title>{{ title }}</title>
+  <meta name="description" content="{{ description }}">
+  <meta name="robots" content="{{ 'index, follow, max-image-preview:large' if indexable else 'noindex, follow' }}">
+  {% if canonical %}<link rel="canonical" href="{{ canonical }}">
+  <meta property="og:url" content="{{ canonical }}">{% endif %}
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="MySold">
+  <meta property="og:locale" content="fr_FR">
+  <meta property="og:title" content="{{ title }}">
+  <meta property="og:description" content="{{ description }}">
+  {% if social_image %}<meta property="og:image" content="{{ social_image }}">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="Budget mensuel MySold avec des opérations fictives">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="{{ title }}">
+  <meta name="twitter:description" content="{{ description }}">
+  <meta name="twitter:image" content="{{ social_image }}">{% endif %}
+  <link rel="icon" type="image/png" href="{{ icon_url }}">
+  <link rel="stylesheet" href="{{ stylesheet_url }}">
+</head>
+<body>
+  <a class="skip-link" href="#contenu">Aller au contenu</a>
+  <header class="masthead wrap">
+    <a class="brand" href="{{ home_url }}" aria-label="MySold, accueil"><img src="{{ icon_url }}" width="32" height="32" alt="">MySold<span aria-hidden="true">.</span></a>
+    <nav aria-label="Navigation principale">
+      <a class="nav-section" href="#fonctionnalites">Fonctionnalités</a>
+      <a class="nav-section" href="#auto-hebergement">Auto-hébergement</a>
+      <a class="button outline compact" href="{{ site_base }}/app/">Accéder</a>
+    </nav>
+  </header>
+  <main id="contenu" tabindex="-1">
+    <section class="hero" aria-labelledby="titre">
+      <div class="wrap hero-inner">
+        <div class="hero-copy">
+          <p class="eyebrow"><span aria-hidden="true"></span> Gestion de finances personnelles</p>
+          <h1 id="titre">MySold<span aria-hidden="true">.</span></h1>
+          <p class="tagline">Votre budget au quotidien.<br> Votre patrimoine dans la durée.</p>
+          <p class="intro-text">Suivez vos comptes, vos dépenses et vos investissements dans une application web installable et auto-hébergée.</p>
+          <div class="actions">
+            <a class="button solid" href="{{ site_base }}/app/">Accéder à l’application <span aria-hidden="true">→</span></a>
+            <a class="button outline" href="#fonctionnalites">Découvrir les fonctionnalités</a>
+          </div>
+        </div>
+        <figure class="hero-screen">
+          {{ screenshot('expenses', 750, 'Onglet Dépenses : répartition par catégorie et liste des transactions mensuelles', 'eager') }}
+          <figcaption><span>01 / Mois · Dépenses</span><span>Capture de MySold · Données fictives</span></figcaption>
+        </figure>
+      </div>
+    </section>
+
+    <section id="fonctionnalites" class="wrap features" aria-labelledby="features-title">
+      <header class="section-head">
+        <p class="eyebrow">Fonctionnalités</p>
+        <h2 id="features-title">Du mois en cours à la vue d’ensemble.</h2>
+      </header>
+
+      <div class="feature-view">
+        <div>
+          <p class="label">02 / Mois</p>
+          <h3>Vos revenus par catégorie</h3>
+          <p>Visualisez d’où vient l’argent de votre mois. Retrouvez ensuite le détail de chaque encaissement et le compte auquel il est rattaché.</p>
+        </div>
+        <figure class="feature-screen">
+          {{ screenshot('income', 750, 'Onglet Revenus : graphique de répartition des entrées d’argent et transactions mensuelles') }}
+          <figcaption>Origine des revenus · Données fictives</figcaption>
+        </figure>
+      </div>
+
+      <div class="feature-view">
+        <div>
+          <p class="label">03 / Comparer</p>
+          <h3>Statistiques mensuelles</h3>
+          <p>Comparez le mois à un autre ou à la moyenne depuis janvier. Suivez séparément les dépenses, les revenus, les investissements et le reste disponible.</p>
+        </div>
+        <figure class="feature-screen">
+          {{ screenshot('monthly', 840, 'Comparaison graphique des flux entre deux mois dans les statistiques mensuelles') }}
+          <figcaption>Comparaison mensuelle · Données fictives</figcaption>
+        </figure>
+      </div>
+
+      <div class="feature-view">
+        <div>
+          <p class="label">04 / Analyser</p>
+          <h3>Patrimoine et investissements</h3>
+          <p>Suivez vos actifs par catégorie, leur compte de rattachement et l’évolution du patrimoine depuis le début de l’année.</p>
+        </div>
+        <figure class="feature-screen">
+          {{ screenshot('year', 840, 'Statistiques annuelles : solde des comptes, flux annuels et courbe du patrimoine avec projection') }}
+          <figcaption>Patrimoine annuel · Données fictives</figcaption>
+        </figure>
+      </div>
+
+      <div class="feature-grid">
+        <article><h3>Exports et simulations</h3><p>Générez un rapport PDF, sauvegardez ou restaurez vos données en CSV et estimez les mensualités d’un prêt.</p></article>
+        <article><h3>Mobile et ordinateur</h3><p>Utilisez MySold dans votre navigateur ou installez-la comme application web, sans APK.</p></article>
+        <article><h3>Discrétion et sécurité</h3><p>Masquez les montants à l’écran, verrouillez l’interface par PIN et protégez votre connexion avec la double authentification.</p></article>
+      </div>
+    </section>
+
+    <section id="auto-hebergement" class="hosting" aria-labelledby="hosting-title">
+      <div class="wrap hosting-inner">
+        <div>
+          <p class="eyebrow">Auto-hébergement</p>
+          <h2 id="hosting-title">Sur le serveur de votre choix.</h2>
+          <p>Déployez MySold avec Docker Compose. L’interface Flutter, l’API Flask et PostgreSQL fonctionnent sans Firebase ni connexion bancaire automatique. Les documents financiers sont chiffrés côté serveur, pas de bout en bout.</p>
+          <div class="actions">
+            <a class="button light" href="{{ repository }}/blob/main/docs/INSTALLATION.md">Guide d’installation <span aria-hidden="true">→</span></a>
+            <a class="button inverted" href="{{ repository }}">Voir le dépôt GitHub</a>
+          </div>
+        </div>
+        <dl class="stack">
+          <div><dt>Interface web</dt><dd>Flutter / PWA</dd></div>
+          <div><dt>Serveur applicatif</dt><dd>Flask / Gunicorn</dd></div>
+          <div><dt>Base de données</dt><dd>PostgreSQL</dd></div>
+          <div><dt>Déploiement</dt><dd>Docker Compose</dd></div>
+        </dl>
+      </div>
+    </section>
+  </main>
+  <footer class="wrap footer">
+    <a class="brand" href="{{ home_url }}"><img src="{{ icon_url }}" width="32" height="32" alt="">MySold<span aria-hidden="true">.</span></a>
+    <nav aria-label="Informations légales">
+      <a href="{{ site_base }}/confidentialite/">Confidentialité</a>
+      <a href="{{ site_base }}/conditions/">Conditions d’utilisation</a>
+      <a href="{{ site_base }}/mentions-legales/">Mentions légales</a>
+      <a href="{{ site_base }}/cookies/">Cookies</a>
+      <a href="{{ repository }}/blob/main/LICENSE">Licence</a>
+    </nav>
+  </footer>
+</body>
+</html>

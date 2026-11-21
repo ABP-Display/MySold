@@ -25,13 +25,13 @@ function fixture() {
 
 test('Only the Flutter application gets the offline navigation fallback', () => {
   const { listeners } = fixture();
-  for (const path of ['/', '/index.html', '/?mysold_update=2026.11.21.1358',
+  for (const path of ['/', '/app/', '/index.html', '/app/?mysold_update=2026.11.21.1358',
     '/decouvrir/', '/conditions/', '/confidentialite/', '/cookies/', '/mentions-legales/',
     '/robots.txt', '/sitemap.xml', '/does-not-exist', '/api/auth/session', '/version.json']) {
     let intercepted = false;
     listeners.fetch({ request: { method: 'GET', mode: 'navigate', url: 'https://mysold.test' + path },
       respondWith: () => { intercepted = true; } });
-    assert.equal(intercepted, ['/', '/index.html'].includes(new URL(path, 'https://mysold.test').pathname), path);
+    assert.equal(intercepted, ['/app/', '/index.html'].includes(new URL(path, 'https://mysold.test').pathname), path);
   }
 });
 
@@ -49,7 +49,7 @@ test('Installation caches only the shell; activation preserves other application
   let task;
   listeners.install({ waitUntil: value => { task = value; } });
   await task;
-  assert.deepEqual(cached, ['/', '/index.html', '/manifest.json', '/favicon.png']);
+  assert.deepEqual(cached, ['/app/', '/manifest.json', '/favicon.png']);
   listeners.activate({ waitUntil: value => { task = value; } });
   await task;
   assert.deepEqual(deleted.sort(), ['flutter-app-cache', 'mysold-shell-old']);

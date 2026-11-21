@@ -1,16 +1,21 @@
 # Publication et référencement
 
-L’application reste à `/` (navigation Flutter `/#/...`). Elle porte une directive
+L’application se trouve à `/app/` (navigation Flutter `/app/#/...`). Elle porte une directive
 `noindex` : ni les comptes ni les routes privées ne doivent devenir des résultats
 de recherche. Les API restent soumises à leur authentification et à leur contrôle
 d’accès. `robots.txt` n’est pas une protection des données.
 
-La page publique **`/decouvrir/`** présente MySold en HTML rendu côté serveur, sans
+La page d’accueil publique **`/`** présente MySold en HTML rendu côté serveur, sans
 charger Flutter, JavaScript, session ou données utilisateur. C’est cette adresse
 qui est destinée aux recherches et au partage. Elle contient titre, description,
 URL canonique, aperçu Open Graph/Twitter, favicon, image descriptive et liens vers
-les notices publiques. L’image WebP de 1 200 × 630 px provient exclusivement de la
-démo fictive et pèse environ 21 Ko. Les pages s’adaptent au thème du navigateur.
+les notices publiques. Le bouton « Accéder à l’application » ouvre `/app/` :
+connexion pour les visiteurs, parcours habituel pour les sessions existantes.
+L’ancienne URL `/decouvrir/` redirige vers l’accueil.
+Les captures WebP montrent l’application locale avec un compte et des données
+fictives : dépenses et revenus du mois, statistiques mensuelles et annuelles.
+Chaque vue utilise une capture adaptée aux petits écrans ; l’aperçu social JPEG
+est au format 1 200 × 630 px. Les notices s’adaptent au thème du navigateur.
 
 ## Configurer cette instance
 
@@ -60,31 +65,51 @@ Faire valider les informations juridiques selon le statut réel de l’exploitan
 
 | Adresse | Usage |
 | --- | --- |
-| `/decouvrir/` | Présentation publique indexable |
+| `/` | Présentation publique indexable |
+| `/decouvrir/` | Redirection permanente vers l’accueil |
 | `/confidentialite/` | Politique de confidentialité de l’instance |
 | `/conditions/` | Conditions générales d’utilisation |
 | `/mentions-legales/` | Exploitant, contact et hébergement |
 | `/cookies/` | Cookie technique, préférences et cache PWA |
 | `/sitemap.xml` | Liste des cinq pages publiques, en URLs absolues |
 | `/robots.txt` | Consignes de parcours et lien vers le sitemap |
-| `/` et `/index.html` | Application privée, `noindex, follow` |
+| `/app/` et `/index.html` | Application privée, `noindex, follow` |
 
 Une page inconnue renvoie réellement **404**, avec une page de retour adaptée,
 et non un statut 200 accompagné de l’application. Les erreurs API restent en JSON.
 Les liens sans slash final des pages publiques fonctionnent aussi derrière un
 reverse proxy HTTPS, sans redirection vers une adresse HTTP interne.
 
-La démo GitHub Pages reste séparée et marquée `noindex` ; son canonique renvoie
-vers la présentation officielle pour éviter deux pages concurrentes. Le cache
+La [vitrine GitHub Pages](README.md) utilise le même modèle HTML que l’accueil
+officiel, sans démo interactive. Elle reste marquée `noindex` et son canonique
+renvoie vers la présentation officielle pour éviter deux pages concurrentes. Le cache
 PWA ne remplace pas les pages publiques ou leurs 404 par l’écran de connexion.
 
 Après déploiement, créer une propriété du domaine dans Google Search Console,
 la vérifier par DNS, puis soumettre
-`https://mysold.ydoxide.fr/sitemap.xml`. Inspecter `/decouvrir/` et demander son
+`https://mysold.ydoxide.fr/sitemap.xml`. Inspecter `/` et demander son
 indexation. La vérification DNS et cette demande nécessitent l’accès du
 propriétaire ; le code ne les effectue pas. Aucun positionnement ni délai
 d’indexation n’est garanti. Les aperçus de partage peuvent être mis en cache
 par les réseaux sociaux et nécessiter une nouvelle inspection de l’URL publique.
+
+### Vérifier le déploiement
+
+Mettre à jour les images `web` **et** `api` : Nginx route les pages publiques
+vers Flask. Avec l’option HTTPS Oracle, conserver les deux fichiers Compose ou
+la variable `COMPOSE_FILE` documentée dans le [guide HTTPS](HTTPS_ORACLE.md).
+
+```bash
+curl --fail --head https://mysold.ydoxide.fr/
+curl --fail --head https://mysold.ydoxide.fr/app/
+curl --fail --head https://mysold.ydoxide.fr/conditions/
+curl --fail --head https://mysold.ydoxide.fr/confidentialite/
+```
+
+Les quatre adresses doivent répondre en HTML avec un statut 200. Une réponse
+JSON `http-error` sur une notice indique que la requête n’est pas servie par la
+route publique attendue. Vérifier que l’API a bien été recréée et que Nginx Proxy
+Manager transmet le chemin complet à Nginx MySold, sans le préfixer par `/api`.
 
 ## Cookies et audience
 
@@ -114,6 +139,36 @@ du dépôt ; le renouvellement doit être resynchronisé depuis le proxy.
 Ne jamais exécuter les suites `backend/test_api.py` et assimilées sur une base
 réelle : elles exigent et réinitialisent une base distincte dont le nom finit
 par `_test`.
+
+## Suivi de la checklist officielle
+
+État au 21 novembre 2026 pour `mysold.ydoxide.fr`. Les fonctions présentes dans
+le dépôt ne prouvent pas que les réglages correspondants sont actifs sur la VM.
+Le test communiqué par l’exploitant confirme un HTTP 200 en HTTPS sur le port
+TLS local d’Oracle, avec vérification du certificat. Il ne confirme pas à lui
+seul la configuration du proxy à domicile ou les règles réseau OCI.
+
+| Point | État et action restante |
+| --- | --- |
+| Politique de confidentialité et CGU | Pages implémentées. Compléter les informations d’exploitant, l’hébergeur contractuel, les durées réelles et un canal confidentiel ; relire les pages déployées. |
+| Localisation de l’hébergement | Oracle, région Europe Paris, déclarée par l’exploitant. Renseigner `PUBLIC_HOSTING_REGION` et les coordonnées exactes de l’hébergeur selon le contrat. |
+| Secrets côté serveur | Configuration prévue hors du dépôt et des fichiers publics. Vérifier les droits et les sauvegardes de `.env`, `data/keys` et `data/tls` sur la VM. |
+| HTTPS sur les deux trajets | TLS Oracle testé localement. Confirmer le proxy NPM en HTTPS avec validation du certificat amont, fermer le HTTP public et limiter le port TLS aux sources nécessaires. |
+| Renouvellement TLS | [Procédure de remplacement et rechargement](HTTPS_ORACLE.md#8-renouvellement-et-mises-à-jour) documentée. La synchronisation NPM vers Oracle et la surveillance d’expiration restent à automatiser. |
+| Cookies | Notice implémentée ; aucun outil publicitaire ou d’audience intégré. Vérifier qu’aucun traceur non nécessaire n’a été ajouté au proxy ou ailleurs avant de décider d’un bandeau de consentement. |
+| Métadonnées, aperçu et favicon | Implémentés sur les pages publiques. Contrôler le rendu de l’accueil et les aperçus de partage après déploiement. |
+| Sitemap et robots | Générés par le serveur. Vérifier `PUBLIC_SITE_URL`, `PUBLIC_INDEXING` et les réponses publiques ; vérifier le domaine dans Search Console et soumettre le sitemap. |
+| Images et textes alternatifs | Aperçu compressé et descriptions intégrés. Maintenir ces contrôles pour les futures images. |
+| Mobile, contraste et chargement | Contrôles locaux réalisés sur les pages publiques. Mesurer encore sur le domaine réel, Android/PWA et réseau mobile ; la VM et le proxy peuvent modifier le résultat. |
+| Page 404 et liens | Implémentés et contrôlés localement. Vérifier aussi les réponses sur le domaine final derrière NPM. |
+| Validation et protection contre les abus | Validation serveur et limites de tentatives présentes. Confirmer les adresses IP transmises par la chaîne de proxies et surveiller les abus ; aucun CAPTCHA n’est revendiqué. |
+| Sauvegardes et récupération | Procédure documentée. Automatiser les copies privées hors VM de PostgreSQL et des clés, appliquer une rétention et tester une restauration isolée. |
+| Mesure d’audience | Facultative et non intégrée. Ne rien ajouter par défaut. |
+
+Ordre conseillé : terminer les contrôles réseau/TLS, compléter les notices et
+les sauvegardes, effectuer les vérifications sur le domaine final, puis soumettre
+le sitemap. La mise en ligne des notices ne constitue pas, seule, une validation
+de conformité juridique ni un audit de sécurité exhaustif.
 
 ## Références
 

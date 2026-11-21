@@ -4,3 +4,6 @@
 @media(max-width:600px){.wrap{width:calc(100% - 32px)}.site-header{align-items:flex-start;gap:12px}.site-header nav{justify-content:flex-end;gap:12px}.site-header nav>a:first-child{display:none}.site-header .button{max-width:160px;font-size:14px;padding:8px 12px}.brand{font-size:20px}.brand img{width:34px;height:34px}.intro,.document{padding-top:28px}.features{grid-template-columns:1fr;gap:22px}.lead{font-size:20px}h1{font-size:32px}h2{font-size:21px}.actions{align-items:flex-start;gap:16px}.site-footer nav{align-items:flex-start;flex-direction:column;gap:14px}}
 .document{overflow-wrap:anywhere}body{padding-left:env(safe-area-inset-left,0px);padding-right:env(safe-area-inset-right,0px)}.site-footer{padding-bottom:calc(40px + env(safe-area-inset-bottom,0px))}
 @media(hover:none){.button:hover{filter:none}}
+.site-header{padding-top:calc(22px + env(safe-area-inset-top,0px))}
+.button{touch-action:manipulation}
+.button:active{filter:brightness(.82)}

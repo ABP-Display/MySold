@@ -8,10 +8,10 @@ catégories, investissements, thèmes, langues, mode discret et rapports PDF.
 Elle utilise une API locale et PostgreSQL. Aucun projet Firebase, compte Google,
 clé d’API bancaire ou service cloud applicatif n’est nécessaire.
 
-Une [démonstration statique](docs/README.md) est disponible dans `docs/` : ouvrir
-`docs/index.html` pour parcourir une vitrine avec des données fictives, sans API,
-connexion ni conservation de données utilisateur. Ce dossier peut être publié
-séparément sur GitHub Pages, sans déployer l’application Docker.
+[Découvrez MySold sur GitHub Pages](https://abp-display.github.io/MySold/) :
+la vitrine présente les fonctionnalités et des captures de l’application avec
+des données fictives. La [version statique](docs/index.html) se trouve dans
+`docs/` et ne charge ni API ni données utilisateur.
 
 ## Démarrage
 

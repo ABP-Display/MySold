@@ -6,14 +6,14 @@ from pathlib import Path
 from urllib.parse import urlsplit
 from xml.etree.ElementTree import Element, SubElement, tostring
 
-from flask import Blueprint, Response, render_template, request
+from flask import Blueprint, Response, redirect, render_template, request
 from origin_policy import is_allowed_origin
 
 site = Blueprint('public_site', __name__, template_folder='templates',
                  static_folder='public_assets', static_url_path='/site-assets')
 REPOSITORY = 'https://github.com/ABP-Display/MySold'
 PAGES = {
-    'discover': ('/decouvrir/', 'MySold : budget et patrimoine auto-hébergés',
+    'discover': ('/', 'MySold : budget et patrimoine auto-hébergés',
                  'Gérez vos comptes, dépenses, revenus et investissements avec MySold. Une application web installable, auto-hébergée, sans connexion bancaire obligatoire.'),
     'privacy': ('/confidentialite/', 'Politique de confidentialité | MySold',
                 'Données personnelles, sécurité, conservation, export et suppression sur cette instance MySold.'),
@@ -24,7 +24,17 @@ PAGES = {
     'cookies': ('/cookies/', 'Cookies et stockage local | MySold',
                 'À quoi servent le cookie de session, les préférences locales et le cache PWA de MySold.'),
 }
-CSS_VERSION = hashlib.sha256((Path(__file__).with_name('public_assets') / 'site.css').read_bytes()).hexdigest()[:12]
+ASSETS = Path(__file__).with_name('public_assets')
+SHOWCASE_SHARE = 'showcase-share.jpg'
+
+
+def asset_version(filename):
+    css = (ASSETS / filename).read_text(encoding='utf-8')
+    return hashlib.sha256(css.encode('utf-8')).hexdigest()[:12]
+
+
+CSS_VERSION = asset_version('site.css')
+SHOWCASE_CSS_VERSION = asset_version('showcase.css')
 
 
 def public_origin():
@@ -73,6 +83,7 @@ def site_context(page, status=200):
                  and setting('PUBLIC_INDEXING', 'true').lower() == 'true')
     return dict(page=page, title=title, description=description, origin=origin,
                 canonical=origin + path if origin and path else None,
+                social_image=f'{origin}/site-assets/{SHOWCASE_SHARE}' if origin else None,
                 indexable=indexable, repository=REPOSITORY, operator=name,
                 contact_url=contact_url(), contact_email=email,
                 operator_address=setting('PUBLIC_OPERATOR_ADDRESS'),
@@ -85,17 +96,24 @@ def site_context(page, status=200):
                 css_version=CSS_VERSION)
 
 
-def public_page(page, status=200):
+def public_page(page, status=200, **extra):
     context = site_context(page, status)
-    response = Response(render_template('public/' + page + '.html', **context),
+    response = Response(render_template('public/' + page + '.html', **context, **extra),
                         status=status, mimetype='text/html')
     response.headers['X-Robots-Tag'] = 'index, follow' if context['indexable'] else 'noindex, follow'
     return response
 
 
-@site.get('/decouvrir/', strict_slashes=False)
+@site.get('/')
 def discover():
-    return public_page('discover')
+    return public_page('discover', home_url='/', site_base='', asset_base='/site-assets',
+                       stylesheet_url=f'/site-assets/showcase.css?v={SHOWCASE_CSS_VERSION}',
+                       icon_url='/icons/Icon-192.png')
+
+
+@site.get('/decouvrir/', strict_slashes=False)
+def legacy_discover():
+    return redirect('/', code=301)
 
 
 @site.get('/confidentialite/', strict_slashes=False)

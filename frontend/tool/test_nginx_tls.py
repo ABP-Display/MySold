@@ -48,7 +48,9 @@ class NginxTlsTests(unittest.TestCase):
         cls.certs = cls.certificate('certs', 1)
         cls.renewed = cls.certificate('renewed', 2)
         fake = cls.base / 'api.conf'
-        fake.write_text('server { listen 8000; location / { default_type application/json; '
+        fake.write_text('server { listen 8000; location = / { default_type text/html; '
+                        'return 200 "<h1>MySold public fixture</h1>"; } '
+                        'location / { default_type application/json; '
                         'return 200 "{\\"fixture\\":true}"; } }', encoding='utf-8')
         fake.chmod(0o644)
         cls.start('api', ['--network-alias', 'api', '--mount',
@@ -145,10 +147,14 @@ class NginxTlsTests(unittest.TestCase):
 
     def test_http_default_starts_without_any_certificates(self):
         container = self.start_web('http')
-        status, headers, body, _ = self.request(self.wait_http(container))
+        port = self.wait_http(container)
+        status, headers, body, _ = self.request(port, path='/app/')
         self.assertEqual(status, 200)
         self.assertIn(b'MySold TLS fixture', body)
         self.assertNotIn('Strict-Transport-Security', headers)
+        self.assertIn('noindex', headers['X-Robots-Tag'])
+        self.assertIn(b'MySold public fixture', self.request(port)[2])
+        self.assertNotIn('X-Robots-Tag', self.request(port)[1])
         config = self.run_command([DOCKER, 'exec', container, 'nginx', '-T'])
         self.assertNotIn('listen 8443 ssl', config.stdout)
 
@@ -156,7 +162,8 @@ class NginxTlsTests(unittest.TestCase):
         container = self.start_web('https', self.certs)
         http_port = self.wait_http(container)
         https_port = self.port(container, 8443)
-        status, headers, body, _ = self.request(https_port, tls=True, cafile=self.base / 'ca.pem')
+        status, headers, body, _ = self.request(https_port, tls=True, cafile=self.base / 'ca.pem',
+                                               path='/app/')
         self.assertEqual(status, 200)
         self.assertIn(b'MySold TLS fixture', body)
         self.assertEqual(headers['Strict-Transport-Security'], 'max-age=31536000')

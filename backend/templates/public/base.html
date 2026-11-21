@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="color-scheme" content="dark light">
+  <meta name="theme-color" content="#000000">
+  <title>{{ title }}</title>
+  <meta name="description" content="{{ description }}">
+  <meta name="robots" content="{{ 'index, follow, max-image-preview:large' if indexable else 'noindex, follow' }}">
+  {% if canonical %}<link rel="canonical" href="{{ canonical }}">{% endif %}
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="MySold">
+  <meta property="og:locale" content="fr_FR">
+  <meta property="og:title" content="{{ title }}">
+  <meta property="og:description" content="{{ description }}">
+  {% if canonical %}<meta property="og:url" content="{{ canonical }}">{% endif %}
+  {% if origin %}<meta property="og:image" content="{{ origin }}/site-assets/preview.jpg">
+  <meta property="og:image:type" content="image/jpeg">
+  <meta property="og:image:width" content="1200"><meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="MySold : aperçu du suivi de budget avec des données fictives">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="{{ title }}"><meta name="twitter:description" content="{{ description }}">
+  <meta name="twitter:image" content="{{ origin }}/site-assets/preview.jpg">
+  <meta name="twitter:image:alt" content="Aperçu de MySold avec des données fictives">{% endif %}
+  <link rel="icon" type="image/png" href="/favicon.png">
+  <link rel="apple-touch-icon" href="/icons/Icon-192.png">
+  <link rel="stylesheet" href="/site-assets/site.css?v={{ css_version }}">
+</head>
+<body>
+  <a class="skip-link" href="#contenu">Aller au contenu</a>
+  <header class="site-header wrap">
+    <a class="brand" href="/decouvrir/" aria-label="MySold, présentation"><img src="/icons/Icon-192.png" width="40" height="40" alt="">MySold</a>
+    <nav aria-label="Navigation principale"><a href="/decouvrir/" {% if page == 'discover' %}aria-current="page"{% endif %}>Découvrir</a><a class="button" href="/">Ouvrir l’application</a></nav>
+  </header>
+  <main id="contenu" class="wrap" tabindex="-1">{% block content %}{% endblock %}</main>
+  <footer class="site-footer wrap">
+    <a class="brand" href="/decouvrir/">MySold</a>
+    <nav aria-label="Informations légales"><a href="/confidentialite/">Confidentialité</a><a href="/conditions/">Conditions d’utilisation</a><a href="/mentions-legales/">Mentions légales</a><a href="/cookies/">Cookies</a><a href="{{ repository }}" rel="noopener noreferrer">Code source</a></nav>
+    <p>Application de suivi personnel. Les projections et simulations sont indicatives.</p>
+  </footer>
+</body>
+</html>

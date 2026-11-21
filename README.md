@@ -69,6 +69,10 @@ docker compose up -d --build
 
 Le [guide d’installation](docs/INSTALLATION.md) détaille la configuration et le
 [guide des données](docs/DONNEES.md) décrit les sauvegardes et les transferts.
+Le [guide de publication](docs/PUBLICATION.md) présente les pages publiques,
+les informations légales de l’instance et les réglages du référencement.
+Le [guide HTTPS Oracle](docs/HTTPS_ORACLE.md) active TLS dans le Nginx existant
+pour un reverse proxy distant, sans service supplémentaire ni nouveau domaine.
 
 ### Mises à jour
 

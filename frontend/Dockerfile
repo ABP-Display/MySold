@@ -9,4 +9,4 @@ RUN python tool/web_release.py fetch --repository "${MYSOLD_REPOSITORY}" --desti
 FROM nginxinc/nginx-unprivileged:stable-alpine
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 COPY --from=release /site /usr/share/nginx/html
-EXPOSE 8080
+EXPOSE 8080 8443

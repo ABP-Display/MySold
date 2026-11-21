@@ -161,3 +161,7 @@ release**, puis relancer la construction. Le serveur ne compile pas Flutter.
 Le [README](../README.md) décrit aussi la compilation depuis les sources et les forks.
 
 Le [guide de sécurité](SECURITE.md) décrit le chiffrement, ses limites et la récupération.
+Le [guide de publication](PUBLICATION.md) décrit les pages publiques, les notices
+de l’instance, les cookies et la configuration du référencement.
+Pour chiffrer le trajet depuis un proxy distant, voir l’[option HTTPS directe](HTTPS_ORACLE.md).
+Cette option nécessite `compose.https.yaml` à chaque lancement ou mise à jour.

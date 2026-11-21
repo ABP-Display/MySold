@@ -6,6 +6,7 @@ on:
       - 'frontend/**'
       - 'backend/**'
       - 'compose.yaml'
+      - 'compose.https.yaml'
       - '.env.example'
       - '.github/workflows/web-release.yml'
       - '.gitattributes'
@@ -31,6 +32,8 @@ jobs:
       - name: Test release verification
         run: |
           python3 -m unittest discover -s frontend/tool -p 'test_web_release.py' -v
+          node --test frontend/tool/service_worker_test.cjs
+          MYSOLD_TLS_TEST=1 python3 -m unittest discover -s frontend/tool -p 'test_nginx_tls.py' -v
       - name: Identify exact build inputs
         id: source
         env:

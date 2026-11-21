@@ -22,6 +22,7 @@ import totp
 from annual_analysis import build_analysis, effects, cents
 from investment_categories import validate_categories, category_ids
 from encryption import INDEX_FIELDS, migrate_encryption, vault
+from public_site import site, public_page
 
 UTC = timezone.utc
 COLLECTIONS = {'accounts', 'categories', 'investments', 'transactions', 'budgetAlerts', 'balanceEvents', 'annualReferences'}
@@ -33,6 +34,7 @@ PROFILE_FIELDS = {'firstName', 'lastName', 'phone', 'pin', 'theme', 'currency',
                   'hideAmounts', 'email', 'authProvider', 'investmentCategories'}
 app = Flask(__name__)
 app.config['MAX_CONTENT_LENGTH'] = 4 * 1024 * 1024
+app.register_blueprint(site)
 
 
 class Problem(Exception):
@@ -82,6 +84,8 @@ def problem(error):
 
 @app.errorhandler(HTTPException)
 def http_problem(error):
+    if error.code == 404 and not request.path.startswith('/api/'):
+        return public_page('not_found', 404)
     return jsonify(code='http-error', message=error.description), error.code
 
 
@@ -104,7 +108,12 @@ def require_application_header():
 
 @app.after_request
 def no_cache(response):
-    response.headers['Cache-Control'] = 'no-store'
+    if request.blueprint != 'public_site':
+        response.headers['Cache-Control'] = 'no-store'
+    elif not request.path.startswith('/site-assets/'):
+        response.headers['Cache-Control'] = 'public, max-age=0, must-revalidate'
+    if request.path.startswith('/api/'):
+        response.headers['X-Robots-Tag'] = 'noindex, nofollow'
     response.headers['X-Content-Type-Options'] = 'nosniff'
     response.headers['Referrer-Policy'] = 'same-origin'
     return response

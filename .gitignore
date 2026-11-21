@@ -6,6 +6,7 @@
 *.pem
 *.key
 *.p12
+*.pfx
 *.sql.gz
 *.dump
 backups/

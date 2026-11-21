@@ -100,6 +100,45 @@ class ApiTests(unittest.TestCase):
         self.assertEqual(self.client.post('/api/auth/logout', headers={**HEADERS, 'Origin': 'https://evil.test'}, json={}).status_code, 403)
         self.assertEqual(self.commit([self.operation('../secrets', {})]).status_code, 400)
 
+    def test_public_credentials_validate_types_lengths_and_json_before_authentication(self):
+        for data in ({'email': [], 'password': PASSWORD},
+                     {'email': 'not-an-email', 'password': PASSWORD},
+                     {'email': 'valid@example.test', 'password': 'short'},
+                     {'email': 'valid@example.test', 'password': 'x' * 257}):
+            with self.subTest(data=data):
+                self.assertEqual(app.test_client().post('/api/auth/login', headers=HEADERS, json=data).status_code, 400)
+        self.assertEqual(app.test_client().post('/api/auth/login', headers=HEADERS, json=[]).status_code, 400)
+        response = app.test_client().post('/api/auth/login', headers=HEADERS,
+                                         data=b'x' * (4 * 1024 * 1024 + 1), content_type='application/json')
+        self.assertEqual(response.status_code, 413)
+        self.assertEqual(response.headers['Cache-Control'], 'no-store')
+
+    def test_login_rate_limit_persists_across_new_browser_sessions(self):
+        for _ in range(15):
+            response = app.test_client().post('/api/auth/login', headers=HEADERS,
+                                             json={'email': 'nonexistent@example.test', 'password': PASSWORD})
+            self.assertEqual(response.status_code, 401)
+        response = app.test_client().post('/api/auth/login', headers=HEADERS,
+                                         json={'email': 'nonexistent@example.test', 'password': PASSWORD})
+        self.assertEqual(response.status_code, 429)
+        self.assertNotIn('Set-Cookie', response.headers)
+
+    def test_https_login_uses_a_secure_session_and_logout_invalidates_it(self):
+        from unittest.mock import patch
+        with patch.dict(os.environ, {'APP_ORIGIN': 'https://mysold.ydoxide.fr'}):
+            client = app.test_client()
+            headers = {**HEADERS, 'Origin': 'https://mysold.ydoxide.fr'}
+            response = client.post('/api/auth/login', headers=headers,
+                                   json={'email': 'first@example.test', 'password': PASSWORD})
+            self.assertEqual(response.status_code, 200)
+            for flag in ('HttpOnly', 'Secure', 'SameSite=Strict'):
+                self.assertIn(flag, response.headers['Set-Cookie'])
+            token = client.get_cookie('mysold_session').value
+            self.assertEqual(client.post('/api/auth/logout', headers=headers, json={}).status_code, 200)
+            stolen = app.test_client()
+            stolen.set_cookie('mysold_session', token)
+            self.assertIsNone(stolen.get('/api/auth/session').json['user'])
+
     def test_batch_rollback_insufficient_funds_and_idempotency(self):
         self.seed()
         operations = [self.operation('accounts/cash', {'balance': {'_op': 'increment', 'value': -150}}, 'update')]

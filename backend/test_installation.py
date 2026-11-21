@@ -28,7 +28,8 @@ class InstallationTests(unittest.TestCase):
         # No user .env or exported project configuration may enter this fixture.
         self.env = {k: v for k, v in os.environ.items() if not k.startswith('COMPOSE_')}
         for key in ('POSTGRES_DB', 'POSTGRES_USER', 'POSTGRES_PASSWORD', 'APP_ORIGIN',
-                    'WEB_PORT', 'COOKIE_SECURE', 'ALLOW_REGISTRATION', 'MYSOLD_REPOSITORY'):
+                    'WEB_PORT', 'WEB_BIND_ADDRESS', 'WEB_HTTPS_PORT', 'WEB_HTTPS_BIND_ADDRESS',
+                    'TLS_CERTS_DIR', 'TLS_CERT_GID', 'COOKIE_SECURE', 'ALLOW_REGISTRATION', 'MYSOLD_REPOSITORY'):
             self.env.pop(key, None)
         self.addCleanup(self.remove_project)
         config = json.loads(self.compose('config', '--no-interpolate', '--format', 'json').stdout)
@@ -113,6 +114,11 @@ class InstallationTests(unittest.TestCase):
         (self.directory / '.env').write_text(configured, encoding='utf-8')
         self.start()
         self.assertEqual(self.request('/api/health'), {'status': 'ok'})
+        for path in ('/decouvrir/', '/conditions/', '/confidentialite/', '/cookies/', '/mentions-legales/'):
+            with urllib.request.urlopen(self.url + path, timeout=20) as response:
+                self.assertEqual(response.status, 200)
+                self.assertNotIn('Set-Cookie', response.headers)
+                self.assertIn(b'<h1>', response.read())
         first_secret = self.secret_fingerprint()
         first_key = self.compose('exec', '-T', 'api', 'python', '-c',
                                  'from encryption import read_master; import hashlib; print(hashlib.sha256(read_master()).hexdigest())').stdout
@@ -153,7 +159,7 @@ class InstallationTests(unittest.TestCase):
         self.compose('exec', '-T', 'db', 'createdb', '-U', 'budget_owner', 'mysold_test')
         self.compose('exec', '-T', '-e', 'POSTGRES_DB=mysold_test', 'api',
                      'python', '-m', 'unittest', '-v',
-                     'test_api', 'test_mfa', 'test_totp', 'test_origin_policy', 'test_encryption')
+                     'test_api', 'test_mfa', 'test_totp', 'test_origin_policy', 'test_encryption', 'test_public_site')
 
 
 if __name__ == '__main__':

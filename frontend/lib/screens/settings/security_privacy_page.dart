@@ -18,6 +18,7 @@ import 'package:mysold/l10n/app_localizations.dart';
 import 'package:mysold/login_page.dart';
 import 'package:mysold/providers/user_data_provider.dart';
 import 'package:mysold/services/security_gate.dart';
+import 'package:mysold/services/public_documents.dart';
 import 'package:mysold/widgets/account_autofill_group.dart';
 
 int _compareImportDocuments(_ImportDocument a, _ImportDocument b) {
@@ -970,7 +971,12 @@ class _SecurityPrivacyPageState extends State<SecurityPrivacyPage> {
         .join(',');
   }
 
-  void _showTextPage({required String title, required String body}) {
+  void _showTextPage({
+    required String title,
+    required String body,
+    String? document,
+  }) {
+    if (document != null && openPublicDocument(document)) return;
     Navigator.push(
       context,
       MaterialPageRoute(
@@ -1346,31 +1352,40 @@ class _SecurityPrivacyPageState extends State<SecurityPrivacyPage> {
           const SizedBox(height: 16),
           _Panel(
             icon: Icons.policy_outlined,
-            title: context.tr('Documents legaux'),
+            title: context.tr('Documents légaux'),
             child: Column(
               children: [
                 _ActionRow(
                   icon: Icons.description_outlined,
-                  title: context.tr('Conditions generales d utilisation'),
+                  title: context.tr('Conditions générales d’utilisation'),
                   subtitle: context.tr(
                     'Consulter les regles d utilisation de MySold',
                   ),
                   onTap: () => _showTextPage(
-                    title: context.tr('Conditions generales d utilisation'),
+                    document: '/conditions/',
+                    title: context.tr('Conditions générales d’utilisation'),
                     body: _termsText(context),
                   ),
                 ),
                 const Divider(height: 1),
                 _ActionRow(
                   icon: Icons.privacy_tip_outlined,
-                  title: context.tr('Politique de confidentialite'),
+                  title: context.tr('Politique de confidentialité'),
                   subtitle: context.tr(
                     'Comprendre comment vos donnees sont utilisees',
                   ),
                   onTap: () => _showTextPage(
-                    title: context.tr('Politique de confidentialite'),
+                    document: '/confidentialite/',
+                    title: context.tr('Politique de confidentialité'),
                     body: _privacyText(context),
                   ),
+                ),
+                const Divider(height: 1),
+                _ActionRow(
+                  icon: Icons.info_outline,
+                  title: context.tr('Mentions légales et cookies'),
+                  subtitle: context.tr('Informations de cette instance'),
+                  onTap: () => openPublicDocument('/mentions-legales/'),
                 ),
               ],
             ),

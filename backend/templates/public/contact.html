@@ -1,0 +1,4 @@
+{% if operator %}<p>Exploitant de cette instance : <strong>{{ operator }}</strong>.</p>{% else %}<p class="notice">L’identité de l’exploitant n’a pas été renseignée. L’administrateur doit compléter les informations de cette instance avant de l’ouvrir au public.</p>{% endif %}
+{% if contact_email %}<p>Contact : <a href="mailto:{{ contact_email }}">{{ contact_email }}</a>.</p>{% endif %}
+<p>Contact public : <a href="{{ contact_url }}" rel="noopener noreferrer">{{ contact_url }}</a>.</p>
+{% if not contact_email %}<p class="notice">Le dépôt GitHub est public : n’y publiez aucun export, mot de passe ni donnée personnelle ou financière. Pour une demande concernant vos données, demandez à l’exploitant un canal confidentiel. Aucune adresse de contact privée n’a été renseignée pour cette instance.</p>{% endif %}

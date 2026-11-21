@@ -14,6 +14,7 @@ import 'package:mysold/screens/settings/currency_provider.dart';
 import 'package:mysold/screens/settings/language_provider.dart';
 import 'package:mysold/screens/settings/theme_settings.dart';
 import 'package:mysold/services/auth_service.dart';
+import 'package:mysold/services/public_documents.dart';
 import 'package:mysold/widgets/auth_layout.dart';
 import 'package:mysold/widgets/mfa_enrollment.dart';
 import 'package:mysold/widgets/account_autofill_group.dart';
@@ -356,6 +357,24 @@ class _RegisterFlowState extends State<Register> {
                   ],
                 ),
               ],
+              const SizedBox(height: 10),
+              Wrap(
+                alignment: WrapAlignment.center,
+                children: [
+                  TextButton(
+                    onPressed: _busy
+                        ? null
+                        : () => openPublicDocument('/conditions/'),
+                    child: Text(context.tr('CGU')),
+                  ),
+                  TextButton(
+                    onPressed: _busy
+                        ? null
+                        : () => openPublicDocument('/confidentialite/'),
+                    child: Text(context.tr('Politique de confidentialité')),
+                  ),
+                ],
+              ),
             ],
           ),
         ),

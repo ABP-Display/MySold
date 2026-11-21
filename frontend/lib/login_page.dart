@@ -10,6 +10,7 @@ import 'package:mysold/widgets/auth_layout.dart';
 import 'package:mysold/data/local_auth.dart';
 import 'package:mysold/data/api_client.dart';
 import 'package:mysold/widgets/credential_autofill.dart';
+import 'package:mysold/services/public_documents.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -30,6 +31,12 @@ class _LoginPageState extends State<LoginPage> {
   String? _error;
 
   void _showLegalNotice(String title, String body) {
+    final document = switch (body) {
+      'legal_terms_full' => '/conditions/',
+      'privacy_policy_full' => '/confidentialite/',
+      _ => null,
+    };
+    if (document != null && openPublicDocument(document)) return;
     showDialog<void>(
       context: context,
       builder: (dialogContext) => Theme(
@@ -422,9 +429,22 @@ class _LoginPageState extends State<LoginPage> {
               'legal_terms_full',
             ),
             onPrivacyTap: () => _showLegalNotice(
-              'Politique de confidentialite',
+              'Politique de confidentialité',
               'privacy_policy_full',
             ),
+          ),
+          Wrap(
+            alignment: WrapAlignment.center,
+            children: [
+              TextButton(
+                onPressed: () => openPublicDocument('/decouvrir/'),
+                child: Text(context.tr('Découvrir MySold')),
+              ),
+              TextButton(
+                onPressed: () => openPublicDocument('/cookies/'),
+                child: Text(context.tr('Cookies et stockage local')),
+              ),
+            ],
           ),
         ],
       ),
@@ -462,7 +482,7 @@ class _LegalNotice extends StatelessWidget {
       ),
       TextButton(
         onPressed: onPrivacyTap,
-        child: Text(context.tr('Politique de confidentialite')),
+        child: Text(context.tr('Politique de confidentialité')),
       ),
       const Text('.', style: TextStyle(color: AuthPalette.muted, fontSize: 12)),
     ],

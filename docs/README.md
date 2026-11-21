@@ -1,5 +1,9 @@
 # Démonstration statique MySold
 
+Le [guide de publication](PUBLICATION.md) concerne le site officiel, ses pages
+légales et son référencement. Cette démo indépendante est volontairement
+marquée `noindex` et renvoie vers la présentation officielle.
+
 Pour installer l’application complète sur un serveur, suivre le
 [guide d’installation Docker](INSTALLATION.md). Les instructions ci-dessous
 concernent uniquement la vitrine de démonstration. Le [guide des données](DONNEES.md)

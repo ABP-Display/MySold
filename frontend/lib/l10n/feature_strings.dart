@@ -3,6 +3,55 @@ import 'report_strings.dart';
 // Application-owned text only. Never translate user-entered names or notes.
 const featureStrings = <String, List<String>>{
   ...reportStrings,
+  'Politique de confidentialité': [
+    'Privacy policy',
+    'Política de privacidad',
+    'Datenschutzerklärung',
+    'Informativa sulla privacy',
+    'プライバシーポリシー',
+  ],
+  'Conditions générales d’utilisation': [
+    'Terms of use',
+    'Condiciones de uso',
+    'Nutzungsbedingungen',
+    'Condizioni di utilizzo',
+    '利用規約',
+  ],
+  'Documents légaux': [
+    'Legal documents',
+    'Documentos legales',
+    'Rechtliche Dokumente',
+    'Documenti legali',
+    '法的文書',
+  ],
+  'Découvrir MySold': [
+    'Discover MySold',
+    'Descubrir MySold',
+    'MySold entdecken',
+    'Scopri MySold',
+    'MySoldについて',
+  ],
+  'Cookies et stockage local': [
+    'Cookies and local storage',
+    'Cookies y almacenamiento local',
+    'Cookies und lokaler Speicher',
+    'Cookie e archiviazione locale',
+    'Cookieとローカルストレージ',
+  ],
+  'Mentions légales et cookies': [
+    'Legal notices and cookies',
+    'Aviso legal y cookies',
+    'Impressum und Cookies',
+    'Note legali e cookie',
+    '法的情報とCookie',
+  ],
+  'Informations de cette instance': [
+    'Information about this instance',
+    'Información de esta instancia',
+    'Informationen zu dieser Instanz',
+    'Informazioni su questa istanza',
+    'このインスタンスの情報',
+  ],
   'Informations': [
     'Details',
     'Información',

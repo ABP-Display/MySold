@@ -26,7 +26,7 @@ cp .env.example .env
 docker compose up -d --build
 ```
 
-Ouvrir **http://localhost:28085**, puis choisir **Créer un compte**. Le mot de
+Ouvrir **http://localhost:28080**, puis choisir **Créer un compte**. Le mot de
 passe du compte et le PIN sont choisis sur le site ; aucun compte par défaut
 n’est créé. Si Docker exige les droits administrateur, préfixer les commandes
 Docker par `sudo`.
@@ -52,16 +52,17 @@ APP_ORIGIN=https://finances.votre-domaine.fr
 COOKIE_SECURE=true
 ```
 
-Le DNS et le reverse proxy HTTPS doivent pointer vers le serveur, sur le port
-`28085`. Remplacer les domaines du modèle par celui de sa propre instance.
+Configurer le DNS et le reverse proxy pour son propre domaine. Le proxy peut
+joindre MySold en HTTP sur `28080` s’il est sur le même serveur, ou en HTTPS sur
+`28443` s’il est distant. Le [guide HTTPS Oracle](docs/HTTPS_ORACLE.md) détaille ce trajet.
 L’accès distant exige HTTPS : les origines HTTP distantes sont refusées, même
 si elles figurent dans `APP_ORIGIN`. HTTP reste autorisé sur la boucle locale.
 `localhost` désigne l’ordinateur sur lequel le navigateur est ouvert.
 
 Conserver `.env` privé et utiliser un mot de passe long et unique. Les mots de
 passe des comptes MySold sont choisis séparément sur le site.
-Le port `28085` est publié sur toutes les interfaces ; l’administrateur gère
-le pare-feu, le DNS et le proxy. Après une modification de `.env`, relancer :
+Le port HTTP `28080` est lié à la boucle locale par défaut. L’administrateur
+gère le pare-feu, le DNS et le proxy. Après une modification de `.env`, relancer :
 
 ```sh
 docker compose up -d --build
@@ -81,7 +82,9 @@ git pull --ff-only
 docker compose up -d --build
 ```
 
-Conserver `data/` et `.env`. Les reconstructions des images ne
+Conserver `data/` et `.env`. Si l’ancienne configuration utilise plusieurs
+fichiers Compose, suivre la [migration HTTPS](docs/HTTPS_ORACLE.md#migrer-une-instance-déjà-en-https)
+avant de recréer les conteneurs. Les reconstructions des images ne
 suppriment ni la base ni les clés de chiffrement. Sauvegarder **`data/keys` avec
 la base** : perdre la clé maître rend les données chiffrées irrécupérables. La mise à jour de la PWA est ensuite proposée
 aux utilisateurs quand une nouvelle version du frontend est disponible.
@@ -101,11 +104,11 @@ de secours n’est lancée automatiquement sur le serveur.
 La compilation complète depuis les sources reste disponible pour le développement :
 
 ```sh
-docker compose -f compose.yaml -f compose.source.yaml up -d --build
+WEB_DOCKERFILE=Dockerfile.source docker compose up -d --build
 ```
 
 Ce mode exige davantage de mémoire et utilise `FLUTTER_VERSION` (3.44.0 par
-défaut). `compose.source.yaml` est conservé pour ce besoin précis.
+défaut). On peut aussi définir `WEB_DOCKERFILE=Dockerfile.source` dans `.env`.
 
 Pour un fork public, activer GitHub Actions et définir
 `MYSOLD_REPOSITORY=PROPRIETAIRE/DEPOT` dans `.env`. Les sources modifiées
@@ -196,16 +199,18 @@ pas conservées par le service worker.
 | --- | --- |
 | `POSTGRES_PASSWORD` | Obligatoire : mot de passe technique choisi dans `.env` pour PostgreSQL et l’API |
 | `POSTGRES_DB`, `POSTGRES_USER` | Nom de base et utilisateur PostgreSQL |
-| `WEB_PORT` | Port HTTP local, `28085` par défaut |
-| `APP_ORIGIN` | Origines autorisées pour les écritures, séparées par des virgules ; modèle local : `http://localhost:28085` |
+| `WEB_PORT`, `WEB_BIND_ADDRESS` | HTTP, `127.0.0.1:28080` par défaut |
+| `WEB_HTTPS_PORT`, `WEB_HTTPS_BIND_ADDRESS` | HTTPS, `0.0.0.0:28443` par défaut |
+| `TLS_ENABLED` | `true` pour servir HTTPS ; `false` par défaut |
+| `TLS_CERTS_DIR`, `TLS_CERT_GID` | Dossier privé des deux PEM et groupe autorisé à les lire |
+| `APP_ORIGIN` | Origines autorisées pour les écritures, séparées par des virgules ; modèle local : `http://localhost:28080` |
 | `COOKIE_SECURE` | `true` lorsque l’accès au site utilise HTTPS |
 | `ALLOW_REGISTRATION` | `false` pour fermer les nouvelles inscriptions |
 | `MYSOLD_REPOSITORY` | Dépôt GitHub public publiant les releases Web ; défaut `ABP-Display/MySold` |
-| `FLUTTER_VERSION` | SDK du mode `compose.source.yaml` uniquement ; défaut `3.44.0` |
+| `WEB_DOCKERFILE`, `FLUTTER_VERSION` | `Dockerfile.source` pour compiler Flutter avec le SDK choisi ; défaut `Dockerfile` et `3.44.0` |
 
-MySold publie le port `28085` sur toutes les interfaces. Toute machine pouvant
-joindre ce port peut charger le site ; les données restent protégées par la
-connexion utilisateur. Les écritures exigent une origine autorisée.
+MySold sert HTTP localement par défaut. Le port `28443` est réservé par Compose,
+mais Nginx n’y écoute que lorsque TLS est activé. Les écritures exigent une origine autorisée.
 L’administrateur gère son pare-feu, son DNS et son reverse proxy.
 
 **Chaque administrateur doit remplacer `APP_ORIGIN` par le domaine personnel de
@@ -222,10 +227,10 @@ ajouter de chemin ni de barre oblique finale. Plusieurs accès peuvent être
 autorisés en les séparant par des virgules :
 
 ```dotenv
-APP_ORIGIN=http://localhost:28085,https://finances.votre-domaine.fr
+APP_ORIGIN=http://localhost:28080,https://finances.votre-domaine.fr
 ```
 
-Pour un accès direct par IP, ajouter par exemple `http://192.168.1.20:28085`.
+Pour un accès direct depuis un autre appareil, utiliser une origine HTTPS valide.
 Si `WEB_PORT` change, adapter aussi le port de l’origine HTTP correspondante.
 Une valeur vide n’autorise aucune écriture. Les jokers ne sont pas pris en charge.
 Une origine absente ou non autorisée entraîne une réponse `403 Origine refusée`
@@ -235,12 +240,12 @@ Ce contrôle ne remplace pas le pare-feu et ne configure ni le DNS ni le proxy.
 Docker Compose lit automatiquement le fichier `.env` du projet. Après une
 modification de `APP_ORIGIN`, recréer les conteneurs avec la commande ci-dessous.
 
-Pour HTTPS, diriger le proxy vers `http://ADRESSE_DU_SERVEUR:28085` et définir
-`COOKIE_SECURE=true` dans `.env`. Un proxy installé directement sur le même
-serveur peut utiliser `http://127.0.0.1:28085`. Dans un conteneur proxy,
+Un proxy installé directement sur le même serveur peut utiliser
+`http://127.0.0.1:28080`. Définir `COOKIE_SECURE=true` dans `.env`. Dans un conteneur proxy,
 `127.0.0.1` désigne ce conteneur : utiliser une adresse joignable du serveur,
 ou un réseau Docker partagé avec `web` et la destination `http://web:8080`.
-Le port interne reste `8080`, même si `WEB_PORT` est modifié.
+Le port HTTP interne reste `8080`. Pour un proxy distant, activer TLS sur MySold
+et utiliser le port HTTPS `28443`, comme indiqué dans le [guide Oracle](docs/HTTPS_ORACLE.md).
 
 La base et l’API ne publient aucun port sur l’hôte. Ne pas exposer
 PostgreSQL sur Internet. Conserver le mot de passe dans `.env`. Modifier

@@ -20,10 +20,10 @@ SHOWCASE_ASSETS = ('showcase.css', SHOWCASE_SHARE, *(
 def generate(check=False):
     jinja = Environment(loader=FileSystemLoader(BACKEND / 'templates'),
                         autoescape=select_autoescape())
-    _, title, description = PAGES['discover']
+    path, title, description = PAGES['discover']
     html = jinja.get_template('public/discover.html').render(
         title=title, description=description, indexable=False,
-        canonical=OFFICIAL + '/', icon_url='./assets/icon.png',
+        canonical=OFFICIAL + path, icon_url='./assets/icon.png',
         stylesheet_url=f'./assets/showcase.css?v={SHOWCASE_CSS_VERSION}', asset_base='./assets',
         site_base=OFFICIAL, home_url='./index.html', repository=REPOSITORY,
         social_image=PAGES_URL + 'assets/' + SHOWCASE_SHARE,

@@ -1,21 +1,20 @@
 # Publication et référencement
 
-L’application se trouve à `/app/` (navigation Flutter `/app/#/...`). Elle porte une directive
+L’application s’ouvre à `/` ou `/index.html` (navigation Flutter `/#/...`).
+Elle porte une directive
 `noindex` : ni les comptes ni les routes privées ne doivent devenir des résultats
 de recherche. Les API restent soumises à leur authentification et à leur contrôle
 d’accès. `robots.txt` n’est pas une protection des données.
 
-La page d’accueil publique **`/`** présente MySold en HTML rendu côté serveur, sans
-charger Flutter, JavaScript ou données utilisateur pour un visiteur anonyme. C’est cette adresse
+La page publique **`/presentation`** présente MySold en HTML rendu côté serveur, sans
+charger Flutter, JavaScript ou données utilisateur. C’est cette adresse
 qui est destinée aux recherches et au partage. Elle contient titre, description,
 URL canonique, aperçu Open Graph/Twitter, favicon, image descriptive et liens vers
-les notices publiques. Le bouton « Accéder à l’application » ouvre `/app/` :
-connexion pour les visiteurs. Quand le navigateur envoie un cookie de session
-valide sur l’accueil, le serveur redirige directement vers `/app/`, où l’écran
-PIN prend le relais. Le cookie de session conserve `SameSite=Strict` ; il peut
-ne pas accompagner une première visite provenant d’un autre site.
-La présentation reste accessible à `/?presentation=1`, même avec une session.
-L’ancienne URL `/decouvrir/` redirige vers l’accueil.
+les notices publiques. Le bouton « Accéder à l’application » ouvre `/`.
+Flutter vérifie alors la session sur la même origine : PIN si la session est
+valide, connexion sinon. La vitrine n’intervient pas dans cette décision
+et le cookie conserve `SameSite=Strict`. Les anciens accès `/decouvrir/` et
+`/?presentation=1` renvoient vers la vitrine ; `/app/` continue d’ouvrir l’application.
 Les captures WebP montrent l’application locale avec un compte et des données
 fictives : dépenses et revenus du mois, statistiques mensuelles et annuelles.
 Chaque vue utilise une capture adaptée aux petits écrans ; l’aperçu social JPEG
@@ -69,29 +68,29 @@ Faire valider les informations juridiques selon le statut réel de l’exploitan
 
 | Adresse | Usage |
 | --- | --- |
-| `/` | Présentation publique indexable |
-| `/decouvrir/` | Redirection permanente vers l’accueil |
+| `/presentation` | Présentation publique indexable |
+| `/decouvrir/`, `/presentation/` | Redirection permanente vers `/presentation` |
 | `/confidentialite/` | Politique de confidentialité de l’instance |
 | `/conditions/` | Conditions générales d’utilisation |
 | `/mentions-legales/` | Exploitant, contact et hébergement |
 | `/cookies/` | Cookie technique, préférences et cache PWA |
 | `/sitemap.xml` | Liste des cinq pages publiques, en URLs absolues |
 | `/robots.txt` | Consignes de parcours et lien vers le sitemap |
-| `/app/` et `/index.html` | Application privée, `noindex, follow` |
+| `/`, `/index.html` et `/app/` | Application privée, `noindex, follow` |
 
 Une page inconnue renvoie réellement **404**, avec une page de retour adaptée,
 et non un statut 200 accompagné de l’application. Les erreurs API restent en JSON.
 Les liens sans slash final des pages publiques fonctionnent aussi derrière un
 reverse proxy HTTPS, sans redirection vers une adresse HTTP interne.
 
-La [vitrine GitHub Pages](README.md) utilise le même modèle HTML que l’accueil
+La [vitrine GitHub Pages](README.md) utilise le même modèle HTML que la présentation
 officiel, sans démo interactive. Elle reste marquée `noindex` et son canonique
 renvoie vers la présentation officielle pour éviter deux pages concurrentes. Le cache
 PWA ne remplace pas les pages publiques ou leurs 404 par l’écran de connexion.
 
 Après déploiement, créer une propriété du domaine dans Google Search Console,
 la vérifier par DNS, puis soumettre
-`https://mysold.ydoxide.fr/sitemap.xml`. Inspecter `/` et demander son
+`https://mysold.ydoxide.fr/sitemap.xml`. Inspecter `/presentation` et demander son
 indexation. La vérification DNS et cette demande nécessitent l’accès du
 propriétaire ; le code ne les effectue pas. Aucun positionnement ni délai
 d’indexation n’est garanti. Les aperçus de partage peuvent être mis en cache
@@ -100,12 +99,12 @@ par les réseaux sociaux et nécessiter une nouvelle inspection de l’URL publi
 ### Vérifier le déploiement
 
 Mettre à jour les images `web` **et** `api` : Nginx route les pages publiques
-vers Flask. Avec l’option HTTPS Oracle, conserver les deux fichiers Compose ou
-la variable `COMPOSE_FILE` documentée dans le [guide HTTPS](HTTPS_ORACLE.md).
+vers Flask. Pour conserver HTTPS sur Oracle, garder `TLS_ENABLED=true` et les
+certificats du [guide HTTPS](HTTPS_ORACLE.md) avec le Compose unifié.
 
 ```bash
 curl --fail --head https://mysold.ydoxide.fr/
-curl --fail --head https://mysold.ydoxide.fr/app/
+curl --fail --head https://mysold.ydoxide.fr/presentation
 curl --fail --head https://mysold.ydoxide.fr/conditions/
 curl --fail --head https://mysold.ydoxide.fr/confidentialite/
 ```

@@ -1,7 +1,7 @@
 """Exact origin allowlist for browser requests that modify application data."""
 from urllib.parse import urlsplit
 
-DEFAULT_APP_ORIGIN = 'http://localhost:28085,https://mysold.ydoxide.fr'
+DEFAULT_APP_ORIGIN = 'http://localhost:28080,https://mysold.ydoxide.fr'
 
 
 def is_allowed_origin(origin, configured_origins):

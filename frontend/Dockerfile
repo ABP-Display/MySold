@@ -8,5 +8,7 @@ RUN python tool/web_release.py fetch --repository "${MYSOLD_REPOSITORY}" --desti
 
 FROM nginxinc/nginx-unprivileged:stable-alpine
 COPY nginx.conf /etc/nginx/conf.d/default.conf
+COPY nginx-tls.conf /etc/nginx/mysold-tls.conf
+COPY --chmod=0755 nginx-tls-entrypoint.sh /docker-entrypoint.d/30-mysold-tls.sh
 COPY --from=release /site /usr/share/nginx/html
 EXPOSE 8080 8443

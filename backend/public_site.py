@@ -13,7 +13,7 @@ site = Blueprint('public_site', __name__, template_folder='templates',
                  static_folder='public_assets', static_url_path='/site-assets')
 REPOSITORY = 'https://github.com/ABP-Display/MySold'
 PAGES = {
-    'discover': ('/', 'MySold : budget et patrimoine auto-hébergés',
+    'discover': ('/presentation', 'MySold : budget et patrimoine auto-hébergés',
                  'Gérez vos comptes, dépenses, revenus et investissements avec MySold. Une application web installable, auto-hébergée, sans connexion bancaire obligatoire.'),
     'privacy': ('/confidentialite/', 'Politique de confidentialité | MySold',
                 'Données personnelles, sécurité, conservation, export et suppression sur cette instance MySold.'),
@@ -104,16 +104,17 @@ def public_page(page, status=200, **extra):
     return response
 
 
-@site.get('/')
+@site.get('/presentation')
 def discover():
-    return public_page('discover', home_url='/', site_base='', asset_base='/site-assets',
+    return public_page('discover', home_url='/presentation', site_base='', asset_base='/site-assets',
                        stylesheet_url=f'/site-assets/showcase.css?v={SHOWCASE_CSS_VERSION}',
                        icon_url='/icons/Icon-192.png')
 
 
 @site.get('/decouvrir/', strict_slashes=False)
+@site.get('/presentation/')
 def legacy_discover():
-    return redirect('/', code=301)
+    return redirect('/presentation', code=301)
 
 
 @site.get('/confidentialite/', strict_slashes=False)

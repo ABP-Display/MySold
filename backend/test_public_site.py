@@ -5,8 +5,6 @@ import unittest
 from unittest.mock import patch
 from xml.etree import ElementTree
 
-from psycopg import OperationalError
-
 from app import app
 from public_site import PAGES
 
@@ -33,7 +31,7 @@ class PublicSiteTests(unittest.TestCase):
         })
         self.config.start()
         self.addCleanup(self.config.stop)
-        sql = patch('app.connect', side_effect=AssertionError('Anonymous pages must not access the DB'))
+        sql = patch('app.connect', side_effect=AssertionError('Public pages must not access the DB'))
         self.connect = sql.start()
         self.addCleanup(sql.stop)
         self.client = app.test_client()
@@ -86,6 +84,9 @@ class PublicSiteTests(unittest.TestCase):
         root = ElementTree.fromstring(response.data)
         urls = [n.text for n in root.iter('{http://www.sitemaps.org/schemas/sitemap/0.9}loc')]
         self.assertEqual(set(urls), {'https://mysold.ydoxide.fr' + p[0] for p in PAGES.values()})
+        self.assertIn('https://mysold.ydoxide.fr/presentation', urls)
+        self.assertNotIn('https://mysold.ydoxide.fr/', urls)
+        self.assertNotIn('https://mysold.ydoxide.fr/index.html', urls)
         robots = self.client.get('/robots.txt').get_data(as_text=True)
         self.assertIn('Disallow: /api/', robots)
         self.assertIn('Sitemap: https://mysold.ydoxide.fr/sitemap.xml', robots)
@@ -93,12 +94,12 @@ class PublicSiteTests(unittest.TestCase):
         self.assertNotIn('Disallow: /\n', robots)
 
     def test_untrusted_host_and_proxy_headers_cannot_poison_canonical_urls(self):
-        response = self.client.get('/', headers={
+        response = self.client.get('/presentation', headers={
             'Host': 'attacker.example', 'X-Forwarded-Host': 'attacker.example',
             'X-Forwarded-Proto': 'http',
         })
         self.assertNotIn(b'attacker.example', response.data)
-        self.assertIn(b'href="https://mysold.ydoxide.fr/"', response.data)
+        self.assertIn(b'href="https://mysold.ydoxide.fr/presentation"', response.data)
 
     def test_local_private_and_invalid_configurations_do_not_advertise_indexing(self):
         for environment in (
@@ -109,7 +110,7 @@ class PublicSiteTests(unittest.TestCase):
             {'PUBLIC_SITE_URL': 'javascript:alert(1)'},
         ):
             with self.subTest(environment=environment), patch.dict(os.environ, environment):
-                response = self.client.get('/')
+                response = self.client.get('/presentation')
                 self.assertIn('noindex', response.headers['X-Robots-Tag'])
                 self.assertNotIn(b'javascript:', response.data)
                 self.assertNotIn(b'attacker.example', response.data)
@@ -118,10 +119,10 @@ class PublicSiteTests(unittest.TestCase):
 
     def test_multiple_allowed_origins_prefer_https_and_explicit_valid_origin_wins(self):
         with patch.dict(os.environ, {'APP_ORIGIN': 'http://localhost:28085,https://mysold.ydoxide.fr'}):
-            self.assertIn(b'href="https://mysold.ydoxide.fr/"', self.client.get('/').data)
+            self.assertIn(b'href="https://mysold.ydoxide.fr/presentation"', self.client.get('/presentation').data)
         with patch.dict(os.environ, {'APP_ORIGIN': 'https://one.example,https://two.example',
                                     'PUBLIC_SITE_URL': 'https://two.example'}):
-            self.assertIn(b'href="https://two.example/"', self.client.get('/').data)
+            self.assertIn(b'href="https://two.example/presentation"', self.client.get('/presentation').data)
             self.assertNotIn(b'<strong>ydoxide</strong>', self.client.get('/mentions-legales/').data)
 
     def test_operator_fields_are_escaped_and_contact_cannot_execute_script(self):
@@ -148,52 +149,23 @@ class PublicSiteTests(unittest.TestCase):
 
     def test_no_slash_does_not_redirect_https_visitors_to_internal_http(self):
         for path, _, _ in PAGES.values():
-            if path == '/':
-                continue
             response = self.client.get(path.rstrip('/'))
             self.assertEqual(response.status_code, 200)
             self.assertNotIn('Location', response.headers)
 
-    def test_home_links_to_app_and_old_discover_url_redirects(self):
-        response = self.client.get('/')
-        self.assertIn(b'href="/app/"', response.data)
-        self.assertEqual(response.headers['Cache-Control'], 'private, no-store')
-        self.assertIn('Cookie', response.vary)
-        for path in ('/decouvrir', '/decouvrir/'):
+    def test_presentation_links_to_app_and_old_urls_redirect(self):
+        response = self.client.get('/presentation')
+        self.assertIn(b'href="/"', response.data)
+        self.assertNotIn(b'flutter_bootstrap.js', response.data)
+        for path in ('/decouvrir', '/decouvrir/', '/presentation/'):
             response = self.client.get(path)
             self.assertEqual(response.status_code, 301)
-            self.assertEqual(response.headers['Location'], '/')
+            self.assertEqual(response.headers['Location'], '/presentation')
 
-    def test_active_session_redirects_to_the_pin_entry_without_caching(self):
+    def test_presentation_and_legal_pages_ignore_the_session(self):
         self.client.set_cookie('mysold_session', 'a' * 43)
-        self.connect.side_effect = None
-        lookup = self.connect.return_value.__enter__.return_value.execute
-        lookup.return_value.fetchone.return_value = {'id': 'fixture', 'email': 'fixture@example.test'}
-        for method in ('GET', 'HEAD'):
-            response = self.client.open('/', method=method)
-            self.assertEqual(response.status_code, 302)
-            self.assertEqual(response.headers['Location'], '/app/')
-            self.assertEqual(response.headers['Cache-Control'], 'private, no-store')
-            self.assertIn('Cookie', response.vary)
-            self.assertNotIn(b'fixture@example.test', response.data)
-        self.assertEqual(lookup.call_count, 2)
-
-    def test_revoked_session_or_unavailable_database_shows_public_home(self):
-        self.client.set_cookie('mysold_session', 'a' * 43)
-        self.connect.side_effect = None
-        lookup = self.connect.return_value.__enter__.return_value.execute
-        lookup.return_value.fetchone.return_value = None
-        self.assertEqual(self.client.get('/').status_code, 200)
-        self.connect.side_effect = OperationalError('test database unavailable')
-        with self.assertLogs(level='WARNING'):
-            self.assertEqual(self.client.get('/').status_code, 200)
-
-    def test_public_pages_and_explicit_showcase_ignore_the_session(self):
-        self.client.set_cookie('mysold_session', 'a' * 43)
-        self.assertEqual(self.client.get('/?presentation=1').status_code, 200)
+        self.assertEqual(self.client.get('/presentation').status_code, 200)
         self.assertEqual(self.client.get('/confidentialite/').status_code, 200)
-        self.client.set_cookie('mysold_session', 'invalid')
-        self.assertEqual(self.client.get('/').status_code, 200)
         self.connect.assert_not_called()
 
     def test_session_cookie_and_technical_storage_are_described_honestly(self):

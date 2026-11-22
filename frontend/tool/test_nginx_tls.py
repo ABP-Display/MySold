@@ -38,6 +38,11 @@ class NginxTlsTests(unittest.TestCase):
         index = cls.webroot / 'index.html'
         index.write_text('<h1>MySold TLS fixture</h1>', encoding='utf-8')
         index.chmod(0o644)
+        cls.tls_entrypoint = cls.base / '30-mysold-tls.sh'
+        cls.tls_entrypoint.write_bytes((ROOT / 'frontend/nginx-tls-entrypoint.sh').read_text().encode())
+        cls.tls_entrypoint.chmod(0o755)
+        cls.empty_certs = cls.base / 'empty-certs'
+        cls.empty_certs.mkdir()
         cls.req = cls.base / 'openssl.conf'
         cls.req.write_text('[req]\ndistinguished_name=dn\n[dn]\n', encoding='utf-8')
         cls.run_command([OPENSSL, 'req', '-x509', '-newkey', 'rsa:2048', '-nodes',
@@ -48,7 +53,7 @@ class NginxTlsTests(unittest.TestCase):
         cls.certs = cls.certificate('certs', 1)
         cls.renewed = cls.certificate('renewed', 2)
         fake = cls.base / 'api.conf'
-        fake.write_text('server { listen 8000; location = / { default_type text/html; '
+        fake.write_text('server { listen 8000; location = /presentation { default_type text/html; '
                         'return 200 "<h1>MySold public fixture</h1>"; } '
                         'location / { default_type application/json; '
                         'return 200 "{\\"fixture\\":true}"; } }', encoding='utf-8')
@@ -102,13 +107,13 @@ class NginxTlsTests(unittest.TestCase):
 
     @classmethod
     def start_web(cls, label, certs=None):
-        options = ['--publish', '127.0.0.1::8080', '--mount',
+        options = ['--publish', '127.0.0.1::8080', '--publish', '127.0.0.1::8443',
+                   '--group-add', cls.gid, '--env', f'TLS_ENABLED={str(certs is not None).lower()}', '--mount',
                    f'type=bind,source={ROOT / "frontend/nginx.conf"},target=/etc/nginx/conf.d/default.conf,readonly',
-                   '--mount', f'type=bind,source={cls.webroot},target=/usr/share/nginx/html,readonly']
-        if certs is not None:
-            options += ['--publish', '127.0.0.1::8443', '--group-add', cls.gid,
-                        '--mount', f'type=bind,source={ROOT / "frontend/nginx-tls.conf"},target=/etc/nginx/mysold-tls/https.conf,readonly',
-                        '--mount', f'type=bind,source={certs},target=/etc/nginx/mysold-certs,readonly']
+                   '--mount', f'type=bind,source={cls.webroot},target=/usr/share/nginx/html,readonly',
+                   '--mount', f'type=bind,source={ROOT / "frontend/nginx-tls.conf"},target=/etc/nginx/mysold-tls.conf,readonly',
+                   '--mount', f'type=bind,source={cls.tls_entrypoint},target=/docker-entrypoint.d/30-mysold-tls.sh,readonly',
+                   '--mount', f'type=bind,source={certs or cls.empty_certs},target=/etc/nginx/mysold-certs,readonly']
         return cls.start(label, options)
 
     @classmethod
@@ -122,7 +127,7 @@ class NginxTlsTests(unittest.TestCase):
         cafile = cls.base / 'ca.pem' if tls else None
         for _ in range(60):
             try:
-                status, _, _, _ = cls.request(port, tls=tls, cafile=cafile, path='/app/')
+                status, _, _, _ = cls.request(port, tls=tls, cafile=cafile)
                 if status == 200:
                     return port
             except ssl.SSLCertVerificationError:
@@ -153,22 +158,27 @@ class NginxTlsTests(unittest.TestCase):
     def test_http_default_starts_without_any_certificates(self):
         container = self.start_web('http')
         port = self.wait_web(container)
-        status, headers, body, _ = self.request(port, path='/app/')
+        status, headers, body, _ = self.request(port)
         self.assertEqual(status, 200)
         self.assertIn(b'MySold TLS fixture', body)
         self.assertNotIn('Strict-Transport-Security', headers)
         self.assertIn('noindex', headers['X-Robots-Tag'])
-        self.assertIn(b'MySold public fixture', self.request(port)[2])
-        self.assertNotIn('X-Robots-Tag', self.request(port)[1])
+        public = self.request(port, path='/presentation')
+        self.assertIn(b'MySold public fixture', public[2])
+        self.assertNotIn('X-Robots-Tag', public[1])
+        legacy = self.request(port, path='/?presentation=1', headers={'X-Forwarded-Proto': 'https'})
+        self.assertEqual(legacy[0], 301)
+        self.assertEqual(legacy[1]['Location'], '/presentation')
         config = self.run_command([DOCKER, 'exec', container, 'nginx', '-T'])
         self.assertNotIn('listen 8443 ssl', config.stdout)
+        with self.assertRaises(OSError):
+            self.request(self.port(container, 8443), tls=True, cafile=self.base / 'ca.pem')
 
     def test_tls_verifies_certificate_and_hostname_while_http_keeps_working(self):
         container = self.start_web('https', self.certs)
         http_port = self.wait_web(container)
         https_port = self.wait_web(container, tls=True)
-        status, headers, body, _ = self.request(https_port, tls=True, cafile=self.base / 'ca.pem',
-                                               path='/app/')
+        status, headers, body, _ = self.request(https_port, tls=True, cafile=self.base / 'ca.pem')
         self.assertEqual(status, 200)
         self.assertIn(b'MySold TLS fixture', body)
         self.assertEqual(headers['Strict-Transport-Security'], 'max-age=31536000')
@@ -221,37 +231,30 @@ class NginxTlsTests(unittest.TestCase):
             time.sleep(.1)
         self.assertEqual(serial, '02')
 
-    def test_compose_tls_is_opt_in_read_only_and_requires_explicit_permissions(self):
+    def test_single_compose_configures_both_ports_and_selects_tls_and_build_mode(self):
         env = {k: v for k, v in os.environ.items() if not k.startswith('COMPOSE_')}
-        env.update(POSTGRES_PASSWORD='test-only-configuration', TLS_CERT_GID='',
-                   TLS_CERTS_DIR=str(self.certs), WEB_PORT='28085', WEB_HTTPS_PORT='28443',
-                   WEB_BIND_ADDRESS='0.0.0.0', WEB_HTTPS_BIND_ADDRESS='0.0.0.0')
+        env.update(POSTGRES_PASSWORD='test-only-configuration', TLS_ENABLED='false',
+                   TLS_CERTS_DIR=str(self.certs), WEB_PORT='', WEB_HTTPS_PORT='',
+                   WEB_BIND_ADDRESS='', WEB_HTTPS_BIND_ADDRESS='', WEB_DOCKERFILE='')
         command = [DOCKER, 'compose', '--env-file', str(ROOT / '.env.example'), '-f', str(ROOT / 'compose.yaml')]
         plain = json.loads(self.run_command([*command, 'config', '--format', 'json'], env=env).stdout)
-        self.assertEqual(len(plain['services']['web']['ports']), 1)
-        env['WEB_BIND_ADDRESS'] = ''
-        legacy = json.loads(self.run_command([*command, 'config', '--format', 'json'], env=env).stdout)
-        self.assertFalse(legacy['services']['web']['ports'][0].get('host_ip'))
-        env['WEB_BIND_ADDRESS'] = '0.0.0.0'
-        enabled = [*command, '-f', str(ROOT / 'compose.https.yaml')]
-        self.assertNotEqual(self.run_command([*enabled, 'config', '--quiet'], env=env, check=False).returncode, 0)
-        env['TLS_CERT_GID'] = self.gid
-        secure = json.loads(self.run_command([*enabled, 'config', '--format', 'json'], env=env).stdout)
+        web = plain['services']['web']
+        ports = {p['target']: p for p in web['ports']}
+        self.assertEqual(ports[8080]['published'], '28080')
+        self.assertEqual(ports[8080]['host_ip'], '127.0.0.1')
+        self.assertEqual(ports[8443]['published'], '28443')
+        self.assertEqual(web['environment']['TLS_ENABLED'], 'false')
+        self.assertEqual(web['build']['dockerfile'], 'Dockerfile')
+        env.update(TLS_ENABLED='true', TLS_CERT_GID=self.gid, WEB_DOCKERFILE='Dockerfile.source')
+        secure = json.loads(self.run_command([*command, 'config', '--format', 'json'], env=env).stdout)
         web = secure['services']['web']
-        self.assertEqual({p['target'] for p in web['ports']}, {8080, 8443})
         self.assertIn(self.gid, web['group_add'])
-        for mount in web['volumes']:
-            self.assertTrue(mount['read_only'])
-            self.assertFalse(mount['bind']['create_host_path'])
+        self.assertEqual(web['environment']['TLS_ENABLED'], 'true')
+        self.assertEqual(web['build']['dockerfile'], 'Dockerfile.source')
+        self.assertEqual(len(web['volumes']), 1)
+        self.assertEqual(web['volumes'][0]['target'], '/etc/nginx/mysold-certs')
+        self.assertTrue(web['volumes'][0]['read_only'])
         self.assertNotIn('user', web)
-        env['WEB_BIND_ADDRESS'] = '127.0.0.1'
-        local = json.loads(self.run_command([*enabled, 'config', '--format', 'json'], env=env).stdout)
-        self.assertEqual(next(p for p in local['services']['web']['ports'] if p['target'] == 8080)['host_ip'], '127.0.0.1')
-        env['COMPOSE_FILE'] = os.pathsep.join([str(ROOT / 'compose.yaml'), str(ROOT / 'compose.https.yaml')])
-        env['COMPOSE_PATH_SEPARATOR'] = os.pathsep
-        automatic = json.loads(self.run_command([DOCKER, 'compose', '--env-file', str(ROOT / '.env.example'),
-                                                'config', '--format', 'json'], env=env).stdout)
-        self.assertEqual({p['target'] for p in automatic['services']['web']['ports']}, {8080, 8443})
 
 
 if __name__ == '__main__':

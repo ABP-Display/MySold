@@ -168,7 +168,7 @@ def fetch_release(repository, destination, root=ROOT):
                 raise ValueError(f'The Web release for these sources is not published yet. '
                                  f'Wait for the Web release workflow at https://github.com/{repository}/actions '
                                  'and retry docker compose up -d --build. '
-                                 'Developers can use compose.source.yaml to compile locally.') from error
+                                 'Developers can set WEB_DOCKERFILE=Dockerfile.source to compile locally.') from error
             raise
         site = temporary / 'site'
         metadata = unpack_release(archive, site, source)

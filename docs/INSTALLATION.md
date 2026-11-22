@@ -13,7 +13,7 @@ cp .env.example .env
 docker compose up -d --build
 ```
 
-Ouvrir **http://localhost:28085**, puis créer son compte. Si Docker nécessite
+Ouvrir **http://localhost:28080**, puis créer son compte. Si Docker nécessite
 les droits administrateur sur la machine, utiliser `sudo docker compose`.
 Les services `db`, `api` et `web` démarrent dans l’ordre de leurs contrôles de
 santé. Le premier lancement télécharge les images et construit l’application.
@@ -54,17 +54,16 @@ simples permettent notamment de conserver littéralement les caractères `$` et 
 Remplacer les origines du modèle par son propre domaine :
 
 ```dotenv
-WEB_PORT=28085
+WEB_PORT=28080
 APP_ORIGIN=https://finances.votre-domaine.fr
 COOKIE_SECURE=true
 ```
 
-Configurer le DNS et le certificat HTTPS de ce domaine, puis diriger son reverse
-proxy vers `http://ADRESSE_DU_SERVEUR:28085`. Le proxy configure le HTTPS, tandis
-que MySold écoute en HTTP sur son port publié.
+Configurer le DNS et le certificat HTTPS de ce domaine. Pour un proxy distant,
+activer le port HTTPS `28443` avec le [guide HTTPS](HTTPS_ORACLE.md).
 
 Un proxy installé directement sur le serveur peut utiliser
-`http://127.0.0.1:28085`. Dans un conteneur proxy, `127.0.0.1` désigne ce conteneur :
+`http://127.0.0.1:28080`. Dans un conteneur proxy, `127.0.0.1` désigne ce conteneur :
 utiliser une adresse joignable du serveur, ou un réseau Docker partagé avec
 `web` et la destination `http://web:8080`.
 
@@ -88,9 +87,9 @@ Une origine incorrecte entraîne `403 Origine refusée` lors de la connexion, de
 l’inscription ou d’une écriture. `WEB_PORT` peut être modifié, en adaptant aussi
 les origines HTTP et la destination du proxy.
 
-Le port est publié sur toutes les interfaces. Chaque administrateur configure
-son pare-feu, son DNS et son proxy. En production, réserver le port HTTP `28085`
-au proxy avec le pare-feu. La base et l’API ne publient aucun port.
+Le port HTTP `28080` est lié à la boucle locale par défaut. Chaque administrateur
+configure son pare-feu, son DNS et son proxy. Pour un proxy distant, limiter
+l’accès à `28443` au proxy. La base et l’API ne publient aucun port.
 
 Après toute modification de `.env` :
 
@@ -164,4 +163,4 @@ Le [guide de sécurité](SECURITE.md) décrit le chiffrement, ses limites et la 
 Le [guide de publication](PUBLICATION.md) décrit les pages publiques, les notices
 de l’instance, les cookies et la configuration du référencement.
 Pour chiffrer le trajet depuis un proxy distant, voir l’[option HTTPS directe](HTTPS_ORACLE.md).
-Cette option nécessite `compose.https.yaml` à chaque lancement ou mise à jour.
+Cette option utilise le même `compose.yaml` avec `TLS_ENABLED=true` dans `.env`.

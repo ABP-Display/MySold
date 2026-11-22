@@ -6,7 +6,7 @@ from origin_policy import DEFAULT_APP_ORIGIN, is_allowed_origin
 
 class OriginPolicyTests(unittest.TestCase):
     def test_default_localhost_and_public_domain(self):
-        for origin in ('http://localhost:28085', 'https://mysold.ydoxide.fr'):
+        for origin in ('http://localhost:28080', 'https://mysold.ydoxide.fr'):
             with self.subTest(origin=origin):
                 self.assertTrue(is_allowed_origin(origin, DEFAULT_APP_ORIGIN))
 
@@ -14,7 +14,7 @@ class OriginPolicyTests(unittest.TestCase):
         configured = 'https://finances.example.test'
         self.assertTrue(is_allowed_origin(configured, configured))
         self.assertFalse(is_allowed_origin('https://mysold.ydoxide.fr', configured))
-        self.assertFalse(is_allowed_origin('http://localhost:28085', configured))
+        self.assertFalse(is_allowed_origin('http://localhost:28080', configured))
 
     def test_multiple_origins_whitespace_and_config_trailing_slash(self):
         configured = ' https://finances.example.test/ , http://192.168.1.20:28085 , '

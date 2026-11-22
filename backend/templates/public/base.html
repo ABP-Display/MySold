@@ -30,12 +30,12 @@
 <body>
   <a class="skip-link" href="#contenu">Aller au contenu</a>
   <header class="site-header wrap">
-    <a class="brand" href="/" aria-label="MySold, accueil"><img src="/icons/Icon-192.png" width="40" height="40" alt="">MySold</a>
-    <nav aria-label="Navigation principale"><a href="{{ '#fonctionnalites' if page == 'discover' else '/#fonctionnalites' }}">Fonctionnalités</a><a class="button" href="/app/">Accéder à l’application</a></nav>
+    <a class="brand" href="/presentation" aria-label="MySold, présentation"><img src="/icons/Icon-192.png" width="40" height="40" alt="">MySold</a>
+    <nav aria-label="Navigation principale"><a href="/presentation#fonctionnalites">Fonctionnalités</a><a class="button" href="/">Accéder à l’application</a></nav>
   </header>
   <main id="contenu" class="wrap" tabindex="-1">{% block content %}{% endblock %}</main>
   <footer class="site-footer wrap">
-    <a class="brand" href="/">MySold</a>
+    <a class="brand" href="/presentation">MySold</a>
     <nav aria-label="Informations légales"><a href="/confidentialite/">Confidentialité</a><a href="/conditions/">Conditions d’utilisation</a><a href="/mentions-legales/">Mentions légales</a><a href="/cookies/">Cookies</a><a href="{{ repository }}" rel="noopener noreferrer">Code source</a></nav>
     <p>Application de suivi personnel. Les projections et simulations sont indicatives.</p>
   </footer>

@@ -6,7 +6,6 @@ on:
       - 'frontend/**'
       - 'backend/**'
       - 'compose.yaml'
-      - 'compose.https.yaml'
       - '.env.example'
       - '.github/workflows/web-release.yml'
       - '.gitattributes'

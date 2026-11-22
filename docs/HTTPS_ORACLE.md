@@ -14,11 +14,32 @@ privée est donc présente sur deux serveurs : les protéger tous les deux et
 resynchroniser les fichiers après chaque renouvellement. Cette procédure de
 transfert n’est pas un renouvellement automatique de la copie Oracle.
 
-Les fichiers `compose.https.yaml`, `frontend/nginx-tls.conf` et le Nginx modifié
-doivent être présents dans la version déployée avant l’étape d’activation.
+Le fichier `compose.yaml` suffit pour HTTP et HTTPS. HTTPS est activé avec
+`TLS_ENABLED=true` et le port par défaut reste `28443`. Le port HTTP par défaut
+est `28080`, lié à la boucle locale.
 Ne pas remplacer `.env`, PostgreSQL, `data/keys` ou les données existantes.
 Ne pas exécuter `docker compose down -v`. Les commandes ci-dessous concernent
 Ubuntu/Linux, pas le terminal PowerShell de développement.
+
+## Migrer une instance déjà en HTTPS
+
+Après avoir récupéré la version qui contient le Compose unifié, supprimer
+`COMPOSE_FILE=compose.yaml:compose.https.yaml` du `.env` (et de l’environnement
+du terminal, si la variable y était exportée). Garder les réglages TLS existants
+et ajouter `TLS_ENABLED=true`. Pour passer le diagnostic HTTP de `28085` à
+`28080` avec NPM déjà en HTTPS sur `28443` :
+
+```dotenv
+WEB_PORT=28080
+WEB_BIND_ADDRESS=127.0.0.1
+TLS_ENABLED=true
+```
+
+Vérifier que le port `28080` est libre sur la VM. En cas de conflit, garder
+`WEB_PORT=28085` ou choisir un autre port disponible. Ne pas déplacer les PEM
+ni changer `TLS_CERT_GID` si le groupe existant est correct. Le domaine public,
+le port HTTPS de NPM, PostgreSQL et les clés de chiffrement ne changent pas.
+Passer ensuite à l’étape 5 pour valider et recréer les conteneurs.
 
 ## 1. Récupérer le certificat existant de NPM
 
@@ -111,19 +132,24 @@ Ajouter ou ajuster ces valeurs ; remplacer `GID_NUMERIQUE` par le nombre obtenu 
 ```dotenv
 APP_ORIGIN=https://mysold.ydoxide.fr
 COOKIE_SECURE=true
+TLS_ENABLED=true
 TLS_CERTS_DIR=./data/tls
 TLS_CERT_GID=GID_NUMERIQUE
 WEB_HTTPS_PORT=28443
 WEB_HTTPS_BIND_ADDRESS=0.0.0.0
-WEB_BIND_ADDRESS=0.0.0.0
+WEB_PORT=28080
+WEB_BIND_ADDRESS=127.0.0.1
 ```
 
-Garder `WEB_PORT=28085` pendant les tests. `TLS_CERTS_DIR` doit contenir de vrais
-fichiers PEM et non des liens Certbot vers un dossier non monté. Les certificats
-ne sont jamais construits dans l’image ni ajoutés au paquet Web.
+Si le proxy utilise encore HTTP, conserver son ancien port et l’adresse
+d’écoute actuelle jusqu’à validation du trajet HTTPS. `TLS_CERTS_DIR` doit
+contenir de vrais fichiers PEM et non des liens Certbot vers un dossier non
+monté. Les certificats ne sont jamais construits dans l’image ni ajoutés au
+paquet Web. Sans `TLS_ENABLED=true`, Nginx n’écoute pas sur le port TLS même
+si Compose le réserve sur l’hôte.
 
 Dans OCI, autoriser l’entrée **TCP 28443** depuis l’adresse publique de la maison
-en `/32`, si elle est stable. Conserver l’accès actuel à 28085 et les règles SSH
+en `/32`, si elle est stable. Conserver l’accès HTTP utilisé et les règles SSH
 pendant la transition. Il n’est pas nécessaire d’ouvrir 80 ou 443 sur Oracle :
 NPM reste chargé de l’émission et du renouvellement du certificat chez vous.
 
@@ -136,9 +162,9 @@ l’avance rapide : examiner d’abord les différences.
 ```bash
 cd /home/ubuntu/MySold
 git pull --ff-only
-sudo docker compose -f compose.yaml -f compose.https.yaml config --quiet
-sudo docker compose -f compose.yaml -f compose.https.yaml build web
-sudo docker compose -f compose.yaml -f compose.https.yaml run --rm --no-deps web nginx -t
+sudo docker compose config --quiet
+sudo docker compose build web
+sudo docker compose run --rm --no-deps web nginx -t
 ```
 
 La validation ponctuelle ne publie aucun port et ne remplace pas le conteneur
@@ -148,9 +174,9 @@ Nginx refuse la configuration : corriger avant de lancer la commande suivante.
 Après validation :
 
 ```bash
-sudo docker compose -f compose.yaml -f compose.https.yaml up -d
-sudo docker compose -f compose.yaml -f compose.https.yaml ps
-curl --fail --head http://127.0.0.1:28085/
+sudo docker compose up -d --build
+sudo docker compose ps
+curl --fail --head http://127.0.0.1:28080/
 curl --fail --head --resolve mysold.ydoxide.fr:28443:127.0.0.1 https://mysold.ydoxide.fr:28443/
 ```
 
@@ -204,32 +230,27 @@ Tester ensuite la connexion, le PIN et les vues habituelles dans le navigateur.
 
 ## 7. Fermer le HTTP public après validation
 
-Une fois NPM en HTTPS fonctionnel, mettre `WEB_BIND_ADDRESS=127.0.0.1` dans `.env`,
-puis ajouter cette ligne dans le même `.env` sur Ubuntu :
-
-```dotenv
-COMPOSE_FILE=compose.yaml:compose.https.yaml
-```
-
-Elle conserve automatiquement l’option HTTPS pour les futures commandes
-`docker compose` lancées dans ce dossier. Recréer ensuite le web :
+Une fois NPM en HTTPS fonctionnel, confirmer `WEB_BIND_ADDRESS=127.0.0.1`
+et `TLS_ENABLED=true` dans `.env`. Si le port ou l’adresse d’écoute a changé,
+recréer le web :
 
 ```bash
-sudo docker compose -f compose.yaml -f compose.https.yaml up -d web
+sudo docker compose up -d web
 ```
 
-Retirer également les autorisations OCI pour le port 28085 et contrôler les
+Retirer également les autorisations OCI pour les ports HTTP actuel et ancien
+(`28080` et `28085` si utilisés) et contrôler les
 autres Security Lists/NSG pouvant encore l’autoriser. Garder SSH et l’accès
 28443 nécessaire à NPM. Ne pas se fier uniquement à `ufw deny` pour un port Docker.
 
 Depuis une machine extérieure, le premier accès doit échouer et le second réussir :
 
 ```bash
-curl --head --connect-timeout 5 http://145.241.169.224:28085/
+curl --head --connect-timeout 5 http://145.241.169.224:28080/
 curl --fail --head https://mysold.ydoxide.fr/
 ```
 
-Le HTTP local `http://127.0.0.1:28085/` reste disponible pour les diagnostics et
+Le HTTP local `http://127.0.0.1:28080/` reste disponible pour les diagnostics et
 le contrôle de santé ; il ne traverse plus Internet.
 
 ## 8. Renouvellement et mises à jour
@@ -255,8 +276,8 @@ cd /home/ubuntu/MySold
 sudo chown root:mysold-tls data/tls/fullchain.pem data/tls/privkey.pem
 sudo chmod 640 data/tls/fullchain.pem data/tls/privkey.pem
 
-sudo docker compose -f compose.yaml -f compose.https.yaml exec -T web nginx -t &&
-sudo docker compose -f compose.yaml -f compose.https.yaml exec -T web nginx -s reload
+sudo docker compose exec -T web nginx -t &&
+sudo docker compose exec -T web nginx -s reload
 ```
 
 Le `&&` empêche le rechargement si la validation échoue. **Aucun rebuild ni
@@ -299,15 +320,12 @@ git pull --ff-only
 sudo docker compose up -d --build
 ```
 
-La dernière commande suppose la ligne `COMPOSE_FILE` ajoutée à l’étape 7. Sans
-cette ligne, continuer à fournir les deux options `-f` : omettre l’option HTTPS
-retirerait le port TLS au prochain remplacement du conteneur. Ne jamais versionner
-une configuration privée `compose.override.yaml` contenant des secrets.
+Conserver `TLS_ENABLED=true` dans `.env`. Aucun fichier Compose additionnel
+n’est requis. Ne jamais versionner une configuration privée contenant des secrets.
 
 ## Références
 
 - [Nginx : configuration HTTPS](https://nginx.org/en/docs/http/configuring_https_servers.html).
 - [Nginx : rechargement de la configuration](https://nginx.org/en/docs/control.html).
 - [Nginx : validation du certificat amont](https://nginx.org/en/docs/http/ngx_http_proxy_module.html#proxy_ssl_verify).
-- [Docker : fusion de fichiers Compose](https://docs.docker.com/compose/how-tos/multiple-compose-files/merge/).
 - [Docker : interaction avec UFW](https://docs.docker.com/engine/network/packet-filtering-firewalls/#docker-and-ufw).

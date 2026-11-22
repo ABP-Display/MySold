@@ -2,7 +2,7 @@ import 'package:web/web.dart' as web;
 
 bool openPublicDocument(String path) {
   if (!const {
-    '/',
+    '/presentation',
     '/conditions/',
     '/confidentialite/',
     '/cookies/',

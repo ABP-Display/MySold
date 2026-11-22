@@ -40,7 +40,8 @@ class InstallationTests(unittest.TestCase):
         self.env = {k: v for k, v in os.environ.items() if not k.startswith('COMPOSE_')}
         for key in ('POSTGRES_DB', 'POSTGRES_USER', 'POSTGRES_PASSWORD', 'APP_ORIGIN',
                     'WEB_PORT', 'WEB_BIND_ADDRESS', 'WEB_HTTPS_PORT', 'WEB_HTTPS_BIND_ADDRESS',
-                    'TLS_CERTS_DIR', 'TLS_CERT_GID', 'COOKIE_SECURE', 'ALLOW_REGISTRATION', 'MYSOLD_REPOSITORY'):
+                    'TLS_ENABLED', 'TLS_CERTS_DIR', 'TLS_CERT_GID', 'COOKIE_SECURE',
+                    'ALLOW_REGISTRATION', 'MYSOLD_REPOSITORY', 'WEB_DOCKERFILE', 'FLUTTER_VERSION'):
             self.env.pop(key, None)
         self.addCleanup(self.remove_project)
         config = json.loads(self.compose('config', '--no-interpolate', '--format', 'json').stdout)
@@ -58,6 +59,8 @@ class InstallationTests(unittest.TestCase):
             services['web']['image'] = os.environ['MYSOLD_TEST_WEB_IMAGE']
         services['web']['ports'] = [{'target': 8080, 'published': '0',
                                      'host_ip': '127.0.0.1', 'protocol': 'tcp'}]
+        # Compose has not resolved the certificate directory interpolation yet.
+        services['web']['volumes'][0]['source'] = str(self.directory / 'data' / 'tls')
         for service in services.values():
             service['restart'] = 'no'
             service['labels'] = {'mysold.installation-test': self.project}
@@ -65,7 +68,7 @@ class InstallationTests(unittest.TestCase):
         # volumes there; the root Linux CI exercises the actual host data folders.
         if os.name == 'nt':
             config['volumes'] = {n: {'labels': {'mysold.installation-test': self.project}}
-                                 for n in ('postgres', 'backups', 'keys')}
+                                 for n in ('postgres', 'backups', 'keys', 'tls')}
             for service in services.values():
                 for mount in service.get('volumes', []):
                     mount['source'] = Path(mount['source']).name
@@ -89,7 +92,7 @@ class InstallationTests(unittest.TestCase):
 
     def request(self, path, body=None, opener=None):
         opener = opener or urllib.request.build_opener()
-        headers = {'Origin': 'http://localhost:28085', 'X-MySold-Request': '1'}
+        headers = {'Origin': 'http://localhost:28080', 'X-MySold-Request': '1'}
         if body is not None:
             headers['Content-Type'] = 'application/json'
         req = urllib.request.Request(self.url + path, headers=headers,
@@ -125,7 +128,8 @@ class InstallationTests(unittest.TestCase):
         (self.directory / '.env').write_text(configured, encoding='utf-8')
         self.start()
         self.assertEqual(self.request('/api/health'), {'status': 'ok'})
-        for path in ('/', '/decouvrir/', '/conditions/', '/confidentialite/', '/cookies/', '/mentions-legales/'):
+        for path in ('/presentation', '/presentation/', '/decouvrir/', '/?presentation=1',
+                     '/conditions/', '/confidentialite/', '/cookies/', '/mentions-legales/'):
             with urllib.request.urlopen(self.url + path, timeout=20) as response:
                 self.assertEqual(response.status, 200)
                 self.assertNotIn('Set-Cookie', response.headers)
@@ -133,14 +137,15 @@ class InstallationTests(unittest.TestCase):
                 headings = PageHeadings()
                 headings.feed(response.read().decode('utf-8'))
                 self.assertEqual(headings.h1_count, 1, path)
-        with urllib.request.urlopen(self.url + '/', timeout=20) as response:
+        with urllib.request.urlopen(self.url + '/presentation', timeout=20) as response:
             page = response.read()
-            self.assertIn(b'href="/app/"', page)
+            self.assertIn(b'href="/"', page)
             self.assertNotIn(b'flutter_bootstrap.js', page)
-        with urllib.request.urlopen(self.url + '/app', timeout=20) as response:
-            self.assertEqual(response.url, self.url + '/app/')
-            self.assertIn('noindex', response.headers['X-Robots-Tag'])
-            self.assertIn(b'flutter_bootstrap.js', response.read())
+        for path, final_path in (('/', '/'), ('/index.html', '/index.html'), ('/app', '/app/')):
+            with urllib.request.urlopen(self.url + path, timeout=20) as response:
+                self.assertEqual(response.url, self.url + final_path)
+                self.assertIn('noindex', response.headers['X-Robots-Tag'])
+                self.assertIn(b'flutter_bootstrap.js', response.read())
         first_secret = self.secret_fingerprint()
         first_key = self.compose('exec', '-T', 'api', 'python', '-c',
                                  'from encryption import read_master; import hashlib; print(hashlib.sha256(read_master()).hexdigest())').stdout
@@ -153,7 +158,7 @@ class InstallationTests(unittest.TestCase):
             'profile': {'firstName': 'Installation', 'pin': hashlib.sha256(b'123456').hexdigest()},
         }, client)['user']
         with client.open(self.url + '/', timeout=20) as response:
-            self.assertEqual(response.url, self.url + '/app/')
+            self.assertEqual(response.url, self.url + '/')
             self.assertIn(b'flutter_bootstrap.js', response.read())
         self.request('/api/documents/commit', {'requestId': uuid.uuid4().hex, 'operations': [{
             'path': 'users/' + user['uid'] + '/accounts/restore-test', 'action': 'set',

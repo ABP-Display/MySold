@@ -1,0 +1,80 @@
+name: mysold-local
+services:
+  db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: mysold_local
+      POSTGRES_USER: mysold_local
+      POSTGRES_PASSWORD: ${MYSOLD_LOCAL_DB_PASSWORD:?Run tool/start-local.ps1 first}
+    volumes: [local-postgres:/var/lib/postgresql/data]
+    healthcheck:
+      test: [CMD-SHELL, 'pg_isready -U "$$POSTGRES_USER" -d "$$POSTGRES_DB"']
+      interval: 3s
+      timeout: 3s
+      retries: 30
+    networks: [database]
+  keys:
+    build: ./backend
+    image: mysold-local-api
+    user: '0:0'
+    command: [python, encryption.py, init-key]
+    environment:
+      MYSOLD_KEY_FILE: /keys/master.key
+    volumes: [local-keys:/keys]
+    network_mode: none
+    read_only: true
+    cap_drop: [ALL]
+    cap_add: [CHOWN, FOWNER, DAC_OVERRIDE]
+    security_opt: [no-new-privileges:true]
+  api:
+    build: ./backend
+    image: mysold-local-api
+    command: [sh, -c, 'python manage.py migrate && exec gunicorn --bind 0.0.0.0:8000 --workers 1 --threads 2 --timeout 90 --error-logfile - app:app']
+    environment:
+      DB_HOST: db
+      POSTGRES_DB: mysold_local
+      POSTGRES_USER: mysold_local
+      POSTGRES_PASSWORD: ${MYSOLD_LOCAL_DB_PASSWORD:?Run tool/start-local.ps1 first}
+      APP_ORIGIN: http://localhost:28086,http://127.0.0.1:28086
+      COOKIE_SECURE: 'false'
+      ALLOW_REGISTRATION: 'true'
+      MYSOLD_KEY_FILE: /keys/master.key
+    volumes: [local-keys:/keys:ro]
+    depends_on:
+      keys: {condition: service_completed_successfully}
+      db: {condition: service_healthy}
+    healthcheck:
+      test: [CMD, python, -c, "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/health')"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 20s
+    read_only: true
+    tmpfs: [/tmp]
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    networks: [database, web]
+  web:
+    image: nginxinc/nginx-unprivileged:stable-alpine
+    ports: ['127.0.0.1:28086:8080']
+    volumes:
+      - ./frontend/build/web:/usr/share/nginx/html:ro
+      - ./frontend/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      api: {condition: service_healthy}
+    healthcheck:
+      test: [CMD, wget, --spider, -q, http://127.0.0.1:8080/]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    read_only: true
+    tmpfs: [/tmp, /var/cache/nginx, /var/run]
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    networks: [web]
+volumes:
+  local-postgres:
+  local-keys:
+networks:
+  database: {internal: true}
+  web:

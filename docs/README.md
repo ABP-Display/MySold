@@ -4,7 +4,7 @@
 l’application et ses fonctionnalités à partir de captures de l’interface
 Flutter Web locale. Elles utilisent des comptes et opérations fictifs.
 
-`index.html` est la version statique de la page d’accueil officielle. Elle
+`index.html` est la version statique de la page de présentation officielle. Elle
 fonctionne sans JavaScript, API, connexion ni stockage navigateur. Le bouton
 « Accéder à l’application » ouvre la connexion sur l’instance officielle.
 Il ne s’agit pas d’une démo interactive.
@@ -13,7 +13,7 @@ Il ne s’agit pas d’une démo interactive.
 
 Dans GitHub : **Settings → Pages → Deploy from a branch → main → /docs**.
 La page utilise des chemins relatifs pour ses ressources et reste
-`noindex`, avec le [site officiel](https://mysold.ydoxide.fr/) comme canonique.
+`noindex`, avec la [présentation officielle](https://mysold.ydoxide.fr/presentation) comme canonique.
 
 La source commune se trouve dans `backend/templates/public/discover.html`.
 Les captures compressées et la feuille de style sont dans

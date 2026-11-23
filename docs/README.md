@@ -29,9 +29,16 @@ python backend/generate_showcase.py --check
 La génération ne contacte ni la base ni l’instance de production.
 Pour remplacer les captures, utiliser exclusivement un compte local de test
 rempli de données fictives. Ne pas publier une capture issue d’un compte réel.
+Les captures brutes de transactions et de statistiques prises au téléphone
+restent ignorées par Git. L’aperçu Docker local peut les monter en lecture
+seule et les afficher avec `MYSOLD_SHOWCASE_LOCAL_CAPTURES=true`, uniquement
+pour une origine configurée sur la boucle locale. Ne pas activer cette option
+sur un service exposé. La version GitHub Pages conserve les données fictives.
+Les écrans Paramètres et Simulation utilisés ici ne contiennent pas de données
+de compte.
 Le script `frontend/tool/compress_public_preview.py` (avec Pillow) produit les
 versions WebP bureau et mobile ainsi que l’aperçu social à partir des PNG
-`gallery-{expenses,income,monthly,year}[-mobile].png`.
+`gallery-{expenses,income,investments,transfers,monthly,year}[-mobile].png`.
 
 ## Guides
 

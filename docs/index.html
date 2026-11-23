@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="theme-color" content="#f6f8f3">
+  <meta name="theme-color" content="#000000">
   <title>MySold : budget et patrimoine auto-hébergés</title>
   <meta name="description" content="Gérez vos comptes, dépenses, revenus et investissements avec MySold. Une application web installable, auto-hébergée, sans connexion bancaire obligatoire.">
   <meta name="robots" content="noindex, follow">
@@ -23,128 +23,128 @@
   <meta name="twitter:description" content="Gérez vos comptes, dépenses, revenus et investissements avec MySold. Une application web installable, auto-hébergée, sans connexion bancaire obligatoire.">
   <meta name="twitter:image" content="https://abp-display.github.io/MySold/assets/showcase-share.jpg">
   <link rel="icon" type="image/png" href="./assets/icon.png">
-  <link rel="stylesheet" href="./assets/showcase.css?v=77fa1f0bf9b8">
+  <link rel="stylesheet" href="./assets/showcase.css?v=dcc748758296">
 </head>
 <body>
   <a class="skip-link" href="#contenu">Aller au contenu</a>
-  <header class="masthead wrap">
-    <a class="brand" href="./index.html" aria-label="MySold, accueil"><img src="./assets/icon.png" width="32" height="32" alt="">MySold<span aria-hidden="true">.</span></a>
-    <nav aria-label="Navigation principale">
-      <a class="nav-section" href="#fonctionnalites">Fonctionnalités</a>
-      <a class="nav-section" href="#auto-hebergement">Auto-hébergement</a>
-      <a class="button outline compact" href="https://mysold.ydoxide.fr/">Accéder</a>
-    </nav>
-  </header>
+  <header class="masthead"><div class="wrap header-inner">
+    <a class="brand" href="./index.html" aria-label="MySold, présentation"><img src="./assets/icon.png" width="36" height="36" alt="">MySold<span aria-hidden="true">.</span></a>
+    <nav class="desktop-nav" aria-label="Navigation principale"><a href="#fonctionnalites">Fonctionnalités</a><a href="#auto-hebergement">Auto-hébergement</a></nav>
+    <a class="button solid header-access" href="https://mysold.ydoxide.fr/">Ouvrir MySold</a>
+    <details class="mobile-nav"><summary aria-label="Navigation"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg></summary><nav aria-label="Navigation mobile"><a href="#fonctionnalites">Fonctionnalités</a><a href="#auto-hebergement">Auto-hébergement</a></nav></details>
+  </div></header>
   <main id="contenu" tabindex="-1">
-    <section class="hero" aria-labelledby="titre">
-      <div class="wrap hero-inner">
-        <div class="hero-copy">
-          <p class="eyebrow"><span aria-hidden="true"></span> Gestion de finances personnelles</p>
-          <h1 id="titre">MySold<span aria-hidden="true">.</span></h1>
-          <p class="tagline">Votre budget au quotidien.<br> Votre patrimoine dans la durée.</p>
-          <p class="intro-text">Suivez vos comptes, vos dépenses et vos investissements dans une application web installable et auto-hébergée.</p>
-          <div class="actions">
-            <a class="button solid" href="https://mysold.ydoxide.fr/">Accéder à l’application <span aria-hidden="true">→</span></a>
-            <a class="button outline" href="#fonctionnalites">Découvrir les fonctionnalités</a>
-          </div>
-        </div>
-        <figure class="hero-screen">
-          <picture>
-  <source media="(max-width: 640px)" srcset="./assets/showcase-expenses-mobile.webp" width="390" height="740">
-  <img src="./assets/showcase-expenses.webp" width="1200" height="750" alt="Onglet Dépenses : répartition par catégorie et liste des transactions mensuelles" fetchpriority="high">
-</picture>
-          <figcaption><span>01 / Mois · Dépenses</span><span>Capture de MySold · Données fictives</span></figcaption>
-        </figure>
+    <section class="hero wrap" aria-labelledby="titre">
+      <div class="hero-copy">
+        <p class="eyebrow">Finances personnelles</p>
+        <h1 id="titre">MySold<span>.</span></h1>
+        <p class="tagline">Votre budget, vos comptes<br>et votre patrimoine.</p>
+        <p class="intro-text">Suivez vos finances depuis une application web sécurisée et installable. Utilisez l’instance MySold ou hébergez votre propre instance.</p>
+        <div class="actions"><a class="button light" href="https://mysold.ydoxide.fr/">Accéder à l’application <span aria-hidden="true">↗</span></a><a class="button inverted" href="#auto-hebergement">Héberger MySold</a></div>
       </div>
-    </section>
-
-    <section id="fonctionnalites" class="wrap features" aria-labelledby="features-title">
-      <header class="section-head">
-        <p class="eyebrow">Fonctionnalités</p>
-        <h2 id="features-title">Du mois en cours à la vue d’ensemble.</h2>
-      </header>
-
-      <div class="feature-view">
-        <div>
-          <p class="label">02 / Mois</p>
-          <h3>Vos revenus par catégorie</h3>
-          <p>Visualisez d’où vient l’argent de votre mois. Retrouvez ensuite le détail de chaque encaissement et le compte auquel il est rattaché.</p>
-        </div>
-        <figure class="feature-screen">
-          <picture>
-  <source media="(max-width: 640px)" srcset="./assets/showcase-income-mobile.webp" width="390" height="740">
-  <img src="./assets/showcase-income.webp" width="1200" height="750" alt="Onglet Revenus : graphique de répartition des entrées d’argent et transactions mensuelles" loading="lazy">
-</picture>
-          <figcaption>Origine des revenus · Données fictives</figcaption>
-        </figure>
-      </div>
-
-      <div class="feature-view">
-        <div>
-          <p class="label">03 / Comparer</p>
-          <h3>Statistiques mensuelles</h3>
-          <p>Comparez le mois à un autre ou à la moyenne depuis janvier. Suivez séparément les dépenses, les revenus, les investissements et le reste disponible.</p>
-        </div>
-        <figure class="feature-screen">
-          <picture>
-  <source media="(max-width: 640px)" srcset="./assets/showcase-monthly-mobile.webp" width="390" height="740">
-  <img src="./assets/showcase-monthly.webp" width="1200" height="840" alt="Comparaison graphique des flux entre deux mois dans les statistiques mensuelles" loading="lazy">
-</picture>
-          <figcaption>Comparaison mensuelle · Données fictives</figcaption>
-        </figure>
-      </div>
-
-      <div class="feature-view">
-        <div>
-          <p class="label">04 / Analyser</p>
-          <h3>Patrimoine et investissements</h3>
-          <p>Suivez vos actifs par catégorie, leur compte de rattachement et l’évolution du patrimoine depuis le début de l’année.</p>
-        </div>
-        <figure class="feature-screen">
-          <picture>
-  <source media="(max-width: 640px)" srcset="./assets/showcase-year-mobile.webp" width="390" height="740">
-  <img src="./assets/showcase-year.webp" width="1200" height="840" alt="Statistiques annuelles : solde des comptes, flux annuels et courbe du patrimoine avec projection" loading="lazy">
-</picture>
-          <figcaption>Patrimoine annuel · Données fictives</figcaption>
-        </figure>
-      </div>
-
-      <div class="feature-grid">
-        <article><h3>Exports et simulations</h3><p>Générez un rapport PDF, sauvegardez ou restaurez vos données en CSV et estimez les mensualités d’un prêt.</p></article>
-        <article><h3>Mobile et ordinateur</h3><p>Utilisez MySold dans votre navigateur ou installez-la comme application web, sans APK.</p></article>
-        <article><h3>Discrétion et sécurité</h3><p>Masquez les montants à l’écran, verrouillez l’interface par PIN et protégez votre connexion avec la double authentification.</p></article>
-      </div>
-    </section>
-
-    <section id="auto-hebergement" class="hosting" aria-labelledby="hosting-title">
-      <div class="wrap hosting-inner">
-        <div>
-          <p class="eyebrow">Auto-hébergement</p>
-          <h2 id="hosting-title">Sur le serveur de votre choix.</h2>
-          <p>Déployez MySold avec Docker Compose. L’interface Flutter, l’API Flask et PostgreSQL fonctionnent sans Firebase ni connexion bancaire automatique. Les documents financiers sont chiffrés côté serveur, pas de bout en bout.</p>
-          <div class="actions">
-            <a class="button light" href="https://github.com/ABP-Display/MySold/blob/main/docs/INSTALLATION.md">Guide d’installation <span aria-hidden="true">→</span></a>
-            <a class="button inverted" href="https://github.com/ABP-Display/MySold">Voir le dépôt GitHub</a>
-          </div>
-        </div>
-        <dl class="stack">
-          <div><dt>Interface web</dt><dd>Flutter / PWA</dd></div>
-          <div><dt>Serveur applicatif</dt><dd>Flask / Gunicorn</dd></div>
-          <div><dt>Base de données</dt><dd>PostgreSQL</dd></div>
-          <div><dt>Déploiement</dt><dd>Docker Compose</dd></div>
+      <figure class="budget-preview">
+        <div class="preview-head"><img src="./assets/icon.png" width="24" height="24" alt=""><span>Budget mensuel</span><span>Novembre</span></div>
+        <div class="preview-balance"><span>Reste disponible</span><strong>840,00 €</strong></div>
+        <dl class="preview-flows">
+          <div><dt>Revenus</dt><dd>2 650 €</dd></div>
+          <div><dt>Dépenses</dt><dd>1 460 €</dd></div>
+          <div><dt>Investissements</dt><dd>350 €</dd></div>
         </dl>
+        <div class="preview-chart">
+          <p>Cumul des flux</p>
+          <div class="preview-plot" role="img" aria-label="Exemple : revenus cumulés et dépenses cumulées progressent au fil des quatre semaines">
+            <span class="preview-pair"><i class="h-35"></i><i class="h-15"></i></span>
+            <span class="preview-pair"><i class="h-55"></i><i class="h-25"></i></span>
+            <span class="preview-pair"><i class="h-75"></i><i class="h-40"></i></span>
+            <span class="preview-pair"><i class="h-95"></i><i class="h-55"></i></span>
+          </div>
+          <div class="preview-weeks" aria-hidden="true"><span>S1</span><span>S2</span><span>S3</span><span>S4</span></div>
+          <div class="preview-legend"><span>Revenus</span><span>Dépenses</span></div>
+        </div>
+        <figcaption>Aperçu illustratif · Données fictives</figcaption>
+      </figure>
+    </section>
+
+    <section id="fonctionnalites" class="band" aria-labelledby="month-title"><div class="section wrap">
+      <header class="section-head"><p class="eyebrow">Budget mensuel</p><h2 id="month-title">Quatre vues pour suivre le mois.</h2><p>Retrouve tes transactions, leurs catégories et les comptes concernés. Enregistre-les toi-même ou importe un fichier compatible, sans connecter ta banque.</p></header>
+      <div class="columns gallery">
+
+        <article><h3>Revenus</h3><p>Vois la part de chaque catégorie dans tes encaissements.</p><figure class="screen"><picture>
+  <source media="(max-width: 620px)" srcset="./assets/showcase-income-mobile.webp" width="390" height="740">
+  <img src="./assets/showcase-income.webp" width="1200" height="750" alt="Diagramme en anneau de l’origine des revenus" loading="lazy">
+</picture>
+</figure></article>
+
+        <article><h3>Dépenses</h3><p>Repère les postes qui pèsent le plus dans le mois.</p><figure class="screen"><picture>
+  <source media="(max-width: 620px)" srcset="./assets/showcase-expenses-mobile.webp" width="390" height="740">
+  <img src="./assets/showcase-expenses.webp" width="1200" height="750" alt="Barres verticales des dépenses par catégorie" loading="lazy">
+</picture>
+</figure></article>
+
+        <article><h3>Investissements</h3><p>Visualise les versements par période et par catégorie d’actifs.</p><figure class="screen"><picture>
+  <source media="(max-width: 620px)" srcset="./assets/showcase-investments-mobile.webp" width="390" height="740">
+  <img src="./assets/showcase-investments.webp" width="1200" height="750" alt="Barres empilées des placements par période et type d’actif" loading="lazy">
+</picture>
+</figure></article>
+
+        <article><h3>Transferts</h3><p>Visualise les flux entre comptes, séparément des revenus et des dépenses.</p><figure class="screen"><picture>
+  <source media="(max-width: 620px)" srcset="./assets/showcase-transfers-mobile.webp" width="390" height="740">
+  <img src="./assets/showcase-transfers.webp" width="1200" height="750" alt="Diagramme de Sankey des transferts entre comptes" loading="lazy">
+</picture>
+</figure></article>
+
+      </div>
+    </div></section>
+
+    <section class="section wrap" aria-labelledby="stats-title">
+      <header class="section-head"><p class="eyebrow">Analyses</p><h2 id="stats-title">Du mois en cours à l’année entière.</h2></header>
+      <div class="columns gallery">
+        <article><h3>Statistiques mensuelles</h3><p>Estime le solde de fin de mois et compare l’évolution des dépenses, revenus, placements ou du reste disponible avec un autre mois ou la moyenne de l’année.</p><figure class="screen"><picture>
+  <source media="(max-width: 620px)" srcset="./assets/showcase-monthly-mobile.webp" width="390" height="740">
+  <img src="./assets/showcase-monthly.webp" width="1200" height="840" alt="Courbes de comparaison des dépenses de deux mois" loading="lazy">
+</picture>
+</figure></article>
+        <article><h3>Statistiques annuelles</h3><p>Retrouve le solde de tes comptes, l’évolution de ton patrimoine et les flux des douze mois. Le graphique distingue la projection des valeurs déjà observées.</p><figure class="screen"><picture>
+  <source media="(max-width: 620px)" srcset="./assets/showcase-year-mobile.webp" width="390" height="740">
+  <img src="./assets/showcase-year.webp" width="1200" height="840" alt="Évolution annuelle du patrimoine avec courbe observée et projection" loading="lazy">
+</picture>
+</figure></article>
       </div>
     </section>
+
+    <section class="band" aria-labelledby="tools-title"><div class="section wrap">
+      <header class="section-head"><p class="eyebrow">Gestion et outils</p><h2 id="tools-title">Personnalise, simule et exporte.</h2></header>
+      <div class="columns gallery portraits">
+        <article><h3>Profil, comptes et catégories</h3><p>Choisis ta langue, ta devise et ton thème. Gère tes comptes, personnalise les catégories et organise tes investissements par type et compte de détention. Le mode discret masque les montants à l’écran.</p><figure class="screen"><img src="./assets/settings_profils.webp" width="575" height="1280" loading="lazy" alt="Paramètres MySold : thème, langue, devise et sécurité"></figure></article>
+        <article><h3>Budget, placement et crédit</h3><p>Teste un scénario de budget, projette un capital avec des versements réguliers ou estime les mensualités et le coût d’un crédit. Les simulations n’affectent pas tes comptes.</p><figure class="screen"><img src="./assets/simulation_investissement.webp" width="575" height="1280" loading="lazy" alt="Simulateur de placement MySold avec courbe du capital projeté"></figure></article>
+      </div>
+      <div class="columns export">
+        <article><h3>Rapports PDF</h3><p>Génère un rapport structuré sur le mois ou la période de ton choix, avec graphiques et détail des opérations. Le PDF sert à consulter ou archiver, pas à réimporter.</p></article>
+        <article><h3>Export complet et migration</h3><p>Exporte tes données en CSV puis réimporte-les sur une autre instance MySold. Garde cet export dans un endroit privé : il contient des données financières lisibles.</p></article>
+      </div>
+    </div></section>
+
+    <section id="securite" class="section wrap" aria-labelledby="security-title">
+      <header class="section-head"><p class="eyebrow">Sécurité</p><h2 id="security-title">Trois niveaux de protection.</h2></header>
+      <div class="columns three">
+        <article><p class="label">01 / Connexion</p><h3>Échanges protégés par HTTPS</h3><p>TLS protège les échanges entre ton navigateur et le service. Sur une installation distante, le trajet entre le proxy et MySold peut également être chiffré en HTTPS.</p></article>
+        <article><p class="label">02 / Stockage</p><h3>Données financières chiffrées</h3><p>Les documents financiers et les secrets TOTP sont chiffrés côté serveur en AES-256-GCM. Chaque utilisateur dispose d’une clé distincte, protégée par la clé maître de l’instance.</p></article>
+        <article><p class="label">03 / Accès</p><h3>Mot de passe, PIN et TOTP</h3><p>Les mots de passe sont hachés avec scrypt. Le PIN verrouille l’interface, et la double authentification facultative ajoute un code temporaire. La session expire au bout de 90 jours.</p></article>
+      </div>
+      <p class="security-note">Le serveur déchiffre les données nécessaires à l’affichage et aux calculs : ce n’est pas un chiffrement de bout en bout. Certaines métadonnées d’indexation et l’adresse e-mail restent lisibles côté serveur. <a href="https://mysold.ydoxide.fr/confidentialite/">Lire la politique de confidentialité</a></p>
+    </section>
+
+    <section id="auto-hebergement" class="band" aria-labelledby="hosting-title"><div class="section wrap">
+      <header class="section-head"><p class="eyebrow">Deux façons de démarrer</p><h2 id="hosting-title">Choisis ton instance MySold.</h2></header>
+      <div class="columns choices">
+        <article><p class="label">Accès en ligne</p><h3>Utiliser MySold en ligne</h3><p>Ouvre l’application depuis ton navigateur, sans installer de serveur. Sur un navigateur compatible, tu peux ajouter MySold à ton écran d’accueil.</p><a class="button solid" href="https://mysold.ydoxide.fr/">Accéder à l’application <span aria-hidden="true">↗</span></a></article>
+        <article><p class="label">Sur ton serveur</p><h3>Auto-héberger MySold</h3><p>Déploie le projet avec Docker Compose : Flutter Web, Flask et PostgreSQL. Configure le domaine, HTTPS et tes sauvegardes sans dépendre de Firebase.</p><a class="button outline" href="https://github.com/ABP-Display/MySold/blob/main/docs/INSTALLATION.md">Guide Docker <span aria-hidden="true">↗</span></a></article>
+      </div>
+    </div></section>
   </main>
   <footer class="wrap footer">
     <a class="brand" href="./index.html"><img src="./assets/icon.png" width="32" height="32" alt="">MySold<span aria-hidden="true">.</span></a>
-    <nav aria-label="Informations légales">
-      <a href="https://mysold.ydoxide.fr/confidentialite/">Confidentialité</a>
-      <a href="https://mysold.ydoxide.fr/conditions/">Conditions d’utilisation</a>
-      <a href="https://mysold.ydoxide.fr/mentions-legales/">Mentions légales</a>
-      <a href="https://mysold.ydoxide.fr/cookies/">Cookies</a>
-      <a href="https://github.com/ABP-Display/MySold/blob/main/LICENSE">Licence</a>
-    </nav>
+    <nav aria-label="Informations légales"><a href="https://mysold.ydoxide.fr/confidentialite/">Confidentialité</a><a href="https://mysold.ydoxide.fr/conditions/">Conditions d’utilisation</a><a href="https://mysold.ydoxide.fr/mentions-legales/">Mentions légales</a><a href="https://mysold.ydoxide.fr/cookies/">Cookies</a><a href="https://github.com/ABP-Display/MySold">Dépôt GitHub</a><a href="https://github.com/ABP-Display/MySold/blob/main/LICENSE">Licence</a></nav>
   </footer>
 </body>
 </html>

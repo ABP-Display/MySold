@@ -6,7 +6,8 @@ from PIL import Image
 
 
 def compress(directory, destination):
-    for view, height in (('expenses', 750), ('income', 750), ('monthly', 840), ('year', 840)):
+    for view, height in (('expenses', 750), ('income', 750), ('investments', 750),
+                         ('transfers', 750), ('monthly', 840), ('year', 840)):
         for suffix, size in (('', (1200, height)), ('-mobile', (390, 740))):
             source = directory / f'gallery-{view}{suffix}.png'
             target = destination / f'showcase-{view}{suffix}.webp'

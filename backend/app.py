@@ -25,6 +25,7 @@ from encryption import INDEX_FIELDS, migrate_encryption, vault
 from public_site import site, public_page
 
 UTC = timezone.utc
+SESSION_LIFETIME = timedelta(days=90)
 COLLECTIONS = {'accounts', 'categories', 'investments', 'transactions', 'budgetAlerts', 'balanceEvents', 'annualReferences'}
 FIELDS = {'date', 'type', 'fromAccountId', 'toAccountId', 'holdingAccountId',
           'categoryId', 'investmentId', 'name', 'balance', 'amount', 'createdAt'}
@@ -108,7 +109,7 @@ def require_application_header():
 
 @app.after_request
 def no_cache(response):
-    if request.blueprint != 'public_site':
+    if request.blueprint != 'public_site' or request.path.startswith('/api/'):
         response.headers['Cache-Control'] = 'no-store'
     elif not request.path.startswith('/site-assets/'):
         response.headers['Cache-Control'] = 'public, max-age=0, must-revalidate'
@@ -123,7 +124,7 @@ def session_user(db):
     token = request.cookies.get('mysold_session', '')
     if not token or len(token) > 128:
         return None
-    return db.execute('''SELECT u.id, u.email, s.verified_at FROM sessions s
+    return db.execute('''SELECT u.id, u.email, s.verified_at, s.expires_at FROM sessions s
         JOIN users u ON u.id = s.user_id WHERE s.token_hash = %s AND s.expires_at > now()''',
                       (digest(token),)).fetchone()
 
@@ -142,20 +143,22 @@ def authenticated(function):
 
 def cookie_response(user, db=None):
     token = secrets.token_urlsafe(32)
+    expires_at = now() + SESSION_LIFETIME
     def store(connection):
         connection.execute('DELETE FROM sessions WHERE expires_at < now()')
         connection.execute('INSERT INTO sessions(token_hash,user_id,expires_at) VALUES (%s,%s,%s)',
-                   (digest(token), user['id'], now() + timedelta(days=7)))
+                   (digest(token), user['id'], expires_at))
     if db is None:
         with connect() as connection:
             store(connection)
     else:
         store(db)
-    response = jsonify(user={'uid': user['id'], 'email': user['email']})
+    response = jsonify(user={'uid': user['id'], 'email': user['email']},
+                       expiresAt=expires_at.isoformat())
     response.set_cookie('mysold_session', token, httponly=True, samesite='Strict',
                         secure=(os.getenv('COOKIE_SECURE', 'true').lower() == 'true'
                                 or request.headers.get('Origin', '').startswith('https://')),
-                        max_age=7 * 86400, path='/')
+                        max_age=int(SESSION_LIFETIME.total_seconds()), path='/')
     return response
 
 
@@ -192,7 +195,8 @@ def health():
 def session():
     with connect() as db:
         user = session_user(db)
-        return jsonify(user=None if not user else {'uid': user['id'], 'email': user['email']})
+        return jsonify(user=None if not user else {'uid': user['id'], 'email': user['email']},
+                       expiresAt=user['expires_at'].isoformat() if user else None)
 
 
 @app.post('/api/auth/register')

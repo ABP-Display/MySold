@@ -10,9 +10,11 @@ BACKEND = Path(__file__).resolve().parent
 DOCS = BACKEND.parent / 'docs'
 OFFICIAL = 'https://mysold.ydoxide.fr'
 PAGES_URL = 'https://abp-display.github.io/MySold/'
-SHOWCASE_ASSETS = ('showcase.css', SHOWCASE_SHARE, *(
+SHOWCASE_ASSETS = ('showcase.css', SHOWCASE_SHARE, 'settings_profils.webp',
+                   'simulation_investissement.webp', 'Roboto-Regular.ttf',
+                   'Roboto-Bold.ttf', 'Apache-2.0.txt', 'NOTICE.txt', *(
     f'showcase-{view}{suffix}.webp'
-    for view in ('expenses', 'income', 'monthly', 'year')
+    for view in ('expenses', 'income', 'investments', 'transfers', 'monthly', 'year')
     for suffix in ('', '-mobile')
 ))
 
@@ -28,7 +30,8 @@ def generate(check=False):
         site_base=OFFICIAL, home_url='./index.html', repository=REPOSITORY,
         social_image=PAGES_URL + 'assets/' + SHOWCASE_SHARE,
     )
-    files = {DOCS / 'index.html': (html + '\n').encode('utf-8')}
+    html = '\n'.join(line.rstrip() for line in html.splitlines()) + '\n'
+    files = {DOCS / 'index.html': html.encode('utf-8')}
     files.update({DOCS / 'assets' / name: (ASSETS / name).read_bytes()
                   for name in SHOWCASE_ASSETS})
     for target, content in files.items():

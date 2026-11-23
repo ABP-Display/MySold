@@ -2,11 +2,12 @@
 import hashlib
 import os
 import re
+from html.parser import HTMLParser
 from pathlib import Path
 from urllib.parse import urlsplit
 from xml.etree.ElementTree import Element, SubElement, tostring
 
-from flask import Blueprint, Response, redirect, render_template, request
+from flask import Blueprint, Response, abort, jsonify, redirect, render_template, request
 from origin_policy import is_allowed_origin
 
 site = Blueprint('public_site', __name__, template_folder='templates',
@@ -26,6 +27,11 @@ PAGES = {
 }
 ASSETS = Path(__file__).with_name('public_assets')
 SHOWCASE_SHARE = 'showcase-share.jpg'
+LOCAL_PHONE_CAPTURES = {
+    'expenses': 'mois-depenses.webp', 'income': 'mois-revenus.webp',
+    'investments': 'mois-invest.webp', 'transfers': 'mois-transfert.webp',
+    'monthly': 'stats-mensuelles.webp', 'year': 'stats-annuelles.webp',
+}
 
 
 def asset_version(filename):
@@ -104,11 +110,26 @@ def public_page(page, status=200, **extra):
     return response
 
 
+def local_capture_mode():
+    origin = public_origin()
+    return (os.getenv('MYSOLD_SHOWCASE_LOCAL_CAPTURES') == 'true' and origin
+            and urlsplit(origin).hostname in {'localhost', '127.0.0.1', '::1'})
+
+
+@site.before_request
+def restrict_local_captures():
+    if request.path.startswith('/site-assets/local-phone/') and not local_capture_mode():
+        abort(404)
+
+
 @site.get('/presentation')
 def discover():
+    local_preview = local_capture_mode() and all(
+        (ASSETS / 'local-phone' / name).is_file() for name in LOCAL_PHONE_CAPTURES.values())
     return public_page('discover', home_url='/presentation', site_base='', asset_base='/site-assets',
                        stylesheet_url=f'/site-assets/showcase.css?v={SHOWCASE_CSS_VERSION}',
-                       icon_url='/icons/Icon-192.png')
+                       icon_url='/icons/Icon-192.png',
+                       phone_captures=LOCAL_PHONE_CAPTURES if local_preview else {})
 
 
 @site.get('/decouvrir/', strict_slashes=False)
@@ -135,6 +156,47 @@ def legal():
 @site.get('/cookies/', strict_slashes=False)
 def cookies():
     return public_page('cookies')
+
+
+class LegalArticle(HTMLParser):
+    blocks = {'h2', 'p', 'dt', 'dd', 'li'}
+
+    def __init__(self):
+        super().__init__()
+        self.article = False
+        self.block = None
+        self.parts = []
+        self.paragraphs = []
+
+    def handle_starttag(self, tag, attrs):
+        if tag == 'article':
+            self.article = True
+        if self.article and tag in self.blocks:
+            self.block = tag
+            self.parts = []
+
+    def handle_data(self, data):
+        if self.block:
+            self.parts.append(data)
+
+    def handle_endtag(self, tag):
+        if tag == self.block:
+            text = ' '.join(''.join(self.parts).split())
+            if text:
+                self.paragraphs.append({'text': text, 'heading': tag in {'h2', 'dt'}})
+            self.block = None
+        if tag == 'article':
+            self.article = False
+
+
+@site.get('/api/legal/<page>')
+def legal_document(page):
+    if page not in {'terms', 'privacy', 'legal', 'cookies'}:
+        abort(404)
+    context = site_context(page)
+    parser = LegalArticle()
+    parser.feed(render_template('public/' + page + '.html', **context))
+    return jsonify(paragraphs=parser.paragraphs)
 
 
 @site.get('/public-not-found')
@@ -166,8 +228,10 @@ def sitemap():
 @site.after_request
 def headers(response):
     response.headers['Content-Security-Policy'] = (
-        "default-src 'none'; style-src 'self'; img-src 'self'; "
+        "default-src 'none'; style-src 'self'; img-src 'self'; font-src 'self'; "
         "base-uri 'none'; form-action 'none'; frame-ancestors 'none'")
-    if request.path.startswith('/site-assets/') and response.status_code == 200:
+    if request.path.startswith('/site-assets/local-phone/'):
+        response.headers['Cache-Control'] = 'private, no-store'
+    elif request.path.startswith('/site-assets/') and response.status_code == 200:
         response.headers['Cache-Control'] = 'public, max-age=3600'
     return response

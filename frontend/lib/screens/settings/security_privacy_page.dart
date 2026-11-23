@@ -9,6 +9,7 @@ import 'package:crypto/crypto.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:file_saver/file_saver.dart';
 import 'package:mysold/data/local_auth.dart';
+import 'package:mysold/data/pin_lock_policy.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/gestures.dart';
 import 'package:provider/provider.dart';
@@ -18,7 +19,7 @@ import 'package:mysold/l10n/app_localizations.dart';
 import 'package:mysold/login_page.dart';
 import 'package:mysold/providers/user_data_provider.dart';
 import 'package:mysold/services/security_gate.dart';
-import 'package:mysold/services/public_documents.dart';
+import 'package:mysold/screens/settings/legal_document_page.dart';
 import 'package:mysold/widgets/account_autofill_group.dart';
 
 int _compareImportDocuments(_ImportDocument a, _ImportDocument b) {
@@ -92,23 +93,6 @@ class _SecurityPrivacyPageState extends State<SecurityPrivacyPage> {
     return sha256.convert(utf8.encode(pin)).toString();
   }
 
-  String _normalizeLockFrequency(dynamic value) {
-    final raw = (value ?? 'never').toString().toLowerCase().trim();
-    if (raw == 'always' ||
-        raw == 'toujours' ||
-        raw == 'chaque ouverture' ||
-        raw == 'chaque ouverture de l app' ||
-        raw == 'chaque ouverture de l\'app') {
-      return 'always';
-    }
-    return 'never';
-  }
-
-  int _normalizeLockDelay(dynamic value) {
-    if (value is num) return value.toInt().clamp(0, 1440).toInt();
-    return int.tryParse((value ?? '0').toString())?.clamp(0, 1440).toInt() ?? 0;
-  }
-
   Future<void> _load() async {
     final ref = _userRef;
     if (ref == null) {
@@ -117,10 +101,14 @@ class _SecurityPrivacyPageState extends State<SecurityPrivacyPage> {
     }
 
     final data = (await ref.get()).data() ?? {};
+    final policy = PinLockPolicy(
+      data['reconnectionFrequency'],
+      data['lockDelayMinutes'],
+    );
     if (!mounted) return;
     setState(() {
-      _frequency = _normalizeLockFrequency(data['reconnectionFrequency']);
-      _lockDelayMinutes = _normalizeLockDelay(data['lockDelayMinutes']);
+      _frequency = policy.frequency;
+      _lockDelayMinutes = policy.minutes;
       _isLoading = false;
     });
   }
@@ -146,7 +134,7 @@ class _SecurityPrivacyPageState extends State<SecurityPrivacyPage> {
     };
 
     if (pin.isNotEmpty || confirmPin.isNotEmpty) {
-      if (pin.length != 6 || pin != confirmPin) {
+      if (!RegExp(r'^[0-9]{6}$').hasMatch(pin) || pin != confirmPin) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
@@ -162,13 +150,18 @@ class _SecurityPrivacyPageState extends State<SecurityPrivacyPage> {
     setState(() => _isSaving = true);
     try {
       await ref.set(update, SetOptions(merge: true));
+      if (!mounted) return;
       _pinCtrl.clear();
       _confirmPinCtrl.clear();
-      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(context.tr('Parametres de securite enregistres')),
         ),
+      );
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('${context.tr('Erreur')} : $error')),
       );
     } finally {
       if (mounted) setState(() => _isSaving = false);
@@ -971,20 +964,6 @@ class _SecurityPrivacyPageState extends State<SecurityPrivacyPage> {
         .join(',');
   }
 
-  void _showTextPage({
-    required String title,
-    required String body,
-    String? document,
-  }) {
-    if (document != null && openPublicDocument(document)) return;
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => _LegalTextPage(title: title, body: body),
-      ),
-    );
-  }
-
   Future<void> _deleteCollection(
     DocumentReference<Map<String, dynamic>> ref,
     String collection,
@@ -1232,7 +1211,8 @@ class _SecurityPrivacyPageState extends State<SecurityPrivacyPage> {
               child: Column(
                 children: [
                   DropdownButtonFormField<String>(
-                    value: _frequency,
+                    initialValue: _frequency,
+                    isExpanded: true,
                     decoration: InputDecoration(
                       labelText: context.tr('Demande du PIN'),
                       prefixIcon: const Icon(Icons.lock_clock_outlined),
@@ -1247,45 +1227,36 @@ class _SecurityPrivacyPageState extends State<SecurityPrivacyPage> {
                         child: Text(context.tr('Toujours')),
                       ),
                     ],
-                    onChanged: (value) {
-                      if (value != null) setState(() => _frequency = value);
-                    },
+                    onChanged: _isSaving
+                        ? null
+                        : (value) {
+                            if (value != null)
+                              setState(() => _frequency = value);
+                          },
                   ),
                   if (_frequency == 'always') ...[
                     const SizedBox(height: 14),
                     DropdownButtonFormField<int>(
-                      value: _lockDelayMinutes,
+                      initialValue: _lockDelayMinutes,
+                      isExpanded: true,
                       decoration: InputDecoration(
                         labelText: context.tr('Delai avant verrouillage'),
                         prefixIcon: const Icon(Icons.timer_outlined),
                       ),
                       items: [
-                        DropdownMenuItem(
-                          value: 0,
-                          child: Text(context.tr('Immediat')),
-                        ),
-                        DropdownMenuItem(
-                          value: 1,
-                          child: Text(context.tr('Apres 1 minute')),
-                        ),
-                        DropdownMenuItem(
-                          value: 5,
-                          child: Text(context.tr('Apres 5 minutes')),
-                        ),
-                        DropdownMenuItem(
-                          value: 15,
-                          child: Text(context.tr('Apres 15 minutes')),
-                        ),
-                        DropdownMenuItem(
-                          value: 60,
-                          child: Text(context.tr('Apres 1 heure')),
-                        ),
+                        for (final delay in PinLockPolicy.delays.entries)
+                          DropdownMenuItem(
+                            value: delay.key,
+                            child: Text(context.tr(delay.value)),
+                          ),
                       ],
-                      onChanged: (value) {
-                        if (value != null) {
-                          setState(() => _lockDelayMinutes = value);
-                        }
-                      },
+                      onChanged: _isSaving
+                          ? null
+                          : (value) {
+                              if (value != null) {
+                                setState(() => _lockDelayMinutes = value);
+                              }
+                            },
                     ),
                   ],
                   const SizedBox(height: 14),
@@ -1361,11 +1332,7 @@ class _SecurityPrivacyPageState extends State<SecurityPrivacyPage> {
                   subtitle: context.tr(
                     'Consulter les regles d utilisation de MySold',
                   ),
-                  onTap: () => _showTextPage(
-                    document: '/conditions/',
-                    title: context.tr('Conditions générales d’utilisation'),
-                    body: _termsText(context),
-                  ),
+                  onTap: () => LegalDocument.terms.open(context),
                 ),
                 const Divider(height: 1),
                 _ActionRow(
@@ -1374,18 +1341,14 @@ class _SecurityPrivacyPageState extends State<SecurityPrivacyPage> {
                   subtitle: context.tr(
                     'Comprendre comment vos donnees sont utilisees',
                   ),
-                  onTap: () => _showTextPage(
-                    document: '/confidentialite/',
-                    title: context.tr('Politique de confidentialité'),
-                    body: _privacyText(context),
-                  ),
+                  onTap: () => LegalDocument.privacy.open(context),
                 ),
                 const Divider(height: 1),
                 _ActionRow(
                   icon: Icons.info_outline,
                   title: context.tr('Mentions légales et cookies'),
                   subtitle: context.tr('Informations de cette instance'),
-                  onTap: () => openPublicDocument('/mentions-legales/'),
+                  onTap: () => LegalDocument.notices.open(context),
                 ),
               ],
             ),
@@ -1428,14 +1391,6 @@ class _SecurityPrivacyPageState extends State<SecurityPrivacyPage> {
         ],
       ),
     );
-  }
-
-  String _termsText(BuildContext context) {
-    return context.tr('legal_terms_full');
-  }
-
-  String _privacyText(BuildContext context) {
-    return context.tr('privacy_policy_full');
   }
 }
 
@@ -1523,32 +1478,6 @@ class _ActionRow extends StatelessWidget {
               )
             : const Icon(Icons.chevron_right),
         onTap: onTap,
-      ),
-    );
-  }
-}
-
-class _LegalTextPage extends StatelessWidget {
-  final String title;
-  final String body;
-
-  const _LegalTextPage({required this.title, required this.body});
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: appPageBar(context, title: Text(title)),
-      body: ListView(
-        dragStartBehavior: DragStartBehavior.down,
-        padding: const EdgeInsets.fromLTRB(16, 16, 16, 28),
-        children: [
-          Text(
-            body,
-            style: Theme.of(
-              context,
-            ).textTheme.bodyLarge?.copyWith(height: 1.45),
-          ),
-        ],
       ),
     );
   }

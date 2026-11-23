@@ -1,0 +1,9 @@
+MySold static demonstration
+
+Logo: Sold Up / MySold, respective copyright holders. See ../../LICENSE.
+
+Roboto font files: Copyright Google and respective contributors.
+Material Icons font: Copyright Google and respective contributors.
+These font files are distributed under the Apache License, Version 2.0.
+See Apache-2.0.txt. They retain their original licenses and are not restricted
+by the proprietary license covering MySold's own code and artwork.

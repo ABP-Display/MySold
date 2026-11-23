@@ -10,6 +10,7 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:mysold/data/document_store.dart';
 import 'package:mysold/data/local_auth.dart';
+import 'package:mysold/data/pin_lock_policy.dart';
 import 'package:provider/provider.dart';
 
 import 'package:mysold/enterPinPage.dart';
@@ -117,8 +118,36 @@ class MyApp extends StatefulWidget {
   State<MyApp> createState() => _MyAppState();
 }
 
-class _MyAppState extends State<MyApp> {
+class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
   final _navigatorKey = GlobalKey<NavigatorState>();
+  late final StreamSubscription<void> _expirySubscription;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _expirySubscription = LocalAuth.instance.sessionExpired.listen((_) {
+      if (!mounted) return;
+      context.read<UserDataProvider>().setUser(null);
+      _navigatorKey.currentState?.pushAndRemoveUntil(
+        MaterialPageRoute(builder: (_) => const LoginPage()),
+        (_) => false,
+      );
+    });
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) LocalAuth.instance.checkExpiry();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _expirySubscription.cancel();
+    super.dispose();
+  }
+
   // Theme/locale rebuilds must not resubscribe and remount an unlocked session.
   late final _authChanges = LocalAuth.instance.authStateChanges();
   @override
@@ -280,7 +309,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.paused ||
-        state == AppLifecycleState.inactive ||
+        state == AppLifecycleState.hidden ||
         state == AppLifecycleState.detached) {
       _wasInBackground = true;
       _backgroundAt ??= DateTime.now();
@@ -306,42 +335,28 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           .doc(uid)
           .get();
       final data = doc.data() ?? {};
-      final frequency = _normalizeLockFrequency(data['reconnectionFrequency']);
-      final delayMinutes = _normalizeLockDelay(data['lockDelayMinutes']);
+      final policy = PinLockPolicy(
+        data['reconnectionFrequency'],
+        data['lockDelayMinutes'],
+      );
       final elapsed = _backgroundAt == null
           ? Duration.zero
           : DateTime.now().difference(_backgroundAt!);
       _backgroundAt = null;
 
-      final shouldLock =
-          frequency == 'always' && elapsed >= Duration(minutes: delayMinutes);
+      if (!policy.shouldLock(elapsed) ||
+          !mounted ||
+          LocalAuth.instance.currentUser?.uid != uid)
+        return;
 
-      if (!shouldLock || !mounted) return;
-
-      Navigator.pushReplacement(
+      Navigator.pushAndRemoveUntil(
         context,
         MaterialPageRoute(builder: (_) => const EnterPinPage()),
+        (_) => false,
       );
     } finally {
       _isLocking = false;
     }
-  }
-
-  String _normalizeLockFrequency(dynamic value) {
-    final raw = (value ?? 'never').toString().toLowerCase().trim();
-    if (raw == 'always' ||
-        raw == 'toujours' ||
-        raw == 'chaque ouverture' ||
-        raw == 'chaque ouverture de l app' ||
-        raw == 'chaque ouverture de l\'app') {
-      return 'always';
-    }
-    return 'never';
-  }
-
-  int _normalizeLockDelay(dynamic value) {
-    if (value is num) return value.toInt().clamp(0, 1440).toInt();
-    return int.tryParse((value ?? '0').toString())?.clamp(0, 1440).toInt() ?? 0;
   }
 
   @override

@@ -61,7 +61,7 @@ class PublicSiteTests(unittest.TestCase):
                         result.close()
 
     def test_assets_are_compressed_formats_and_not_private_documents(self):
-        for view in ('expenses', 'income', 'monthly', 'year'):
+        for view in ('expenses', 'income', 'investments', 'transfers', 'monthly', 'year'):
             for suffix in ('', '-mobile'):
                 filename = f'showcase-{view}{suffix}.webp'
                 with self.subTest(filename=filename):
@@ -168,6 +168,11 @@ class PublicSiteTests(unittest.TestCase):
         self.assertEqual(self.client.get('/confidentialite/').status_code, 200)
         self.connect.assert_not_called()
 
+    def test_local_captures_remain_private_on_public_instances(self):
+        with patch.dict(os.environ, {'MYSOLD_SHOWCASE_LOCAL_CAPTURES': 'true'}):
+            self.assertNotIn(b'/local-phone/', self.client.get('/presentation').data)
+            self.assertEqual(self.client.get('/site-assets/local-phone/mois-depenses.webp').status_code, 404)
+
     def test_session_cookie_and_technical_storage_are_described_honestly(self):
         response = self.client.get('/cookies/')
         self.assertIn(b'mysold_session', response.data)
@@ -175,6 +180,16 @@ class PublicSiteTests(unittest.TestCase):
         self.assertNotIn(b'analytics.js', response.data)
         self.assertIn(b'canal confidentiel', self.client.get('/mentions-legales/').data)
         self.assertIn(b'ydoxide', self.client.get('/mentions-legales/').data)
+
+    def test_legal_notices_are_available_as_text_for_the_pwa(self):
+        for page in ('terms', 'privacy', 'legal', 'cookies'):
+            response = self.client.get('/api/legal/' + page)
+            self.assertEqual(response.status_code, 200)
+            self.assertEqual(response.headers['Cache-Control'], 'no-store')
+            self.assertGreater(len(response.json['paragraphs']), 3)
+            self.assertTrue(any(block['heading'] for block in response.json['paragraphs']))
+            self.assertNotIn(b'<article', response.data)
+        self.assertEqual(self.client.get('/api/legal/discover').status_code, 404)
 
 
 if __name__ == '__main__':

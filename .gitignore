@@ -36,4 +36,9 @@ test-artifacts/
 frontend/.debug/
 compose.local.yaml
 
+# Raw phone captures may contain private transactions or balances.
+/docs/assets/mois-*.webp
+/docs/assets/stats-annuelles.webp
+/docs/assets/stats-mensuelles.webp
+
 /mysold-keys*.tar.gz
